@@ -1,0 +1,6797 @@
+import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { 
+  Plus, Search, Calendar, Heart, BookOpen, Brain, 
+  Settings as SettingsIcon, Sparkles, LogOut, CheckSquare, 
+  Trash2, Edit3, Trash, Star, Image, Paperclip, Mic, MicOff, 
+  Smile, ShieldCheck, Download, Upload, Activity, Moon, Pill,
+  User, Printer, ChevronRight, Lock, Eye, EyeOff, Flame, Bell, Key,
+  Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe
+} from 'lucide-react';
+import { motion } from 'motion/react';
+import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book } from './types';
+import StaticNotification from './components/StaticNotification';
+import FloatingBall from './components/FloatingBall';
+import DrawingCanvas from './components/DrawingCanvas';
+import TherapistReportModal from './components/TherapistReportModal';
+import RatingModal from './components/RatingModal';
+import ContactOwnerModal from './components/ContactOwnerModal';
+import GeminiKeyModal from './components/GeminiKeyModal';
+import BackupSyncModal from './components/BackupSyncModal';
+import LanguagesModal from './components/LanguagesModal';
+import WriteDiaryImporter from './components/WriteDiaryImporter';
+import SmartAdvisor from './components/SmartAdvisor';
+import GratitudeJournal from './components/GratitudeJournal';
+import LifeMap from './components/LifeMap';
+import PINLock from './components/PINLock';
+import { TasksChecklistSection } from './components/TasksChecklistSection';
+import IntegratedTherapyReport from './components/IntegratedTherapyReport';
+
+// Recharts components for gorgeous analytics
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  Tooltip as ChartTooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, Cell, PieChart, Pie
+} from 'recharts';
+
+// Initial Mock Diaries for demonstration so analytics and timeline look incredible instantly
+const INITIAL_DIARIES: DiaryEntry[] = [
+  {
+    id: 'diary-1',
+    title: 'تخطيط للأسبوع الدراسي الجديد وغداء عائلي ومشاعر أمل',
+    content: 'بدأت اليوم ببعض القلق والتوتر بشأن تراكم المواد الدراسية والامتحانات القادمة في الجامعة. جلست مع عائلتي لاحقاً وتناولنا الغداء معاً في جو دافئ، وتحدثنا في مواضيع ممتعة فخفت حدة القلق تماماً وتحول شعوري للامتنان والأمل. أحس أن التحدث مع من نحب هو أفضل علاج سلوكي مهدئ للروح.',
+    createdAt: '2026-07-15T21:30:00.000Z',
+    updatedAt: '2026-07-15T21:30:00.000Z',
+    moods: ['قلق', 'ممتن', 'سعيد'],
+    aiMoodAnalysis: [
+      { mood: 'سعيد', percentage: 40 },
+      { mood: 'قلق', percentage: 30 },
+      { mood: 'ممتن', percentage: 30 }
+    ],
+    importance: 4,
+    color: 'bg-[#CCD5AE]/15 border-[#CCD5AE]',
+    images: [],
+    videos: [],
+    audioRecordings: [],
+    files: [],
+    tasks: [
+      { id: 't1', text: 'مراجعة أول فصلين في الكيمياء', completed: true },
+      { id: 't2', text: 'شراء الدواء الشهري', completed: true }
+    ],
+    tags: ['دراسة', 'عائلة', 'أمل'],
+    chatLogs: [],
+    isLocked: false,
+    sleepHours: 7.5,
+    sportsDuration: 30,
+    medications: [
+      { id: 'm1', name: 'فيتامين D3 جرعة أسبوعية', time: '10:00 ص', taken: true }
+    ]
+  },
+  {
+    id: 'diary-2',
+    title: 'نوبة أرق في منتصف الليل وتفكير زائد في المستقبل',
+    content: 'لم أستطع النوم جيداً الليلة الماضية بسبب كثرة التفكير والسيناريوهات الكارثية حول مستقبلي المهني والجامعي. استيقظت في الصباح وأنا أشعر بخمول شديد وإرهاق وضيق في الصدر. قررت في المساء تحدي نفسي والذهاب لممارسة المشي السريع لمدة 45 دقيقة، والحمد لله أحسست ببعض الارتياح والهدوء التدريجي بعد الرياضة.',
+    createdAt: '2026-07-14T09:45:00.000Z',
+    updatedAt: '2026-07-14T09:45:00.000Z',
+    moods: ['مرهق', 'قلق', 'حزين'],
+    aiMoodAnalysis: [
+      { mood: 'قلق', percentage: 50 },
+      { mood: 'مرهق', percentage: 35 },
+      { mood: 'حزين', percentage: 15 }
+    ],
+    importance: 3,
+    color: 'bg-[#FAEDCD]/30 border-[#E2DCC8]',
+    images: [],
+    videos: [],
+    audioRecordings: [
+      {
+        id: 'rec-1',
+        name: 'فضفضة الأرق وتفريغ الأفكار.mp3',
+        dataUrl: '#',
+        duration: 48,
+        transcription: 'أنا أسجل هذا المقطع الصوتي لأني أشعر بخوف شديد ولا أستطيع تهدئة نبضات قلبي بسبب التفكير في الامتحانات القادمة...'
+      }
+    ],
+    files: [],
+    tasks: [
+      { id: 't3', text: 'تمرين تنفس بطني دقيقتين قبل النوم', completed: false }
+    ],
+    tags: ['أرق', 'قلق', 'تحدي'],
+    chatLogs: [],
+    isLocked: false,
+    sleepHours: 4.5,
+    sportsDuration: 45,
+    medications: [
+      { id: 'm1', name: 'فيتامين D3 جرعة أسبوعية', time: '10:00 ص', taken: false }
+    ]
+  },
+  {
+    id: 'diary-3',
+    title: 'إنجاز كبير في المشروع وقراءة كتاب رائع قبل النوم',
+    content: 'الحمد لله اليوم كان استثنائياً ومبهجاً جداً! أنجزت العرض التقديمي لمشروع الجامعة وحصلت على ثناء كبير جداً من زملائي والدكتور المشرف. غمرتني طاقة مذهلة من الحماس والفرح والرضا عن نفسي. قبل النوم، أعددت كوب بابونج دافئ وقرأت فصلاً ممتعاً للغاية من كتاب العلاج السلوكي المعرفي للتغلب على القلق النفسي.',
+    createdAt: '2026-07-12T22:00:00.000Z',
+    updatedAt: '2026-07-12T22:00:00.000Z',
+    moods: ['سعيد جدًا', 'متحمس', 'مرتاح'],
+    aiMoodAnalysis: [
+      { mood: 'سعيد جدًا', percentage: 60 },
+      { mood: 'متحمس', percentage: 30 },
+      { mood: 'مرتاح', percentage: 10 }
+    ],
+    importance: 5,
+    color: 'bg-[#F0EDE4] border-[#E2DCC8]',
+    images: [],
+    videos: [],
+    audioRecordings: [],
+    files: [],
+    tasks: [],
+    tags: ['إنجاز', 'سعادة', 'قراءة'],
+    chatLogs: [],
+    isLocked: false,
+    sleepHours: 8.5,
+    sportsDuration: 60,
+    medications: [
+      { id: 'm1', name: 'فيتامين D3 جرعة أسبوعية', time: '10:00 ص', taken: true }
+    ]
+  }
+];
+
+const DEFAULT_SETTINGS: AppSettings = {
+  isDarkMode: false,
+  notificationsEnabled: true,
+  appLanguage: 'ar',
+  floatingBallEnabled: true,
+  appPinCode: '1234',
+  isAppLocked: false, // Default to false so user can preview and test all features instantly
+  backupSettings: {
+    autoBackup: 'daily'
+  },
+  reminders: [
+    { id: 'rem-1', title: 'منبه كتابة اليوميات اليومي ✍️', time: '21:00', active: true, type: 'diary' },
+    { id: 'rem-2', title: 'تنبيه شرب الماء الصباحي 💧', time: '08:00', active: true, type: 'habit' },
+    { id: 'rem-3', title: 'جلسة الاسترخاء السلوكي 🧘', time: '17:30', active: false, type: 'custom' },
+  ]
+};
+
+const INITIAL_HABITS: Habit[] = [
+  {
+    id: 'habit-1',
+    name: 'شرب 2 لتر ماء دافئ',
+    category: 'health',
+    frequency: 'daily',
+    reminderTime: '08:00',
+    reminderEnabled: true,
+    createdAt: '2026-07-01T00:00:00.000Z',
+    history: {
+      '2026-07-14': true,
+      '2026-07-15': true,
+      '2026-07-16': true,
+    }
+  },
+  {
+    id: 'habit-2',
+    name: 'تأمل واسترخاء العضلات (10 د)',
+    category: 'mind',
+    frequency: 'daily',
+    reminderTime: '07:30',
+    reminderEnabled: true,
+    createdAt: '2026-07-01T00:00:00.000Z',
+    history: {
+      '2026-07-15': true,
+      '2026-07-16': false,
+    }
+  },
+  {
+    id: 'habit-3',
+    name: 'المشي السريع أو تمرين منزلي',
+    category: 'sport',
+    frequency: 'daily',
+    reminderTime: '17:00',
+    reminderEnabled: false,
+    createdAt: '2026-07-01T00:00:00.000Z',
+    history: {
+      '2026-07-14': true,
+      '2026-07-15': true,
+      '2026-07-16': true,
+    }
+  },
+  {
+    id: 'habit-4',
+    name: 'قراءة في كتاب النفس السلوكي',
+    category: 'culture',
+    frequency: 'daily',
+    reminderTime: '21:00',
+    reminderEnabled: true,
+    createdAt: '2026-07-01T00:00:00.000Z',
+    history: {
+      '2026-07-14': true,
+      '2026-07-15': false,
+      '2026-07-16': true,
+    }
+  }
+];
+
+const HABIT_CATEGORIES: Record<string, { label: string; color: string; dot: string }> = {
+  health: { label: 'صحة بدنية 🥦', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  mind: { label: 'تأمل وذهن 🧠', color: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+  sport: { label: 'رياضة ونشاط 🏃', color: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  culture: { label: 'ثقافة وقراءة 📚', color: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+  custom: { label: 'مخصص 🎯', color: 'bg-gray-50 text-gray-700 border-gray-200', dot: 'bg-gray-500' },
+};
+
+// --- Streak Tracker calculation helper ---
+const calculateStreak = (entries: DiaryEntry[]) => {
+  const loggedDates = new Set(
+    entries.map(e => {
+      const d = new Date(e.createdAt);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    })
+  );
+
+  const today = new Date();
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = formatDate(today);
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayStr = formatDate(yesterday);
+
+  let currentStreak = 0;
+  const hasLoggedToday = loggedDates.has(todayStr);
+  const hasLoggedYesterday = loggedDates.has(yesterdayStr);
+
+  if (hasLoggedToday) {
+    currentStreak = 1;
+    let checkDate = new Date(today);
+    while (true) {
+      checkDate.setDate(checkDate.getDate() - 1);
+      const checkStr = formatDate(checkDate);
+      if (loggedDates.has(checkStr)) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  } else if (hasLoggedYesterday) {
+    currentStreak = 1;
+    let checkDate = new Date(yesterday);
+    while (true) {
+      checkDate.setDate(checkDate.getDate() - 1);
+      const checkStr = formatDate(checkDate);
+      if (loggedDates.has(checkStr)) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Calculate Max Streak of all time
+  const sortedDates = Array.from(loggedDates).sort();
+  let maxStreak = 0;
+  let tempStreak = 0;
+  let prevDateMs: number | null = null;
+
+  for (const dateStr of sortedDates) {
+    const currentDate = new Date(`${dateStr}T12:00:00`);
+    const currentDateMs = currentDate.getTime();
+
+    if (prevDateMs === null) {
+      tempStreak = 1;
+    } else {
+      const diffTime = Math.abs(currentDateMs - prevDateMs);
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        tempStreak++;
+      } else if (diffDays > 1) {
+        tempStreak = 1;
+      }
+    }
+    if (tempStreak > maxStreak) {
+      maxStreak = tempStreak;
+    }
+    prevDateMs = currentDateMs;
+  }
+
+  if (currentStreak > maxStreak) {
+    maxStreak = currentStreak;
+  }
+
+  return {
+    currentStreak,
+    maxStreak,
+    hasLoggedToday
+  };
+};
+
+export const TRANSLATIONS = {
+  ar: {
+    appName: "يومياتي AI",
+    settingsTitle: "الإعدادات العامة",
+    settingsSubtitle: "تخصيص مساعد الذكي، قفل الحماية، وتزامن بياناتك",
+    apiKeyTitle: "مفتاح API الخاص بك 🔑",
+    floatingBallTitle: "عرض الكرة العائمة 🔘",
+    backupTitle: "النسخ الاحتياطي والمزامنة ☁️",
+    appLockTitle: "قفل التطبيق 🔐",
+    favoritesTitle: "الملاحظات المفضلة ⭐",
+    remindersTitle: "التذكيرات والمنبهات ⏰",
+    archiveTitle: "أرشيف اليوميات 📥",
+    trashTitle: "سلة المهملات 🗑️",
+    darkModeTitle: "الوضع الداكن ☀️/🌙",
+    notificationsTitle: "الإشعارات 🔔",
+    languagesTitle: "لغات التطبيق 🌐",
+    rateTitle: "قيمنا 👍",
+    contactTitle: "تواصل مع مالك التطبيق للاقتراح والتطوير ✉️",
+    homeTab: "الرئيسية",
+    diariesTab: "اليوميات",
+    advisorTab: "المستشار",
+    analyticsTab: "التقدم والبيانات",
+    settingsTab: "الإعدادات",
+    apiKeySub: "حالة المفتاح: مخصّص ونشط محلياً 🟢",
+    apiKeySubAuto: "حالة المفتاح: يتم التوفير سحابياً تلقائياً وبأمان ☁️",
+    floatingBallSub: "تسهيل التنقل والتحكم السريع بالمساعد الذكي في أي وقت",
+    backupSub: "حفظ ومزامنة مذكراتك سحابياً ومحلياً لمنع فقدان البيانات",
+    appLockSub: "تأمين مذكراتك برمز مرور PIN مكوّن من 4 أرقام عند بدء التشغيل",
+    favoritesSub: "تصفح والوصول السريع للمذكرات الأكثر أهمية (ذات 4 نجوم فما فوق)",
+    remindersSub: "إدارة منبهات المهام المجدولة واليوميات",
+    archiveSub: "استعراض مذكراتك المؤرشفة والقديمة",
+    trashSub: "استعادة مذكراتك المحذوفة مؤخراً أو تصفيتها",
+    darkModeSub: "تفعيل مظهر الوضع الليلي لحماية عينيك",
+    notificationsSub: "تلقي تنبيهات دورية للعادات والتذكيرات اليومية",
+    languagesSub: "تغيير لغة واجهة مستخدم التطبيق",
+    rateSub: "ساعدنا على مواصلة تحسين التطبيق لرأيك الغالي",
+    contactSub: "راسلنا باقتراحاتك وملاحظاتك القيمة لتطوير التطبيق",
+  },
+  en: {
+    appName: "My Diaries AI",
+    settingsTitle: "General Settings",
+    settingsSubtitle: "Customize your smart assistant, privacy lock, and sync your data",
+    apiKeyTitle: "Your API Key 🔑",
+    floatingBallTitle: "Display Floating Ball 🔘",
+    backupTitle: "Backup & Sync ☁️",
+    appLockTitle: "App Lock 🔐",
+    favoritesTitle: "Favorite Notes ⭐",
+    remindersTitle: "Reminders & Alarms ⏰",
+    archiveTitle: "Diary Archive 📥",
+    trashTitle: "Trash Can 🗑️",
+    darkModeTitle: "Dark Mode ☀️/🌙",
+    notificationsTitle: "Notifications 🔔",
+    languagesTitle: "App Languages 🌐",
+    rateTitle: "Rate Us 👍",
+    contactTitle: "Contact App Owner ✉️",
+    homeTab: "Home",
+    diariesTab: "Diaries",
+    advisorTab: "Advisor",
+    analyticsTab: "Analytics",
+    settingsTab: "Settings",
+    apiKeySub: "Key status: Customized & active locally 🟢",
+    apiKeySubAuto: "Key status: Provided securely via cloud automatically ☁️",
+    floatingBallSub: "Quick navigation and shortcut controls for your AI assistant",
+    backupSub: "Sync and backup your diaries locally & to cloud securely",
+    appLockSub: "Secure your notes with a 4-digit PIN lock on launch",
+    favoritesSub: "Browse and quickly access your most important diaries (4+ stars)",
+    remindersSub: "Manage scheduled task alarms and diary reminders",
+    archiveSub: "Browse archived and older diary notes",
+    trashSub: "Restore recently deleted diaries or filter them",
+    darkModeSub: "Enable dark mode appearance to protect your eyes",
+    notificationsSub: "Receive periodic alerts for habits and daily reminders",
+    languagesSub: "Change the application user interface language",
+    rateSub: "Help us continue improving the application with your feedback",
+    contactSub: "Send us your valuable suggestions and notes to develop the app",
+  }
+};
+
+export default function App() {
+  // --- Persistent State Hooks ---
+  const [diaries, setDiaries] = useState<DiaryEntry[]>(() => {
+    const saved = localStorage.getItem('yawmiyati_diaries');
+    return saved ? JSON.parse(saved) : INITIAL_DIARIES;
+  });
+
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const saved = localStorage.getItem('yawmiyati_settings');
+    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+  });
+
+  const isEn = settings.appLanguage === 'en';
+  const t = TRANSLATIONS[settings.appLanguage] || TRANSLATIONS.ar;
+
+  const [habits, setHabits] = useState<Habit[]>(() => {
+    const saved = localStorage.getItem('yawmiyati_habits');
+    return saved ? JSON.parse(saved) : INITIAL_HABITS;
+  });
+
+  const [gratitudeCards, setGratitudeCards] = useState<GratitudeCard[]>(() => {
+    const saved = localStorage.getItem('yawmiyati_gratitude_cards');
+    return saved ? JSON.parse(saved) : [
+      { id: 'grat-1', text: 'رؤية الشمس تشرق بنورها الدافئ وبدء يوم جديد بسلام وأمل', color: 'bg-amber-50 border-amber-200 text-amber-900', createdAt: new Date(Date.now() - 3600000 * 24).toISOString() },
+      { id: 'grat-2', text: 'شرب فنجان قهوة ساخن ومثالي مع عائلتي والحديث الدافئ معهم', color: 'bg-emerald-50 border-emerald-200 text-emerald-900', createdAt: new Date(Date.now() - 3600000 * 5).toISOString() },
+      { id: 'grat-3', text: 'إيجاد حلول لمشكلة برمجية صعبة والشعور ببهجة الإنجاز والتقدم الذاتي', color: 'bg-blue-50 border-blue-200 text-blue-900', createdAt: new Date(Date.now() - 3600000 * 1).toISOString() }
+    ];
+  });
+
+  const [activeDiariesSubTab, setActiveDiariesSubTab] = useState<'journal' | 'gratitude' | 'cbt' | 'tasks'>('journal');
+  const [analyticsSubTab, setAnalyticsSubTab] = useState<'report' | 'charts'>('report');
+  const [diaryTypeFilter, setDiaryTypeFilter] = useState<'all' | 'diary' | 'thought'>('all');
+  const [diaryChatMessage, setDiaryChatMessage] = useState('');
+  const [diaryChatLoading, setDiaryChatLoading] = useState(false);
+
+  // Daily Psychological Inspiration quote state
+  const [dailyQuote, setDailyQuote] = useState<{ quote: string; author: string }>(() => {
+    const saved = localStorage.getItem('yawmiyati_daily_quote');
+    return saved ? JSON.parse(saved) : {
+      quote: "تذكر دائماً أن القلق لا يمنع ألم الغد، ولكنه يسرق متعة وسلام اليوم فحسب.",
+      author: "دكتورك النفسي الصديق"
+    };
+  });
+  const [quoteLoading, setQuoteLoading] = useState(false);
+
+  // Breathing Box Session states
+  const [isBreathingActive, setIsBreathingActive] = useState(false);
+  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold1' | 'exhale' | 'hold2'>('inhale');
+  const [breathingTimer, setBreathingTimer] = useState(4);
+  const [breathingCycle, setBreathingCycle] = useState(0);
+
+  // CBT wizard modal state
+  const [showAddCbtModal, setShowAddCbtModal] = useState(false);
+  const [cbtStep, setCbtStep] = useState(1);
+  const [cbtTriggerEvent, setCbtTriggerEvent] = useState('');
+  const [cbtNegativeThoughts, setCbtNegativeThoughts] = useState('');
+  const [cbtCognitiveDistortion, setCbtCognitiveDistortion] = useState('');
+  const [cbtRationalAlternative, setCbtRationalAlternative] = useState('');
+  const [cbtEmotionBefore, setCbtEmotionBefore] = useState(7);
+  const [cbtEmotionAfter, setCbtEmotionAfter] = useState(4);
+  const [cbtLoading, setCbtLoading] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'diaries' | 'advisor' | 'analytics' | 'settings'>(() => {
+    return (localStorage.getItem('yawmiyati_active_tab') as any) || 'dashboard';
+  });
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  // Save activeTab to localStorage immediately on change
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_active_tab', activeTab);
+  }, [activeTab]);
+
+  // Save to localStorage whenever diaries, settings or habits change
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_diaries', JSON.stringify(diaries));
+  }, [diaries]);
+
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_settings', JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_habits', JSON.stringify(habits));
+  }, [habits]);
+
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_gratitude_cards', JSON.stringify(gratitudeCards));
+  }, [gratitudeCards]);
+
+  // Save daily quote to local storage
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_daily_quote', JSON.stringify(dailyQuote));
+  }, [dailyQuote]);
+
+  // Breathing Box Session Timer Effect
+  useEffect(() => {
+    let interval: any = null;
+    if (isBreathingActive) {
+      interval = setInterval(() => {
+        setBreathingTimer(prev => {
+          if (prev === 1) {
+            // Move to next phase
+            setBreathingPhase(phase => {
+              if (phase === 'inhale') {
+                return 'hold1';
+              } else if (phase === 'hold1') {
+                return 'exhale';
+              } else if (phase === 'exhale') {
+                return 'hold2';
+              } else {
+                setBreathingCycle(c => c + 1);
+                return 'inhale';
+              }
+            });
+            return 4; // Reset to 4 seconds
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setBreathingTimer(4);
+      setBreathingPhase('inhale');
+      setBreathingCycle(0);
+    }
+    return () => clearInterval(interval);
+  }, [isBreathingActive]);
+
+  // --- ☁️ Real-time Cloud Synchronization Engine ---
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [cloudSyncMessage, setCloudSyncMessage] = useState<string | null>('النسخة الاحتياطية السحابية نشطة ومتصلة 🟢');
+
+  const performCloudSync = async (forceData?: { diaries?: DiaryEntry[], habits?: Habit[], settings?: AppSettings, gratitudeCards?: GratitudeCard[] }) => {
+    setIsCloudSyncing(true);
+    try {
+      const payload = {
+        diaries: forceData?.diaries || diaries,
+        habits: forceData?.habits || habits,
+        settings: forceData?.settings || settings,
+        gratitudeCards: forceData?.gratitudeCards || gratitudeCards,
+        chatMessages: JSON.parse(localStorage.getItem('yawmiyati_chat_messages') || '[]'),
+        activeTab: localStorage.getItem('yawmiyati_active_tab') || 'dashboard',
+        syncTime: new Date().toISOString()
+      };
+      
+      const response = await fetch('/api/cloud-sync/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCloudSyncMessage(`مزامنة سحابية ناجحة: ${new Date().toLocaleTimeString('ar-EG')}`);
+      } else {
+        setCloudSyncMessage('فشل التزامن السحابي التلقائي');
+      }
+    } catch (e) {
+      console.error('Cloud Sync error:', e);
+      setCloudSyncMessage('تعذر الاتصال بالخادم للتزامن السحابي');
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const handleCloudRestore = async () => {
+    setIsCloudSyncing(true);
+    setCloudSyncMessage('جاري استيراد نسختك الاحتياطية من السحابة...');
+    try {
+      const response = await fetch('/api/cloud-sync/fetch');
+      const res = await response.json();
+      if (res.success && res.data) {
+        if (res.data.diaries) {
+          setDiaries(res.data.diaries);
+          localStorage.setItem('yawmiyati_diaries', JSON.stringify(res.data.diaries));
+        }
+        if (res.data.habits) {
+          setHabits(res.data.habits);
+          localStorage.setItem('yawmiyati_habits', JSON.stringify(res.data.habits));
+        }
+        if (res.data.settings) {
+          setSettings(res.data.settings);
+          localStorage.setItem('yawmiyati_settings', JSON.stringify(res.data.settings));
+        }
+        if (res.data.gratitudeCards) {
+          setGratitudeCards(res.data.gratitudeCards);
+          localStorage.setItem('yawmiyati_gratitude_cards', JSON.stringify(res.data.gratitudeCards));
+        }
+        if (res.data.chatMessages) {
+          localStorage.setItem('yawmiyati_chat_messages', JSON.stringify(res.data.chatMessages));
+        }
+        setCloudSyncMessage('تمت استعادة كل مذكراتك ومحادثاتك من السحابة بنجاح! 🎉☁️');
+      } else {
+        setCloudSyncMessage('لم يتم العثور على نسخة احتياطية سحابية على الخادم لحسابك.');
+      }
+    } catch (e) {
+      console.error('Restore error:', e);
+      setCloudSyncMessage('خطأ أثناء استعادة البيانات السحابية');
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  // Auto-restore on load if local storage is completely empty (safeguard for clean/reset installs)
+  useEffect(() => {
+    const checkAndRestore = async () => {
+      try {
+        const response = await fetch('/api/cloud-sync/fetch');
+        const res = await response.json();
+        if (res.success && res.data) {
+          const localDiaries = localStorage.getItem('yawmiyati_diaries');
+          if (!localDiaries || JSON.parse(localDiaries).length === 0) {
+            console.log("No local diaries, auto-restoring from server cloud backup...");
+            if (res.data.diaries) setDiaries(res.data.diaries);
+            if (res.data.habits) setHabits(res.data.habits);
+            if (res.data.settings) setSettings(res.data.settings);
+            if (res.data.gratitudeCards) setGratitudeCards(res.data.gratitudeCards);
+            if (res.data.chatMessages) {
+              localStorage.setItem('yawmiyati_chat_messages', JSON.stringify(res.data.chatMessages));
+            }
+            setCloudSyncMessage('أهلاً بك! تم تحميل يومياتك ومحادثاتك سحابياً تلقائياً ☁️🟢');
+          }
+        }
+      } catch (err) {
+        console.error("Auto-sync load check failed:", err);
+      }
+    };
+    checkAndRestore();
+  }, []);
+
+  // Sync to cloud on local changes with 1.5s debounce to keep database safe
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      performCloudSync();
+    }, 1500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [diaries, habits, settings, gratitudeCards]);
+
+  const [activeHabitReminder, setActiveHabitReminder] = useState<{ id: string; name: string } | null>(null);
+
+  // --- Gratitude Journal Reminders & Notifications ---
+  const [activeGratitudeReminderNotification, setActiveGratitudeReminderNotification] = useState(false);
+  const lastFiredGratitudeMinuteRef = React.useRef<string>('');
+
+  useEffect(() => {
+    const checkReminder = () => {
+      const isEnabled = localStorage.getItem('yawmiyati_gratitude_reminder_enabled') !== 'false';
+      const reminderTime = localStorage.getItem('yawmiyati_gratitude_reminder_time') || '21:00';
+      
+      if (!isEnabled) return;
+      
+      const now = new Date();
+      const currentHour = String(now.getHours()).padStart(2, '0');
+      const currentMinute = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHour}:${currentMinute}`;
+      
+      if (currentTimeStr === reminderTime && lastFiredGratitudeMinuteRef.current !== currentTimeStr) {
+        lastFiredGratitudeMinuteRef.current = currentTimeStr;
+        setActiveGratitudeReminderNotification(true);
+      }
+    };
+    
+    checkReminder();
+    const interval = setInterval(checkReminder, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // --- Habit Management States ---
+  const [showAddHabitModal, setShowAddHabitModal] = useState(false);
+  const [newHabitName, setNewHabitName] = useState('');
+  const [newHabitCategory, setNewHabitCategory] = useState<'health' | 'mind' | 'sport' | 'culture' | 'custom'>('custom');
+  const [newHabitReminderTime, setNewHabitReminderTime] = useState('08:00');
+  const [newHabitReminderEnabled, setNewHabitReminderEnabled] = useState(true);
+  const [selectedHabitCategory, setSelectedHabitCategory] = useState<string>('all');
+
+  // Habits evaluation period analytics
+  const [habitPeriod, setHabitPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'semi-annually' | 'annually' | 'custom'>('weekly');
+  const [habitCustomStart, setHabitCustomStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [habitCustomEnd, setHabitCustomEnd] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [habitEvaluationReport, setHabitEvaluationReport] = useState('');
+  const [habitEvaluationLoading, setHabitEvaluationLoading] = useState(false);
+
+  const toggleHabitCompletion = (habitId: string, dateStr: string) => {
+    setHabits(prev => prev.map(h => {
+      if (h.id === habitId) {
+        const currentVal = !!h.history[dateStr];
+        return {
+          ...h,
+          history: {
+            ...h.history,
+            [dateStr]: !currentVal
+          }
+        };
+      }
+      return h;
+    }));
+  };
+
+  const deleteHabit = (habitId: string) => {
+    if (confirm('هل أنت متأكد من حذف هذه العادة نهائياً؟')) {
+      setHabits(prev => prev.filter(h => h.id !== habitId));
+    }
+  };
+
+  const handleCreateHabit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHabitName.trim()) return;
+
+    const newHabit: Habit = {
+      id: `habit-${Date.now()}`,
+      name: newHabitName.trim(),
+      category: newHabitCategory,
+      frequency: 'daily',
+      reminderTime: newHabitReminderTime,
+      reminderEnabled: newHabitReminderEnabled,
+      createdAt: new Date().toISOString(),
+      history: {}
+    };
+
+    setHabits(prev => [...prev, newHabit]);
+    setNewHabitName('');
+    setNewHabitCategory('custom');
+    setNewHabitReminderTime('08:00');
+    setNewHabitReminderEnabled(true);
+    setShowAddHabitModal(false);
+  };
+
+  const triggerSimulatedHabitNotification = (habit: Habit) => {
+    setActiveHabitReminder({ id: habit.id, name: habit.name });
+    // Clear after 6 seconds
+    setTimeout(() => {
+      setActiveHabitReminder(null);
+    }, 6000);
+  };
+
+  const generateHabitReport = async () => {
+    setHabitEvaluationLoading(true);
+    setHabitEvaluationReport('');
+
+    try {
+      let start = new Date();
+      let end = new Date();
+      const endStr = end.toISOString().split('T')[0];
+
+      if (habitPeriod === 'daily') {
+        start.setDate(start.getDate() - 1);
+      } else if (habitPeriod === 'weekly') {
+        start.setDate(start.getDate() - 7);
+      } else if (habitPeriod === 'monthly') {
+        start.setDate(start.getDate() - 30);
+      } else if (habitPeriod === 'quarterly') {
+        start.setDate(start.getDate() - 90);
+      } else if (habitPeriod === 'semi-annually') {
+        start.setDate(start.getDate() - 180);
+      } else if (habitPeriod === 'annually') {
+        start.setDate(start.getDate() - 365);
+      } else {
+        start = new Date(habitCustomStart);
+        end = new Date(habitCustomEnd);
+      }
+
+      const startStr = start.toISOString().split('T')[0];
+
+      // Generate dates in range
+      const datesList: string[] = [];
+      const currentCursor = new Date(start);
+      // set hours to 0 to prevent date rollover issues
+      currentCursor.setHours(12, 0, 0, 0);
+      const endCheck = new Date(end);
+      endCheck.setHours(12, 0, 0, 0);
+
+      while (currentCursor <= endCheck) {
+        datesList.push(currentCursor.toISOString().split('T')[0]);
+        currentCursor.setDate(currentCursor.getDate() + 1);
+      }
+
+      // Calculate compliance: (completed slots / total possible slots)
+      let totalSlots = habits.length * datesList.length;
+      let completedSlots = 0;
+
+      habits.forEach(h => {
+        datesList.forEach(d => {
+          if (h.history[d]) {
+            completedSlots++;
+          }
+        });
+      });
+
+      const overallCompliance = totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : 0;
+
+      const res = await fetch('/api/gemini/evaluate-habits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({
+          habits,
+          period: habitPeriod === 'custom' ? `مخصصة من ${startStr} إلى ${endStr}` : habitPeriod,
+          startDate: startStr,
+          endDate: endStr,
+          overallCompliance
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setHabitEvaluationReport(data.answer);
+      } else {
+        setHabitEvaluationReport('للأسف تعذر استجابة النظام حالياً، يرجى المحاولة لاحقاً.');
+      }
+    } catch (err) {
+      console.error(err);
+      setHabitEvaluationReport('حدث خطأ أثناء إرسال طلب التقييم السلوكي.');
+    } finally {
+      setHabitEvaluationLoading(false);
+    }
+  };
+
+  // --- Active Diary Editing State ---
+  const [editingDiary, setEditingDiary] = useState<DiaryEntry | null>(() => {
+    const saved = localStorage.getItem('yawmiyati_draft_editing_diary');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return null;
+  });
+  const [isNewEntry, setIsNewEntry] = useState(() => {
+    return localStorage.getItem('yawmiyati_draft_is_new_entry') === 'true';
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTagFilter, setSelectedTagFilter] = useState('');
+  const [newEditAddition, setNewEditAddition] = useState(() => {
+    return localStorage.getItem('yawmiyati_draft_new_edit_addition') || '';
+  });
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [backupEmail, setBackupEmail] = useState(() => {
+    return localStorage.getItem('yawmiyati_backup_email') || 'wahdlyallh@gmail.com';
+  });
+  const [isSendingEmailBackup, setIsSendingEmailBackup] = useState(false);
+  const [emailBackupStatus, setEmailBackupStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_backup_email', backupEmail);
+  }, [backupEmail]);
+
+  // Save active editing states to localStorage immediately
+  useEffect(() => {
+    if (editingDiary) {
+      localStorage.setItem('yawmiyati_draft_editing_diary', JSON.stringify(editingDiary));
+    } else {
+      localStorage.removeItem('yawmiyati_draft_editing_diary');
+    }
+  }, [editingDiary]);
+
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_draft_is_new_entry', String(isNewEntry));
+  }, [isNewEntry]);
+
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_draft_new_edit_addition', newEditAddition);
+  }, [newEditAddition]);
+
+  // --- Drawing Sketchboard State ---
+  const [showSketchboard, setShowSketchboard] = useState(false);
+
+  // --- Therapist Report Modal State ---
+  const [showTherapistModal, setShowTherapistModal] = useState(false);
+
+  // --- Full Calendar Modal State ---
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+
+  // --- Comprehensive Library and Calendar States ---
+  const [books, setBooks] = useState<Book[]>(() => {
+    const saved = localStorage.getItem('yawmiyati_books');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      {
+        id: 'book-1',
+        title: 'العلاج المعرفي السلوكي للنفس والروح 🧠',
+        notes: 'د. جوديث بيك - يشرح آليات تعديل الأفكار التلقائية والتعامل مع المخاوف والقلق اليومي.',
+        rating: 5,
+        pdfPath: 'كتاب العلاج المعرفي.pdf',
+        referenceLink: 'https://cbt-institute.com',
+        audioAttachment: 'ملخص صوتي.mp3',
+        coverAttachment: '',
+        videoAttachment: 'شرح العلاج المعرفي.mp4',
+        hasMindMap: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'book-2',
+        title: 'المرونة النفسية والصلابة الذاتية 💪',
+        notes: 'د. بندر آل جلالة - يتناول طرق تعزيز الصلابة النفسية ومقاومة الصدمات اليومية وتجاوزها.',
+        rating: 4,
+        pdfPath: 'المرونة النفسية.pdf',
+        referenceLink: '',
+        audioAttachment: '',
+        coverAttachment: '',
+        videoAttachment: '',
+        hasMindMap: false,
+        createdAt: new Date().toISOString()
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('yawmiyati_books', JSON.stringify(books));
+  }, [books]);
+
+  const [calendarSubTab, setCalendarSubTab] = useState<'calendar' | 'library' | 'reports'>('calendar');
+  const [showAddBookForm, setShowAddBookForm] = useState(false);
+  const [bookFormTitle, setBookFormTitle] = useState('');
+  const [bookFormNotes, setBookFormNotes] = useState('');
+  const [bookFormRating, setBookFormRating] = useState(5);
+  const [bookFormPdf, setBookFormPdf] = useState('');
+  const [bookFormLink, setBookFormLink] = useState('');
+  const [bookFormAudio, setBookFormAudio] = useState('');
+  const [bookFormCover, setBookFormCover] = useState('');
+  const [bookFormVideo, setBookFormVideo] = useState('');
+  const [bookFormHasMindMap, setBookFormHasMindMap] = useState(false);
+  const [selectedBookDetail, setSelectedBookDetail] = useState<Book | null>(null);
+  const [bookSearchQuery, setBookSearchQuery] = useState('');
+  const [bookRatingFilter, setBookRatingFilter] = useState<number>(0);
+  const [bookAttachmentFilter, setBookAttachmentFilter] = useState<string>('all');
+
+  // --- Redesigned Settings Tab Subsections ---
+  const [expandedSettingsCard, setExpandedSettingsCard] = useState<'api' | 'backup' | 'pin' | 'favorites' | 'reminders' | 'archive' | 'trash' | 'languages' | null>(null);
+  const [showGeminiKeyModal, setShowGeminiKeyModal] = useState(false);
+  const [showBackupSyncModal, setShowBackupSyncModal] = useState(false);
+  const [showWriteDiaryImporter, setShowWriteDiaryImporter] = useState(false);
+  const [showLanguagesModal, setShowLanguagesModal] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingFeedback, setRatingFeedback] = useState('');
+  const [ratingSuccess, setRatingSuccess] = useState(false);
+  const [newAlarmTitle, setNewAlarmTitle] = useState('');
+  const [newAlarmTime, setNewAlarmTime] = useState('20:00');
+
+  // --- Voice Recorder States ---
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingIntervalId, setRecordingIntervalId] = useState<number | null>(null);
+
+  // --- Diary AI Assistant Inline State ---
+  const [diaryAiLoading, setDiaryAiLoading] = useState(false);
+  const [diaryAiAnswer, setDiaryAiAnswer] = useState('');
+
+  // --- Diary Attachments Extra State ---
+  const [activeInputSection, setActiveInputSection] = useState<'none' | 'link' | 'video' | 'pdf'>('none');
+  const [tempVideoUrl, setTempVideoUrl] = useState('');
+  const [tempWebUrl, setTempWebUrl] = useState('');
+
+  // Calculate user writing streak in real-time
+  const streakInfo = calculateStreak(diaries);
+
+  // --- Dynamic Greeting Selector ---
+  const getArabicGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'صباح الخير والرضا والنفس المطمئنة ☀️';
+    if (hour < 17) return 'أهلاً بك وطاب يومك يا صديقي النبيل ☕';
+    return 'مساء الهدوء وراحة البال والاسترخاء 🌙';
+  };
+
+  const getArabicGreetingHeader = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'صباح التفاؤل والنشاط والتصالح';
+    if (hour < 17) return 'أهلاً بك وطاب يومك يا صديقي النبيل';
+    return 'مساء الهدوء وراحة البال والاسترخاء';
+  };
+
+  const getArabicGreetingIcon = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return '☀️';
+    if (hour < 17) return '☕';
+    return '🌙';
+  };
+
+  // --- Week Days Array Generator (Cairo Calendar Style) ---
+  const getWeekDays = () => {
+    const arr = [];
+    const today = new Date();
+    // Get last 7 days including today
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      arr.push({
+        label: d.toLocaleDateString('ar-EG', { weekday: 'short' }),
+        dayNum: d.getDate(),
+        isoString: d.toISOString().split('T')[0]
+      });
+    }
+    return arr;
+  };
+
+  // --- Action triggers for Simulated Notification Drawer & Floating Ball ---
+  const handleQuickAction = (actionType: 'new_note' | 'voice' | 'mood' | 'ai' | 'task' | 'photo' | 'notes') => {
+    if (actionType === 'new_note') {
+      startNewDiary();
+    } else if (actionType === 'voice') {
+      startNewDiary();
+      // Wait tiny bit and simulate recording
+      setTimeout(() => {
+        setIsRecording(true);
+        // Start recording clock
+        const intId = window.setInterval(() => {
+          setRecordingSeconds(prev => prev + 1);
+        }, 1000);
+        setRecordingIntervalId(intId);
+      }, 300);
+    } else if (actionType === 'mood') {
+      setActiveTab('dashboard');
+      // Scroll to daily stats
+      document.getElementById('habits-tracker')?.scrollIntoView({ behavior: 'smooth' });
+    } else if (actionType === 'ai') {
+      setActiveTab('advisor');
+    } else if (actionType === 'task') {
+      startNewDiary();
+    } else if (actionType === 'photo') {
+      startNewDiary();
+      // Programmatically click hidden image upload
+      setTimeout(() => {
+        document.getElementById('image-upload-trigger')?.click();
+      }, 300);
+    } else if (actionType === 'notes') {
+      setActiveTab('diaries');
+    }
+  };
+
+  // --- Initialize blank or default diary entry ---
+  const startNewDiary = () => {
+    const todayStr = new Date().toISOString();
+    const newEntry: DiaryEntry = {
+      id: `diary-${Date.now()}`,
+      title: '',
+      content: '',
+      createdAt: todayStr,
+      updatedAt: todayStr,
+      diaryType: 'diary',
+      moods: ['طبيعي'],
+      importance: 3,
+      color: 'bg-white border-[#E2DCC8]',
+      images: [],
+      videos: [],
+      links: [],
+      audioRecordings: [],
+      files: [],
+      tasks: [],
+      tags: [],
+      chatLogs: [],
+      isLocked: false,
+      sleepHours: 8,
+      sportsDuration: 0,
+      medications: [
+        { id: 'm1', name: 'مكمل فيتامين D', time: '10:00 ص', taken: false }
+      ]
+    };
+    setEditingDiary(newEntry);
+    setIsNewEntry(true);
+    setDiaryAiAnswer('');
+    setActiveTab('diaries');
+  };
+
+  // --- Save / Update the Active Diary ---
+  const handleSaveDiary = async () => {
+    if (!editingDiary) return;
+
+    if (!editingDiary.title.trim()) {
+      editingDiary.title = 'مذكرة يومية بدون عنوان';
+    }
+
+    // Call server API to perform intelligent AI mood analysis if possible!
+    let updatedEntry = { ...editingDiary };
+    
+    // Add edit addition if provided
+    if (newEditAddition.trim()) {
+      const additionDate = new Date();
+      const formattedTimestamp = additionDate.toLocaleDateString('ar-EG', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }) + ' الساعة ' + additionDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+      const newEdit = {
+        id: `edit-${Date.now()}`,
+        content: newEditAddition.trim(),
+        timestamp: formattedTimestamp
+      };
+      updatedEntry.edits = [...(updatedEntry.edits || []), newEdit];
+      updatedEntry.isEdited = true;
+    } else if (!isNewEntry) {
+      // If it's an existing entry being saved, mark as edited
+      updatedEntry.isEdited = true;
+    }
+
+    try {
+      const response = await fetch('/api/gemini/analyze-mood', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({
+          title: editingDiary.title,
+          content: editingDiary.content
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        updatedEntry.aiMoodAnalysis = data.analysis;
+      }
+    } catch (e) {
+      console.error('Failed to get automatic AI mood analysis:', e);
+    }
+
+    if (isNewEntry) {
+      setDiaries(prev => [updatedEntry, ...prev]);
+    } else {
+      setDiaries(prev => prev.map(d => d.id === updatedEntry.id ? updatedEntry : d));
+    }
+
+    setEditingDiary(null);
+    setIsNewEntry(false);
+    setDiaryAiAnswer('');
+    setNewEditAddition('');
+  };
+
+  // --- Export Active Diary Entry to PDF (Fully Client-side & Secure) ---
+  const handleExportPDF = async () => {
+    if (!editingDiary) return;
+    setIsExportingPdf(true);
+    try {
+      // Small pause to let React cycle and fonts load completely
+      await new Promise(resolve => setTimeout(resolve, 350));
+      
+      const element = document.getElementById('diary-to-pdf');
+      if (!element) {
+        throw new Error('PDF template element not found');
+      }
+      
+      // Convert HTML element to high-DPI canvas
+      const canvas = await html2canvas(element, {
+        scale: 2, // 2x zoom for ultra-sharp print resolution
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      
+      // A4 dimensions in pt are 595.28 x 841.89
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pdfWidth = 595.28;
+      const pdfHeight = 841.89;
+      
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const pageHeight = (canvas.width / pdfWidth) * pdfHeight;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      // Add first page
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, (imgHeight * pdfWidth) / imgWidth);
+      heightLeft -= pageHeight;
+      
+      // Loop to add subsequent pages if content overflows the A4 height
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, (imgHeight * pdfWidth) / imgWidth);
+        heightLeft -= pageHeight;
+      }
+      
+      // Clean filename
+      const safeTitle = (editingDiary.title || 'diary').trim().slice(0, 30).replace(/[^a-zA-Z0-9آ-ي\s]/g, '');
+      const dateStr = new Date(editingDiary.createdAt).toISOString().split('T')[0];
+      pdf.save(`${safeTitle || 'diary'}_${dateStr}.pdf`);
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      alert(isEn ? 'Failed to export PDF.' : 'عذراً، حدث خطأ أثناء تصدير المذكرة كملف PDF. يرجى المحاولة لاحقاً.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  // --- Delete Diary (Moves to Trash Can) ---
+  const handleDeleteDiary = (id: string) => {
+    setDiaries(prev => prev.map(d => d.id === id ? { ...d, isTrash: true, deletedAt: new Date().toISOString() } : d));
+    if (editingDiary?.id === id) {
+      setEditingDiary(null);
+    }
+  };
+
+  // --- Restore from Trash ---
+  const handleRestoreDiary = (id: string) => {
+    setDiaries(prev => prev.map(d => d.id === id ? { ...d, isTrash: false, deletedAt: undefined } : d));
+  };
+
+  // --- Permanent Delete ---
+  const handlePermanentDeleteDiary = (id: string) => {
+    if (window.confirm(isEn ? 'Are you sure you want to delete this diary permanently?' : 'هل أنت متأكد من رغبتك في حذف هذه اليومية نهائياً؟ لا يمكن الاستعادة بعد ذلك.')) {
+      setDiaries(prev => prev.filter(d => d.id !== id));
+    }
+  };
+
+  // --- Empty Trash ---
+  const handleEmptyTrash = () => {
+    if (window.confirm(isEn ? 'Are you sure you want to empty the trash? All deleted notes will be permanently lost.' : 'هل أنت متأكد من رغبتك في تفريغ سلة المهملات بالكامل؟ سيتم فقدان كل المذكرات المحذوفة نهائياً.')) {
+      setDiaries(prev => prev.filter(d => !d.isTrash));
+    }
+  };
+
+  // --- Toggle Archive ---
+  const toggleArchiveDiary = (id: string) => {
+    setDiaries(prev => prev.map(d => d.id === id ? { ...d, isArchived: !d.isArchived } : d));
+  };
+
+  // --- Image Base64 File Uploader ---
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && editingDiary) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setEditingDiary(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              images: [...prev.images, reader.result as string]
+            };
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- PDF File Uploader ---
+  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && editingDiary) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          const newFile: FileAttachment = {
+            id: `file-${Date.now()}`,
+            name: file.name,
+            size: `${(file.size / 1024).toFixed(1)} KB`,
+            type: 'application/pdf',
+            dataUrl: reader.result
+          };
+          setEditingDiary(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              files: [...(prev.files || []), newFile]
+            };
+          });
+          setActiveInputSection('none');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- Video File Uploader ---
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && editingDiary) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setEditingDiary(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              videos: [...(prev.videos || []), reader.result]
+            };
+          });
+          setActiveInputSection('none');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- Helper to Find or Create Today's / Selected Date's Diary for Dashboard Uploads ---
+  const getOrCreateDiaryForUpload = (): DiaryEntry => {
+    const targetDate = selectedDate || new Date().toISOString().split('T')[0];
+    let diary = diaries.find(d => d.createdAt.split('T')[0] === targetDate && !d.isTrash);
+    if (!diary) {
+      const todayStr = new Date().toISOString();
+      diary = {
+        id: `diary-${Date.now()}`,
+        title: `مذكرة يومية لـ ${targetDate}`,
+        content: '',
+        createdAt: targetDate + 'T20:00:00.000Z',
+        updatedAt: todayStr,
+        diaryType: 'diary',
+        moods: ['طبيعي'],
+        importance: 3,
+        color: 'bg-white border-[#E2DCC8]',
+        images: [],
+        videos: [],
+        links: [],
+        audioRecordings: [],
+        files: [],
+        tasks: [],
+        tags: [],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 8,
+        sportsDuration: 0,
+        medications: [
+          { id: 'm1', name: 'مكمل فيتامين D', time: '10:00 ص', taken: false }
+        ]
+      };
+      setDiaries(prev => [diary!, ...prev]);
+    }
+    return diary;
+  };
+
+  // --- Global File Upload Handlers (for direct Dashboard access) ---
+  const handleGlobalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          const diary = getOrCreateDiaryForUpload();
+          const updatedDiary = {
+            ...diary,
+            images: [...(diary.images || []), reader.result]
+          };
+          setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
+          setEditingDiary(updatedDiary);
+          setIsNewEntry(false);
+          setActiveTab('diaries');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGlobalVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          const diary = getOrCreateDiaryForUpload();
+          const updatedDiary = {
+            ...diary,
+            videos: [...(diary.videos || []), reader.result]
+          };
+          setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
+          setEditingDiary(updatedDiary);
+          setIsNewEntry(false);
+          setActiveTab('diaries');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGlobalAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          const diary = getOrCreateDiaryForUpload();
+          const newRec: AudioRecording = {
+            id: `rec-${Date.now()}`,
+            name: file.name,
+            dataUrl: reader.result,
+            duration: 10,
+            transcription: 'تم تحميل ملف تسجيل صوتي بنجاح 🎙️'
+          };
+          const updatedDiary = {
+            ...diary,
+            audioRecordings: [...(diary.audioRecordings || []), newRec]
+          };
+          setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
+          setEditingDiary(updatedDiary);
+          setIsNewEntry(false);
+          setActiveTab('diaries');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGlobalDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          const diary = getOrCreateDiaryForUpload();
+          const newFile: FileAttachment = {
+            id: `file-${Date.now()}`,
+            name: file.name,
+            size: `${(file.size / 1024).toFixed(1)} KB`,
+            type: file.type || 'application/pdf',
+            dataUrl: reader.result
+          };
+          const updatedDiary = {
+            ...diary,
+            files: [...(diary.files || []), newFile]
+          };
+          setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
+          setEditingDiary(updatedDiary);
+          setIsNewEntry(false);
+          setActiveTab('diaries');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- Web Link / URL Adder ---
+  const handleAddWebLink = (url: string) => {
+    if (!url.trim() || !editingDiary) return;
+    let formattedUrl = url.trim();
+    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+      formattedUrl = 'https://' + formattedUrl;
+    }
+    setEditingDiary(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        links: [...(prev.links || []), formattedUrl]
+      };
+    });
+    setTempWebUrl('');
+    setActiveInputSection('none');
+  };
+
+  // --- Video Link / URL Adder ---
+  const handleAddVideoLink = (url: string) => {
+    if (!url.trim() || !editingDiary) return;
+    let formattedUrl = url.trim();
+    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+      formattedUrl = 'https://' + formattedUrl;
+    }
+    setEditingDiary(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        videos: [...(prev.videos || []), formattedUrl]
+      };
+    });
+    setTempVideoUrl('');
+    setActiveInputSection('none');
+  };
+
+  // --- Voice Recorder Trigger (Simulated Mic recording) ---
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      // Stop recording
+      if (recordingIntervalId) {
+        clearInterval(recordingIntervalId);
+        setRecordingIntervalId(null);
+      }
+      setIsRecording(false);
+
+      // Save a simulated recorded file with Cairo transcriptions
+      const newRec: AudioRecording = {
+        id: `rec-${Date.now()}`,
+        name: `تسجيل صوتي عيادي ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.mp3`,
+        dataUrl: '#',
+        duration: recordingSeconds || 12,
+        transcription: 'يتحدث المستخدم عن مشاعره وضغوطه الحالية، ويبدو نبرته مستقرة وتسعى لتحقيق التوازن الذاتي.'
+      };
+
+      if (editingDiary) {
+        setEditingDiary(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            audioRecordings: [...prev.audioRecordings, newRec]
+          };
+        });
+      }
+      setRecordingSeconds(0);
+    } else {
+      // Start recording
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      const intId = window.setInterval(() => {
+        setRecordingSeconds(prev => prev + 1);
+      }, 1000);
+      setRecordingIntervalId(intId);
+    }
+  };
+
+  // --- Call Gemini API Assistant within a Diary (AI داخل اليومية) ---
+  const handleDiaryAssistantAction = async (promptType: 'summarize' | 'mistakes' | 'plan') => {
+    if (!editingDiary || !editingDiary.content.trim()) {
+      alert('يرجى كتابة بعض الكلمات في محتوى المذكرة أولاً ليقوم المساعد بمراجعتها!');
+      return;
+    }
+
+    setDiaryAiLoading(true);
+    setDiaryAiAnswer('');
+
+    try {
+      const response = await fetch('/api/gemini/diary-assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({
+          title: editingDiary.title,
+          content: editingDiary.content,
+          promptType
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDiaryAiAnswer(data.answer);
+      } else {
+        setDiaryAiAnswer("عذراً، حدث خطأ أثناء معالجة طلبك.");
+      }
+    } catch (e) {
+      console.error(e);
+      setDiaryAiAnswer("حدثت مشكلة في الاتصال بالذكاء الاصطناعي.");
+    } finally {
+      setDiaryAiLoading(false);
+    }
+  };
+
+  // --- Real-time Interactive Psychological Chat inside Diary Editor ---
+  const handleSendDiaryChatMessage = async (msgText?: string) => {
+    const textToSend = msgText || diaryChatMessage;
+    if (!textToSend.trim() || !editingDiary) return;
+
+    // 1. Append user message locally
+    const userMsg: ChatLogEntry = {
+      sender: 'user',
+      text: textToSend.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    const updatedLogs = [...(editingDiary.chatLogs || []), userMsg];
+    
+    // Update editingDiary state
+    setEditingDiary(prev => prev ? { ...prev, chatLogs: updatedLogs } : null);
+    if (!msgText) {
+      setDiaryChatMessage('');
+    }
+    setDiaryChatLoading(true);
+
+    try {
+      // Collect attachments names
+      const attachments: string[] = [];
+      if (editingDiary.images && editingDiary.images.length > 0) attachments.push(`${editingDiary.images.length} صور`);
+      if (editingDiary.audioRecordings && editingDiary.audioRecordings.length > 0) attachments.push(`${editingDiary.audioRecordings.length} تسجيلات صوتية`);
+      if (editingDiary.files && editingDiary.files.length > 0) attachments.push(`${editingDiary.files.length} ملفات`);
+      if (editingDiary.drawing) attachments.push(`تخطيط رسومي`);
+
+      const res = await fetch('/api/gemini/diary-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({
+          title: editingDiary.title,
+          content: editingDiary.content,
+          chatLogs: updatedLogs.slice(0, -1), // pass previous logs before this new userMsg
+          newMessage: textToSend.trim(),
+          diaryType: editingDiary.diaryType || 'diary',
+          moods: editingDiary.moods || [],
+          attachments
+        })
+      });
+
+      const data = await res.json();
+      if (data.success && data.answer) {
+        const aiMsg: ChatLogEntry = {
+          sender: 'ai',
+          text: data.answer,
+          createdAt: new Date().toISOString()
+        };
+        setEditingDiary(prev => prev ? { ...prev, chatLogs: [...updatedLogs, aiMsg] } : null);
+      } else {
+        const errorMsg: ChatLogEntry = {
+          sender: 'ai',
+          text: 'عذراً يا صديقي، واجهت مشكلة في الاتصال بمحرك التحليل الفوري. يرجى التحقق من إعدادات مفتاح API الخاص بك والمحاولة مجدداً.',
+          createdAt: new Date().toISOString()
+        };
+        setEditingDiary(prev => prev ? { ...prev, chatLogs: [...updatedLogs, errorMsg] } : null);
+      }
+    } catch (error) {
+      console.error("Diary chat error:", error);
+      const errorMsg: ChatLogEntry = {
+        sender: 'ai',
+        text: 'حدث خطأ غير متوقع أثناء إرسال الفضفضة. يرجى التحقق من اتصال الشبكة ومحاولة تعيين مفتاح API مناسب.',
+        createdAt: new Date().toISOString()
+      };
+      setEditingDiary(prev => prev ? { ...prev, chatLogs: [...updatedLogs, errorMsg] } : null);
+    } finally {
+      setDiaryChatLoading(false);
+      // Auto-scroll chat box
+      setTimeout(() => {
+        const chatBox = document.getElementById('diary-chat-log-box');
+        if (chatBox) {
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
+      }, 100);
+    }
+  };
+
+  // --- Dynamic Backup and Restore Manager ---
+  const handleExportBackup = () => {
+    const dataStr = JSON.stringify({ diaries, settings });
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `YawmiyatiAI_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    const file = e.target.files?.[0];
+    if (file) {
+      fileReader.onload = event => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+          if (parsed.diaries) {
+            setDiaries(parsed.diaries);
+            if (parsed.settings) setSettings(parsed.settings);
+            alert('تم استعادة نسختك الاحتياطية بنجاح بنسبة 100%! 🎉');
+          } else {
+            alert('صيغة ملف النسخ الاحتياطي غير صالحة.');
+          }
+        } catch (error) {
+          alert('فشلت قراءة الملف. تأكد من رفعه بشكل صحيح.');
+        }
+      };
+      fileReader.readAsText(file);
+    }
+  };
+
+  const handleWriteDiaryImportCompleted = (entries: DiaryEntry[]) => {
+    setDiaries(prev => {
+      // Prepend imported diaries
+      const updated = [...entries, ...prev];
+      // Sort by date descending so they appear beautifully in the timeline
+      updated.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return updated;
+    });
+    alert(isEn 
+      ? `Successfully imported ${entries.length} diaries into your timeline! 🎉`
+      : `تم استيراد ${entries.length} يومية بنجاح باهر إلى خطك الزمني! 🎉`
+    );
+  };
+
+  const handleSendEmailBackup = async () => {
+    if (!backupEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(backupEmail)) {
+      setEmailBackupStatus(isEn ? 'Please enter a valid email address.' : 'الرجاء إدخال بريد إلكتروني صحيح.');
+      return;
+    }
+    
+    setIsSendingEmailBackup(true);
+    setEmailBackupStatus(isEn ? 'Sending backup to email...' : 'جاري إرسال النسخة الاحتياطية للبريد الإلكتروني...');
+    
+    try {
+      const payload = {
+        email: backupEmail,
+        backupData: {
+          diaries,
+          habits,
+          settings,
+          gratitudeCards,
+          chatMessages: JSON.parse(localStorage.getItem('yawmiyati_chat_messages') || '[]'),
+          syncTime: new Date().toISOString()
+        }
+      };
+
+      const response = await fetch('/api/backup/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setEmailBackupStatus(isEn 
+          ? `Backup successfully sent to ${backupEmail}! 🎉` 
+          : `تم إرسال النسخة الاحتياطية بنجاح إلى ${backupEmail}! 🎉`
+        );
+      } else {
+        setEmailBackupStatus(isEn 
+          ? `Failed: ${data.message || 'Unknown error'}` 
+          : `فشل الإرسال: ${data.message || 'خطأ غير معروف'}`
+        );
+      }
+    } catch (error) {
+      console.error("Email backup error:", error);
+      setEmailBackupStatus(isEn ? 'Network error occurred.' : 'حدث خطأ في الاتصال بالخادم.');
+    } finally {
+      setIsSendingEmailBackup(false);
+    }
+  };
+
+  // --- Search and Filter Logic ---
+  const filteredDiariesList = diaries.filter(d => {
+    if (d.isArchived || d.isTrash) return false;
+    const matchesSearch = d.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          d.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (d.tags && d.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
+    const matchesTag = selectedTagFilter ? d.tags.includes(selectedTagFilter) : true;
+    const matchesFavorites = showFavoritesOnly ? (d.importance >= 4) : true;
+    
+    // Check type filter
+    const matchesType = diaryTypeFilter === 'all' 
+      ? true 
+      : (diaryTypeFilter === 'diary' 
+         ? d.diaryType === 'diary' || !d.diaryType // default to diary if not specified
+         : d.diaryType === 'thought');
+
+    return matchesSearch && matchesTag && matchesFavorites && matchesType;
+  });
+
+  // Extract all unique tags for filter pills
+  const allUniqueTags = Array.from(new Set(diaries.flatMap(d => d.tags || [])));
+
+  // Find or create diary entry for selected date to update habits
+  const activeDiaryForSelectedDate = diaries.find(d => d.createdAt.split('T')[0] === selectedDate);
+
+  // Dynamic tasks/habits/medications count for the top bar red badge
+  const incompleteTasksCount = (() => {
+    const customTasksIncomplete = activeDiaryForSelectedDate?.tasks?.filter(t => !t.completed)?.length || 0;
+    const medicationsIncomplete = activeDiaryForSelectedDate?.medications?.filter(m => !m.taken)?.length ?? 1; // Default 1 medication slot
+    const habitsIncomplete = habits.filter(h => !h.history[selectedDate])?.length || 0;
+    return customTasksIncomplete + medicationsIncomplete + habitsIncomplete;
+  })();
+
+  const fetchDailyQuote = async () => {
+    setQuoteLoading(true);
+    try {
+      const response = await fetch('/api/gemini/daily-inspiration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({ moods: activeDiaryForSelectedDate?.moods || ['طبيعي'] })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDailyQuote({ quote: data.quote, author: data.author });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
+  const handleGenerateCbtAlternative = async () => {
+    if (!cbtNegativeThoughts.trim()) return;
+    setCbtLoading(true);
+    try {
+      const response = await fetch('/api/gemini/cbt-analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({
+          triggerEvent: cbtTriggerEvent,
+          negativeThoughts: cbtNegativeThoughts,
+          cognitiveDistortion: cbtCognitiveDistortion
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCbtRationalAlternative(data.rationalAlternative);
+        if (data.detectedDistortion && !cbtCognitiveDistortion) {
+          setCbtCognitiveDistortion(data.detectedDistortion);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert('حدث خطأ أثناء الاتصال بالمستشار المعرفي بالذكاء الاصطناعي. تم استخدام بديل عقلاني ذكي مدمج.');
+    } finally {
+      setCbtLoading(false);
+    }
+  };
+
+  const handleUpdateHabit = (type: 'sleep' | 'sports' | 'medication' | 'water' | 'fastMood' | 'symptoms' | 'cbt', value: any) => {
+    // If no diary exists for selected date, auto-create one
+    let targetDiary = activeDiaryForSelectedDate;
+    if (!targetDiary) {
+      const todayStr = new Date().toISOString();
+      targetDiary = {
+        id: `diary-${Date.now()}`,
+        title: `مذكرة يومية لـ ${selectedDate}`,
+        content: '',
+        createdAt: `${selectedDate}T20:00:00.000Z`,
+        updatedAt: `${selectedDate}T20:00:00.000Z`,
+        moods: ['طبيعي'],
+        importance: 3,
+        color: 'bg-white border-[#E2DCC8]',
+        images: [],
+        videos: [],
+        audioRecordings: [],
+        files: [],
+        tasks: [],
+        tags: [],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 8,
+        sportsDuration: 0,
+        medications: [
+          { id: 'm1', name: 'مكمل فيتامين D', time: '10:00 ص', taken: false }
+        ],
+        waterCups: 0,
+        fastMoodScore: 5,
+        symptomsChecklist: [],
+        cbtWorksheets: []
+      };
+    }
+
+    // Update fields
+    if (type === 'sleep') {
+      targetDiary.sleepHours = Number(value);
+    } else if (type === 'sports') {
+      targetDiary.sportsDuration = Number(value);
+    } else if (type === 'medication') {
+      if (targetDiary.medications && targetDiary.medications.length > 0) {
+        targetDiary.medications[0].taken = Boolean(value);
+      }
+    } else if (type === 'water') {
+      targetDiary.waterCups = Number(value);
+    } else if (type === 'fastMood') {
+      targetDiary.fastMoodScore = Number(value);
+    } else if (type === 'symptoms') {
+      targetDiary.symptomsChecklist = value as string[];
+    } else if (type === 'cbt') {
+      targetDiary.cbtWorksheets = value as any[];
+    }
+
+    // Save back to list
+    setDiaries(prev => {
+      const filtered = prev.filter(d => d.createdAt.split('T')[0] !== selectedDate);
+      return [targetDiary!, ...filtered];
+    });
+  };
+
+  const handleUpdateTasks = (updatedTasks: TaskItem[]) => {
+    let targetDiary = activeDiaryForSelectedDate;
+    if (!targetDiary) {
+      targetDiary = {
+        id: `diary-${Date.now()}`,
+        title: `مذكرة يومية لـ ${selectedDate}`,
+        content: '',
+        createdAt: `${selectedDate}T20:00:00.000Z`,
+        updatedAt: `${selectedDate}T20:00:00.000Z`,
+        moods: ['طبيعي'],
+        importance: 3,
+        color: 'bg-white border-[#E2DCC8]',
+        images: [],
+        videos: [],
+        audioRecordings: [],
+        files: [],
+        tasks: updatedTasks,
+        tags: [],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 8,
+        sportsDuration: 0,
+        medications: [
+          { id: 'm1', name: 'مكمل فيتامين D', time: '10:00 ص', taken: false }
+        ],
+        waterCups: 0,
+        fastMoodScore: 5,
+        symptomsChecklist: [],
+        cbtWorksheets: []
+      };
+    } else {
+      targetDiary = { ...targetDiary, tasks: updatedTasks };
+    }
+
+    setDiaries(prev => {
+      const filtered = prev.filter(d => d.createdAt.split('T')[0] !== selectedDate);
+      return [targetDiary!, ...filtered];
+    });
+  };
+
+  // --- PIN Unlock Screen Trigger ---
+  if (settings.isAppLocked) {
+    return (
+      <PINLock 
+        correctPin={settings.appPinCode || '1234'} 
+        onUnlocked={() => setSettings(prev => ({ ...prev, isAppLocked: false }))} 
+        onQuickAction={(actionType) => {
+          setSettings(prev => ({ ...prev, isAppLocked: false }));
+          setTimeout(() => {
+            handleQuickAction(actionType);
+          }, 350);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${settings.isDarkMode ? 'bg-[#121110] text-[#E4E2DD]' : 'bg-[#F9F7F2] text-[#3A3A3A]'} pb-24 font-sans antialiased selection:bg-[#E2DCC8] selection:text-[#5A5A40]`} dir={isEn ? 'ltr' : 'rtl'}>
+      
+      {/* 🔔 Floating Habit Reminder Notification */}
+      {activeHabitReminder && (
+        <div className="fixed top-20 right-4 left-4 md:right-auto md:left-4 md:w-96 bg-white border-2 border-[#D4A373] text-[#3A3A3A] p-4 rounded-3xl shadow-2xl z-50 flex items-start space-x-3 space-x-reverse animate-bounce border-dashed">
+          <div className="p-2.5 bg-[#FAEDCD] text-[#D4A373] rounded-xl shrink-0">
+            <Flame className="w-6 h-6 fill-[#D4A373] text-[#D4A373]" />
+          </div>
+          <div className="flex-grow space-y-1">
+            <h4 className="text-xs font-bold text-[#D4A373] flex items-center space-x-1 space-x-reverse">
+              <span>🔔</span>
+              <span>تنبيه العادات السلوكية اليومي</span>
+            </h4>
+            <p className="text-[11px] text-[#5A5A40] leading-relaxed">
+              حان وقت عادة: <strong className="text-[#3A3A3A]">"{activeHabitReminder.name}"</strong>. هل قمت بإنجازها اليوم لتنعم بالاستقرار النفسي والجسدي؟
+            </p>
+            <div className="flex space-x-2 space-x-reverse pt-2">
+              <button 
+                onClick={() => {
+                  toggleHabitCompletion(activeHabitReminder.id, selectedDate);
+                  setActiveHabitReminder(null);
+                }}
+                className="px-3 py-1 bg-[#8B9D83] text-white rounded-lg text-[10px] font-bold cursor-pointer hover:bg-[#5A5A40] transition-colors"
+              >
+                نعم، تم الإنجاز! ✓
+              </button>
+              <button 
+                onClick={() => setActiveHabitReminder(null)}
+                className="px-3 py-1 bg-gray-100 text-gray-500 rounded-lg text-[10px] cursor-pointer hover:bg-gray-200 transition-colors"
+              >
+                تجاهل مؤقتاً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌸 Floating Gratitude Journal Reminder Notification */}
+      {activeGratitudeReminderNotification && (
+        <div className="fixed top-24 right-4 left-4 md:right-auto md:left-4 md:w-96 bg-[#FFFDF9] border-2 border-amber-400 text-[#3A3A3A] p-5 rounded-3xl shadow-2xl z-50 flex items-start space-x-3 space-x-reverse animate-bounce border-dashed" id="gratitude-reminder-banner">
+          <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl shrink-0">
+            <span className="text-2xl">🌸</span>
+          </div>
+          <div className="flex-grow space-y-1">
+            <h4 className="text-xs font-extrabold text-amber-700 flex items-center space-x-1.5 space-x-reverse">
+              <span>🔔</span>
+              <span>تذكير ممارسة الامتنان اليومي الذكي</span>
+            </h4>
+            <p className="text-[11px] text-[#5A5A40] leading-relaxed">
+              حان وقت تعبئة جدار الرضا وتوثيق اللحظات الإيجابية البسيطة لتخفيف توتر يومك وجذب السلام الداخلي!
+            </p>
+            <div className="flex space-x-2 space-x-reverse pt-2.5">
+              <button 
+                onClick={() => {
+                  setActiveTab('diaries');
+                  setActiveDiariesSubTab('gratitude');
+                  setActiveGratitudeReminderNotification(false);
+                }}
+                className="px-3 py-1.5 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-[10px] font-extrabold cursor-pointer transition-colors"
+              >
+                افتح مفكرة الامتنان الآن 🌸
+              </button>
+              <button 
+                onClick={() => setActiveGratitudeReminderNotification(false)}
+                className="px-3 py-1.5 bg-gray-100 text-gray-500 hover:bg-gray-200 rounded-xl text-[10px] cursor-pointer transition-colors"
+              >
+                تذكير لاحقاً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ➕ Modal: إضافة عادة جديدة */}
+      {showAddHabitModal && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-[#E2DCC8] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4" dir="rtl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                <span className="p-1 bg-[#8B9D83]/10 text-[#8B9D83] rounded-lg">🎯</span>
+                <span>إضافة عادة سلوكية جديدة</span>
+              </h3>
+              <button 
+                onClick={() => setShowAddHabitModal(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateHabit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#5A5A40] tracking-wider block">اسم العادة</label>
+                <input 
+                  type="text" 
+                  value={newHabitName}
+                  onChange={e => setNewHabitName(e.target.value)}
+                  placeholder="مثال: شرب لترين ماء، قراءة، تمدد..."
+                  className="w-full bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl px-4 py-2.5 text-xs text-[#3A3A3A] focus:outline-none focus:ring-1 focus:ring-[#8B9D83]"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#5A5A40] tracking-wider block">تصنيف العادة للتحليل السلوكي</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'health', label: 'صحة بدنية 🥦' },
+                    { id: 'mind', label: 'تأمل وذهن 🧠' },
+                    { id: 'sport', label: 'رياضة ونشاط 🏃' },
+                    { id: 'culture', label: 'ثقافة وقراءة 📚' },
+                    { id: 'custom', label: 'أهداف مخصصة 🎯' },
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setNewHabitCategory(cat.id as any)}
+                      className={`p-2 rounded-xl border text-center text-xs font-semibold transition-all cursor-pointer ${
+                        newHabitCategory === cat.id 
+                          ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-xs' 
+                          : 'bg-[#F9F7F2] border-[#E2DCC8]/60 text-gray-700 hover:bg-[#F0EDE4]'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#5A5A40] tracking-wider block">وقت التنبيه</label>
+                  <input 
+                    type="time" 
+                    value={newHabitReminderTime}
+                    onChange={e => setNewHabitReminderTime(e.target.value)}
+                    className="w-full bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl px-3 py-2 text-xs text-[#3A3A3A] focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1 flex flex-col justify-end">
+                  <label className="flex items-center space-x-2 space-x-reverse cursor-pointer py-2">
+                    <input 
+                      type="checkbox"
+                      checked={newHabitReminderEnabled}
+                      onChange={e => setNewHabitReminderEnabled(e.target.checked)}
+                      className="rounded text-[#8B9D83] focus:ring-[#8B9D83]"
+                    />
+                    <span className="text-xs font-semibold text-gray-600">تنبيه بالبوش اليومي</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex space-x-2 space-x-reverse pt-2">
+                <button 
+                  type="submit"
+                  className="flex-grow py-2.5 bg-[#8B9D83] hover:bg-[#5A5A40] text-white rounded-2xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  حفظ وتفعيل التتبع 🚀
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowAddHabitModal(false)}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🚀 Header bar with branding & Quick Navigation Badges */}
+      <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-[#E2DCC8] z-30 shadow-xs" dir="rtl">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center space-x-3 space-x-reverse self-stretch sm:self-auto justify-between sm:justify-start">
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <div className="w-10 h-10 bg-[#8B9D83] rounded-2xl flex items-center justify-center text-white shadow-xs shrink-0">
+                <Brain className="w-5.5 h-5.5" />
+              </div>
+              <div>
+                <div className="flex items-baseline space-x-1.5 space-x-reverse">
+                  <h1 className="text-base font-extrabold tracking-tight text-[#3A3A3A]">يومياتي</h1>
+                  <span className="text-xs font-black bg-[#8B9D83] text-white px-1.5 py-0.5 rounded-md leading-none">AI</span>
+                </div>
+                <p className="text-[9px] text-gray-500 font-bold mt-0.5">مساعد الصحة النفسية المتكامل</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Badges matching the requested screenshot EXACTLY 'balmilli' */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-start sm:justify-end">
+            
+            {/* 1. Habits and Tasks Button (المهام اليومية) with red circular badge containing incomplete count on the left */}
+            <button
+              onClick={() => {
+                setActiveTab('diaries');
+                setActiveDiariesSubTab('tasks');
+                setEditingDiary(null);
+              }}
+              className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#EEF1EB] text-[#556E4F] border border-[#DCE4D8] rounded-xl text-xs font-black shadow-3xs hover:bg-[#E2E9DF] active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <span className="flex items-center justify-center bg-[#C5221F] text-white text-[10px] font-black w-4.5 h-4.5 rounded-full border border-white shrink-0">
+                {incompleteTasksCount}
+              </span>
+              <span>المهام اليومية</span>
+            </button>
+
+            {/* 2. My Diary Thoughts Button (خواطري ✍️) with light orange/yellow background and border */}
+            <button
+              onClick={() => {
+                setActiveTab('diaries');
+                setActiveDiariesSubTab('journal');
+                setDiaryTypeFilter('thought');
+                setEditingDiary(null);
+              }}
+              className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4] rounded-xl text-xs font-black shadow-3xs hover:bg-[#F9ECC4] active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <span>خواطري</span>
+              <span className="text-sm">✍️</span>
+            </button>
+
+            {/* 3. Therapist Session Button (جلسة العلاج 🎓) with dark slate/green background and white text */}
+            <button
+              onClick={() => {
+                setActiveTab('analytics');
+                setAnalyticsSubTab('report');
+                setEditingDiary(null);
+              }}
+              className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#446A5E] hover:bg-[#3B5A50] text-white rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <span>جلسة العلاج</span>
+              <span className="flex items-center justify-center w-5 h-5 bg-[#FCF5DE] border border-[#E9E1C4] rounded-full shrink-0 shadow-3xs animate-pulse">
+                <svg className="w-3 h-3 text-[#A67E2E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                </svg>
+              </span>
+            </button>
+
+            {/* 4. Lock Button (🔒) with grey-brown background and border */}
+            <button
+              onClick={() => setSettings(prev => ({ ...prev, isAppLocked: true }))}
+              className="p-2.5 bg-[#EEECDF] border border-[#D1CCBA] text-[#5A5A40] rounded-xl hover:bg-[#DDD8C3] active:scale-95 transition-all cursor-pointer shadow-3xs shrink-0 flex items-center justify-center"
+              title="قفل التطبيق لحماية الخصوصية"
+            >
+              <Lock className="w-4 h-4 text-[#4A4A30]" />
+            </button>
+
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
+        
+        {/* Mock Android Notification Widget at the top of the Home Dashboard for simulation */}
+        {activeTab === 'dashboard' && (
+          <StaticNotification onAction={handleQuickAction} />
+        )}
+
+        {/* --- TAB VIEW 1: DASHBOARD (HOME) --- */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            
+            {/* 📅 التقويم الكامل واستعراض الأيام */}
+            <div 
+              onClick={() => setShowCalendarModal(true)}
+              className="bg-[#EBF2EA] border-2 border-dashed border-[#8B9D83]/60 hover:bg-[#E0EBE0] rounded-3xl p-4 flex items-center justify-between cursor-pointer transition-all shadow-xs group"
+            >
+              <div className="space-y-1">
+                <h3 className="text-xs sm:text-sm font-black text-[#4E685B] flex items-center space-x-1.5 space-x-reverse">
+                  <span>📅</span>
+                  <span>التقويم الكامل واستعراض الأيام</span>
+                </h3>
+                <p className="text-[10px] sm:text-xs text-[#5A5A40]/80 leading-relaxed">
+                  اضغط لتصفح كل ما حدث في أي يوم (يومياتي، كتب، أنشطة، واستشارات AI)
+                </p>
+              </div>
+              <div className="p-3 bg-white border border-[#E2DCC8] rounded-2xl text-rose-500 shadow-xs shrink-0 group-hover:scale-105 transition-transform flex items-center justify-center">
+                <Calendar className="w-5.5 h-5.5" />
+              </div>
+            </div>
+
+            {/* Cairo styled greeting panel */}
+            <div className="bg-gradient-to-l from-[#5A5A40] to-[#8B9D83] text-white p-6 rounded-3xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 translate-x-[-20%] translate-y-[-20%] w-60 h-60 bg-[#FEFAE0]/10 rounded-full blur-3xl" />
+              <div className="relative z-10 space-y-2">
+                <span className="text-xs font-bold text-[#FEFAE0] tracking-wide flex items-center space-x-1.5 space-x-reverse">
+                  <Sparkles className="w-3.5 h-3.5 text-[#FEFAE0]" />
+                  <span>مساحتك النفسية الآمنة والمشفرة بالكامل</span>
+                </span>
+                <h2 className="text-xl font-extrabold tracking-wide flex items-center space-x-2 space-x-reverse">
+                  <span>{getArabicGreetingHeader()}</span>
+                  <span className="text-2xl">{getArabicGreetingIcon()}</span>
+                </h2>
+                <p className="text-xs text-[#F9F7F2]/90 leading-relaxed max-w-xl">
+                  اليوم هو يوم جديد للنمو والتصالح مع الذات. تذكر أن تدوين أفكارك البسيطة اليوم يتيح لمستشارك النفسي الذكي تقديم أفضل نصائح وتوصيات سلوكية غداً.
+                </p>
+              </div>
+            </div>
+
+            {/* 📁 شريط التدوين السريع والوصول المباشر للملفات */}
+            <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-3">
+              <h3 className="text-xs font-extrabold text-[#5A5A40] flex items-center space-x-2 space-x-reverse">
+                <span className="p-1 bg-[#8B9D83]/10 text-[#8B9D83] rounded-lg">⚡</span>
+                <span>الوصول المباشر لملفات الهاتف ومرفقات اليومية</span>
+              </h3>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {/* 1. كتابة يومية */}
+                <button
+                  onClick={() => startNewDiary()}
+                  className="flex flex-col items-center justify-center p-3 bg-[#F9F7F2]/60 hover:bg-[#F0EDE4]/80 border border-[#E2DCC8]/60 hover:border-[#8B9D83] rounded-2xl transition-all cursor-pointer group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-[#8B9D83]/10 text-[#8B9D83] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <PenTool className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-[#3A3A3A]">كتابة حرة</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">فتح محرر فارغ</span>
+                </button>
+
+                {/* 2. صورة */}
+                <button
+                  onClick={() => document.getElementById('global-image-uploader')?.click()}
+                  className="flex flex-col items-center justify-center p-3 bg-[#F9F7F2]/60 hover:bg-[#F0EDE4]/80 border border-[#E2DCC8]/60 hover:border-[#8B9D83] rounded-2xl transition-all cursor-pointer group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-sky-500/10 text-sky-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-[#3A3A3A]">إرفاق صورة</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">من ألبوم الهاتف</span>
+                </button>
+
+                {/* 3. فيديو */}
+                <button
+                  onClick={() => document.getElementById('global-video-uploader')?.click()}
+                  className="flex flex-col items-center justify-center p-3 bg-[#F9F7F2]/60 hover:bg-[#F0EDE4]/80 border border-[#E2DCC8]/60 hover:border-[#8B9D83] rounded-2xl transition-all cursor-pointer group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-orange-500/10 text-orange-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-[#3A3A3A]">فيديو الهاتف</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">تحميل مقطع مرئي</span>
+                </button>
+
+                {/* 4. تسجيل ريكورد */}
+                <button
+                  onClick={() => document.getElementById('global-audio-uploader')?.click()}
+                  className="flex flex-col items-center justify-center p-3 bg-[#F9F7F2]/60 hover:bg-[#F0EDE4]/80 border border-[#E2DCC8]/60 hover:border-[#8B9D83] rounded-2xl transition-all cursor-pointer group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <Mic className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-[#3A3A3A]">ملف صوتي</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">تسجيل أو ملف ريكورد</span>
+                </button>
+
+                {/* 5. كتاب / PDF */}
+                <button
+                  onClick={() => document.getElementById('global-document-uploader')?.click()}
+                  className="flex flex-col items-center justify-center p-3 bg-[#F9F7F2]/60 hover:bg-[#F0EDE4]/80 border border-[#E2DCC8]/60 hover:border-[#8B9D83] rounded-2xl transition-all cursor-pointer group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-[#3A3A3A]">كتاب أو وثيقة</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">تحميل PDF أو نص</span>
+                </button>
+
+                {/* 6. مستشار الذكاء الاصطناعي */}
+                <button
+                  onClick={() => setActiveTab('advisor')}
+                  className="flex flex-col items-center justify-center p-3 bg-[#F9F7F2]/60 hover:bg-[#F0EDE4]/80 border border-[#E2DCC8]/60 hover:border-[#8B9D83] rounded-2xl transition-all cursor-pointer group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-[#3A3A3A]">مستشار AI</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">تحليل وتوصيات فورية</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 🎯 Streak Tracker (سلسلة الالتزام) */}
+            <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                
+                {/* Left Side: Fire Icon & Main Numbers */}
+                <div className="flex items-center space-x-4 space-x-reverse">
+                  {/* Animated Flame container */}
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.15, 1],
+                      filter: [
+                        "drop-shadow(0px 0px 4px rgba(212,163,115,0.2))", 
+                        "drop-shadow(0px 0px 12px rgba(212,163,115,0.7))", 
+                        "drop-shadow(0px 0px 4px rgba(212,163,115,0.2))"
+                      ]
+                    }}
+                    transition={{ 
+                      duration: 2, 
+                      repeat: Infinity,
+                      ease: "easeInOut" 
+                    }}
+                    className={`p-3.5 rounded-2xl flex items-center justify-center shrink-0 ${
+                      streakInfo.currentStreak > 0 
+                        ? 'bg-[#FAEDCD] text-[#D4A373]' 
+                        : 'bg-gray-100 text-gray-400'
+                    }`}
+                  >
+                    <Flame className={`w-8 h-8 ${streakInfo.currentStreak > 0 ? 'fill-[#D4A373]' : ''}`} />
+                  </motion.div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-gray-400 tracking-wider block">سلسلة الالتزام والتدوين</span>
+                    <div className="flex items-baseline space-x-1 space-x-reverse">
+                      <span className="text-2xl font-extrabold text-[#3A3A3A]">{streakInfo.currentStreak}</span>
+                      <span className="text-xs text-[#5A5A40] font-semibold">يوم متتالي</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center Side: Live Motivational Message */}
+                <div className="flex-grow md:px-4">
+                  <p className="text-xs text-[#5A5A40] leading-relaxed font-medium">
+                    {streakInfo.hasLoggedToday ? (
+                      <span className="text-emerald-700 flex items-center space-x-1 space-x-reverse">
+                        <span>✨ رائع! لقد دوّنت أفكارك اليوم وحافظت على توهج شعلتك. استمر في رعاية صحتك النفسية غداً!</span>
+                      </span>
+                    ) : (
+                      <span>
+                        {streakInfo.currentStreak === 0 ? (
+                          "اكتب تدوينة اليوم لتفعيل شعلة الالتزام والبدء في رصد أنماطك السلوكية!"
+                        ) : (
+                          "تبقى خطوة أخيرة! اكتب تدوينتك اليوم للحفاظ على سلسلة التزامك من الانقطاع."
+                        )}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Right Side: Quick Stats Badges */}
+                <div className="flex flex-col items-end justify-center shrink-0 border-r md:border-r border-t md:border-t-0 border-[#E2DCC8]/60 pt-3 md:pt-0 pr-4 md:pr-4 pl-4 md:pl-0">
+                  <div className="text-right">
+                    <span className="text-[10px] text-gray-400 block font-medium">أطول سلسلة تاريخية:</span>
+                    <span className="text-sm font-bold text-[#8B9D83] flex items-center justify-end space-x-1 space-x-reverse">
+                      <span>🏆</span>
+                      <span>{streakInfo.maxStreak} يوم</span>
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* 7-Day Visual Calendar Tracker */}
+              <div className="border-t border-[#E2DCC8]/50 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="text-[10px] font-bold text-gray-400">متابعة الأسبوع الأخير:</span>
+                <div className="flex items-center space-x-1.5 space-x-reverse overflow-x-auto">
+                  {getWeekDays().map((day, idx) => {
+                    // Check if diaries has an entry on this day
+                    const isLoggedOnDay = diaries.some(d => d.createdAt.split('T')[0] === day.isoString);
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`px-2.5 py-1.5 rounded-xl flex flex-col items-center justify-center min-w-[42px] border ${
+                          isLoggedOnDay 
+                            ? 'bg-[#8B9D83]/10 border-[#8B9D83]/30 text-[#8B9D83]' 
+                            : 'bg-[#F9F7F2]/50 border-[#E2DCC8]/40 text-gray-400'
+                        }`}
+                      >
+                        <span className="text-[9px] font-semibold">{day.label}</span>
+                        {isLoggedOnDay ? (
+                          <Flame className="w-3.5 h-3.5 fill-[#D4A373] text-[#D4A373] mt-1" />
+                        ) : (
+                          <div className="w-3.5 h-3.5 rounded-full border border-dashed border-gray-300 mt-1" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Day Selector Calendar Matrix */}
+            <div className="bg-white border border-[#E2DCC8] rounded-3xl p-4 shadow-xs space-y-3">
+              <span className="text-xs font-bold text-[#5A5A40] block mb-1">اختر اليوم لتسجيل أو عرض الأنشطة:</span>
+              <div className="grid grid-cols-7 gap-2">
+                {getWeekDays().map((day, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedDate(day.isoString)}
+                    className={`p-2.5 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
+                      selectedDate === day.isoString
+                        ? 'bg-[#8B9D83] text-white scale-105 font-bold'
+                        : 'bg-[#F9F7F2] hover:bg-[#F0EDE4] text-gray-700'
+                    }`}
+                  >
+                    <span className="text-[10px] opacity-75 font-medium">{day.label}</span>
+                    <span className="text-sm font-bold mt-1">{day.dayNum}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 💡 Psychological Daily Inspiration Card */}
+            <div className="bg-gradient-to-br from-[#FAEDCD]/80 to-[#F9F7F2] border border-[#D4A373]/40 rounded-3xl p-6 shadow-xs relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4A373]/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="space-y-2 flex-grow">
+                  <div className="flex items-center space-x-2 space-x-reverse text-xs font-bold text-[#D4A373]">
+                    <Sparkles className="w-4 h-4" />
+                    <span>حكمة اليوم لراحة البال والتحفيز النفسي</span>
+                  </div>
+                  <p className="text-sm md:text-base font-medium text-[#3A3A3A] leading-relaxed italic">
+                    "{dailyQuote.quote}"
+                  </p>
+                  <span className="text-xs text-gray-400 block font-bold">— {dailyQuote.author}</span>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse shrink-0">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`"${dailyQuote.quote}" - ${dailyQuote.author}`);
+                      alert('تم نسخ الحكمة إلى الحافظة بنجاح! 🌸');
+                    }}
+                    className="p-2.5 bg-white border border-[#E2DCC8] hover:border-[#D4A373] text-[#5A5A40] rounded-2xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center justify-center"
+                    title="نسخ الحكمة"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={fetchDailyQuote}
+                    disabled={quoteLoading}
+                    className="flex items-center space-x-1.5 space-x-reverse px-4 py-2.5 bg-[#8B9D83] hover:bg-[#5A5A40] disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-2xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  >
+                    {quoteLoading ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    <span>إلهام ذكي (AI)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 🎯 Interactive Rapid Mood, Water & Symptoms Tracker Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              
+              {/* Column 1: Fast Mood Slider with visual feedback */}
+              <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                    <Smile className="w-4 h-4 text-[#8B9D83]" />
+                    <span>مقياس المزاج الرقمي السريع (1 - 10)</span>
+                  </h3>
+                  <p className="text-[10px] text-gray-500 font-medium">
+                    اسحب المؤشر لتوثيق حالتك المزاجية الحالية في ثانية واحدة؛ يُسجل هذا التقييم كمدخل يومي سريع.
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center justify-center py-4 bg-[#F9F7F2]/50 border border-[#E2DCC8]/40 rounded-2xl space-y-4">
+                  {/* Big changing emoji */}
+                  <div className="text-5xl md:text-6xl animate-bounce" style={{ animationDuration: '3s' }}>
+                    {(() => {
+                      const score = activeDiaryForSelectedDate?.fastMoodScore || 5;
+                      if (score <= 2) return '😭';
+                      if (score <= 4) return '😞';
+                      if (score <= 6) return '😐';
+                      if (score <= 8) return '😊';
+                      return '🤩';
+                    })()}
+                  </div>
+
+                  {/* Rating indicator */}
+                  <div className="text-center space-y-1">
+                    <span className="text-xs font-bold text-[#5A5A40] block">
+                      تقييم المزاج: <span className="font-mono text-base font-extrabold text-[#8B9D83]">{activeDiaryForSelectedDate?.fastMoodScore || 5}</span> / 10
+                    </span>
+                    <span className="text-xs text-[#D4A373] font-bold block">
+                      {(() => {
+                        const score = activeDiaryForSelectedDate?.fastMoodScore || 5;
+                        if (score <= 2) return 'ضيق شديد وحزن عميق 😭';
+                        if (score <= 4) return 'قلق وتفكير زائد وأرق 😞';
+                        if (score <= 6) return 'مزاج مستقر وهادئ نسبياً 😐';
+                        if (score <= 8) return 'راضٍ ومطمئن ومستقر النفس 😊';
+                        return 'سعيد جداً وفخور وممتلئ بالنشاط! 🤩';
+                      })()}
+                    </span>
+                  </div>
+
+                  {/* Slider input */}
+                  <div className="w-full px-6">
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      step="1"
+                      value={activeDiaryForSelectedDate?.fastMoodScore || 5}
+                      onChange={(e) => handleUpdateHabit('fastMood', Number(e.target.value))}
+                      className="w-full h-2.5 bg-[#E2DCC8] rounded-lg appearance-none cursor-pointer accent-[#8B9D83]"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-400 font-bold font-mono mt-1 px-1">
+                      <span>1</span>
+                      <span>5</span>
+                      <span>10</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: Interactive Water Bottle Tracker */}
+              <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                    <span className="text-[#89CFF0] text-base">💧</span>
+                    <span>عداد كؤوس الماء التفاعلي اليومي</span>
+                  </h3>
+                  <p className="text-[10px] text-gray-500 font-medium">
+                    اضغط على الكؤوس أدناه لتسجيل كميات المياه المستهلكة؛ شرب المياه يحمي جهازك العصبي من التوتر.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                  
+                  {/* Water bottle visualization */}
+                  <div className="sm:col-span-4 flex flex-col items-center justify-center">
+                    <div className="w-16 h-32 border-3 border-[#89CFF0]/80 rounded-2xl relative overflow-hidden bg-white shadow-inner flex flex-col justify-end">
+                      {/* Caps represent fluid level */}
+                      <motion.div 
+                        className="bg-gradient-to-t from-[#89CFF0] to-[#A0E0FF] w-full"
+                        animate={{ 
+                          height: `${((activeDiaryForSelectedDate?.waterCups || 0) / 8) * 100}%` 
+                        }}
+                        transition={{ type: 'spring', damping: 15 }}
+                      >
+                        {/* Wave animation effect */}
+                        <div className="w-full h-2 bg-[#89CFF0] rounded-full opacity-60 animate-pulse" />
+                      </motion.div>
+                      
+                      {/* Percent text overlay */}
+                      <span className="absolute inset-0 flex items-center justify-center font-mono font-extrabold text-xs text-[#5A5A40] drop-shadow-xs">
+                        {Math.round(((activeDiaryForSelectedDate?.waterCups || 0) / 8) * 100)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Cups Grid Selector */}
+                  <div className="sm:col-span-8 space-y-3">
+                    <div className="grid grid-cols-4 gap-2">
+                      {Array.from({ length: 8 }).map((_, idx) => {
+                        const isDrunk = (activeDiaryForSelectedDate?.waterCups || 0) > idx;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              // If current cup clicked is equal to current level, reduce by 1, else set to this cup
+                              const currentLevel = activeDiaryForSelectedDate?.waterCups || 0;
+                              if (currentLevel === idx + 1) {
+                                handleUpdateHabit('water', idx);
+                              } else {
+                                handleUpdateHabit('water', idx + 1);
+                              }
+                            }}
+                            className={`p-2 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
+                              isDrunk 
+                                ? 'bg-[#89CFF0]/20 border-[#89CFF0] text-[#3399FF] scale-105 shadow-2xs' 
+                                : 'bg-[#F9F7F2]/50 border-[#E2DCC8]/60 hover:border-[#89CFF0] text-gray-300 hover:text-[#89CFF0]/60'
+                            }`}
+                            title={`كوب ${idx + 1}`}
+                          >
+                            <span className="text-xl">🥛</span>
+                            <span className="text-[9px] font-bold font-mono mt-0.5">{idx + 1}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="text-center sm:text-right">
+                      <span className="text-xs font-bold text-[#5A5A40]">
+                        الكمية المستهلكة: <span className="font-mono text-base text-[#3399FF] font-extrabold">{activeDiaryForSelectedDate?.waterCups || 0}</span> من 8 كؤوس ({(activeDiaryForSelectedDate?.waterCups || 0) * 0.25} لتر)
+                      </span>
+                      <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                        {(activeDiaryForSelectedDate?.waterCups || 0) >= 8 
+                          ? '🏆 ممتاز! لقد أتممت الارتواء الكامل لليوم!' 
+                          : '💡 تبقّى لك بعض الكؤوس لتصل للمعدل المثالي.'}
+                      </p>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+            {/* 🩺 Physical Symptoms Tracker Panel */}
+            <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+              <div className="space-y-1">
+                <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                  <Activity className="w-4 h-4 text-red-400" />
+                  <span>الأعراض الجسدية المصاحبة لقلقك اليوم (Physical Symptoms Tracker)</span>
+                </h3>
+                <p className="text-[10px] text-gray-500 font-medium">
+                  حدد أي من الأعراض الفسيولوجية التالية شعرت بها اليوم لتساعد الذكاء الاصطناعي والمستشار في رصد الروابط النفس-جسدية (Psychosomatic) في تحليلك السنوي.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2.5">
+                {[
+                  { id: 'headache', label: 'صداع وضغط رأس 🤯' },
+                  { id: 'heart', label: 'تسارع نبضات القلب 💓' },
+                  { id: 'breath', label: 'ضيق وصعوبة تنفس 🫁' },
+                  { id: 'muscle', label: 'شد عضلي وآلام ظهر 🧘' },
+                  { id: 'fatigue', label: 'خمول وإرهاق عام 🔋' },
+                  { id: 'insomnia', label: 'أرق وقلة جودة النوم 😴' },
+                  { id: 'stomach', label: 'اضطراب وتوتر معدة 🤢' },
+                  { id: 'sweat', label: 'تعرق زائد ورجفة أطراف 🥶' },
+                ].map(symptom => {
+                  const currentSymptoms = activeDiaryForSelectedDate?.symptomsChecklist || [];
+                  const isChecked = currentSymptoms.includes(symptom.id);
+
+                  return (
+                    <button
+                      key={symptom.id}
+                      onClick={() => {
+                        let updated: string[];
+                        if (isChecked) {
+                          updated = currentSymptoms.filter(x => x !== symptom.id);
+                        } else {
+                          updated = [...currentSymptoms, symptom.id];
+                        }
+                        handleUpdateHabit('symptoms', updated);
+                      }}
+                      className={`px-3.5 py-2 rounded-2xl border text-xs font-semibold transition-all cursor-pointer ${
+                        isChecked
+                          ? 'bg-red-50 border-red-300 text-red-700 shadow-2xs font-extrabold scale-102'
+                          : 'bg-[#F9F7F2]/60 hover:bg-[#F0EDE4] border-[#E2DCC8]/60 text-[#5A5A40]'
+                      }`}
+                    >
+                      {symptom.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 🧘 Box Breathing interactive psychiatric guide */}
+            <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                    <span className="text-base">🧘</span>
+                    <span>مساعد التنفس الصندوقي الاسترخائي (تنشيط العصب الحائر)</span>
+                  </h3>
+                  <p className="text-[10px] text-gray-500 font-medium">
+                    طريقة تنفس متبعة لدى أطباء النفس والعمليات الخاصة لتهدئة ضربات القلب وتحفيز السلام العصبي فورياً (4 ثوان لكل مرحلة).
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsBreathingActive(!isBreathingActive)}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-extrabold shadow-2xs cursor-pointer transition-all ${
+                    isBreathingActive 
+                      ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
+                      : 'bg-[#8B9D83] hover:bg-[#5A5A40] text-white'
+                  }`}
+                >
+                  {isBreathingActive ? '⏹️ إيقاف الجلسة' : '▶️ بدء تمرين التنفس'}
+                </button>
+              </div>
+
+              {isBreathingActive && (
+                <div className="flex flex-col items-center justify-center py-6 bg-[#F9F7F2]/40 border border-[#E2DCC8]/50 rounded-2xl space-y-6 relative overflow-hidden">
+                  
+                  {/* Large Pulse animation circle */}
+                  <div className="relative w-40 h-40 flex items-center justify-center">
+                    <motion.div
+                      className={`absolute inset-0 rounded-full ${
+                        breathingPhase === 'inhale' ? 'bg-emerald-400/20' :
+                        breathingPhase === 'hold1' ? 'bg-amber-400/20' :
+                        breathingPhase === 'exhale' ? 'bg-blue-400/20' : 'bg-purple-400/20'
+                      }`}
+                      animate={{
+                        scale: 
+                          breathingPhase === 'inhale' ? [1, 1.4] :
+                          breathingPhase === 'hold1' ? 1.4 :
+                          breathingPhase === 'exhale' ? [1.4, 1] : 1
+                      }}
+                      transition={{ duration: 4, ease: 'easeInOut' }}
+                    />
+
+                    <div className={`w-28 h-28 rounded-full shadow-md flex flex-col items-center justify-center text-white font-extrabold ${
+                      breathingPhase === 'inhale' ? 'bg-emerald-500' :
+                      breathingPhase === 'hold1' ? 'bg-amber-500' :
+                      breathingPhase === 'exhale' ? 'bg-blue-500' : 'bg-purple-500'
+                    }`}>
+                      <span className="text-xl font-black font-mono">{breathingTimer}</span>
+                      <span className="text-[10px] tracking-wider mt-0.5">ثوان متبقية</span>
+                    </div>
+                  </div>
+
+                  {/* Status Indicator text */}
+                  <div className="text-center space-y-1 z-10">
+                    <span className="text-sm font-black text-[#3A3A3A] block">
+                      {breathingPhase === 'inhale' && '💨 شـهـيـق... املأ رئتيك بالهدوء والسلام'}
+                      {breathingPhase === 'hold1' && '🛑 اكـتـم... احبس طاقة الرضا في جسدك'}
+                      {breathingPhase === 'exhale' && '💨 زفـيـر... اطرد التوتر والقلق والتعب'}
+                      {breathingPhase === 'hold2' && '🛑 اكـتـم... استشعر السكينة والصمت النفسي'}
+                    </span>
+                    <span className="text-[10px] text-gray-400 block font-bold">
+                      عدد الدورات المكتملة: <span className="font-mono text-xs font-black text-[#8B9D83]">{breathingCycle}</span> دورة
+                    </span>
+                  </div>
+
+                </div>
+              )}
+            </div>
+
+            {/* Self-Care & Habits Tracker checklist for current selected date */}
+            <div id="habits-tracker" className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                  <CheckSquare className="w-4 h-4 text-[#8B9D83]" />
+                  <span>أهداف الرعاية الذاتية والصحة النفسية</span>
+                </h3>
+                <span className="text-[10px] text-gray-400">تلقائي الحفظ</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 💤 Sleep hours track */}
+                <div className="bg-[#F9F7F2] p-4 rounded-2xl border border-[#E2DCC8]/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                      <Moon className="w-4 h-4 text-blue-500" />
+                      <span>ساعات النوم:</span>
+                    </span>
+                    <span className="text-xs font-mono font-bold text-[#5A5A40]">
+                      {activeDiaryForSelectedDate?.sleepHours || 8} ساعات
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="3"
+                    max="12"
+                    step="0.5"
+                    value={activeDiaryForSelectedDate?.sleepHours || 8}
+                    onChange={(e) => handleUpdateHabit('sleep', e.target.value)}
+                    className="w-full h-1.5 bg-[#E2DCC8] rounded-lg appearance-none cursor-pointer accent-[#8B9D83]"
+                  />
+                </div>
+
+                {/* 🏃 Sports Workout duration */}
+                <div className="bg-[#F9F7F2] p-4 rounded-2xl border border-[#E2DCC8]/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                      <Activity className="w-4 h-4 text-[#8B9D83]" />
+                      <span>التمارين الرياضية:</span>
+                    </span>
+                    <span className="text-xs font-mono font-bold text-[#8B9D83]">
+                      {activeDiaryForSelectedDate?.sportsDuration || 0} دقيقة
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="120"
+                    step="5"
+                    value={activeDiaryForSelectedDate?.sportsDuration || 0}
+                    onChange={(e) => handleUpdateHabit('sports', e.target.value)}
+                    className="w-full h-1.5 bg-[#E2DCC8] rounded-lg appearance-none cursor-pointer accent-[#8B9D83]"
+                  />
+                </div>
+
+                {/* 💊 Medication Track */}
+                <div className="bg-[#F9F7F2] p-4 rounded-2xl border border-[#E2DCC8]/60 flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                    <Pill className="w-4 h-4 text-[#D4A373]" />
+                    <span>جرعة العلاج/الفيتامينات:</span>
+                  </span>
+                  <button
+                    onClick={() => {
+                      const current = activeDiaryForSelectedDate?.medications?.[0]?.taken || false;
+                      handleUpdateHabit('medication', !current);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeDiaryForSelectedDate?.medications?.[0]?.taken
+                        ? 'bg-[#8B9D83] text-white shadow-xs'
+                        : 'bg-[#F0EDE4] text-[#5A5A40]'
+                    }`}
+                  >
+                    {activeDiaryForSelectedDate?.medications?.[0]?.taken ? '✓ تم التناول' : 'متبقي'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 🎯 Daily Habits Tracker (تتبع العادات السلوكية والروتين اليومي) */}
+            <div id="custom-habits-tracker" className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                    <span className="text-base">🎯</span>
+                    <span>تتبع العادات السلوكية والروتين</span>
+                  </h3>
+                  <p className="text-[10px] text-gray-500 font-medium">
+                    اختر يوماً من التقويم ثم حدد العادات المنجزة لتسجيل التزامك ودعم تحليلك السلوكي اليومي.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddHabitModal(true)}
+                  className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-1.5 bg-[#8B9D83] hover:bg-[#5A5A40] text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  <span>+ إضافة عادة</span>
+                </button>
+              </div>
+
+              {/* Category Filter Tabs */}
+              <div className="flex items-center space-x-1.5 space-x-reverse overflow-x-auto pb-1 scrollbar-none">
+                {[
+                  { id: 'all', label: 'الكل' },
+                  { id: 'health', label: 'صحة بدنية 🥦' },
+                  { id: 'mind', label: 'تأمل وذهن 🧠' },
+                  { id: 'sport', label: 'رياضة ونشاط 🏃' },
+                  { id: 'culture', label: 'ثقافة وقراءة 📚' },
+                  { id: 'custom', label: 'أهداف أخرى 🎯' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedHabitCategory(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all cursor-pointer ${
+                      selectedHabitCategory === tab.id
+                        ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-xs'
+                        : 'bg-[#F9F7F2]/80 hover:bg-[#F0EDE4] text-[#5A5A40] border-[#E2DCC8]/60'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Habits List Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {habits
+                  .filter(h => selectedHabitCategory === 'all' || h.category === selectedHabitCategory)
+                  .map(habit => {
+                    const isCompleted = !!habit.history[selectedDate];
+                    const catInfo = HABIT_CATEGORIES[habit.category] || HABIT_CATEGORIES.custom;
+
+                    return (
+                      <div 
+                        key={habit.id}
+                        className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between ${
+                          isCompleted 
+                            ? 'bg-emerald-50/40 border-emerald-200 shadow-xs' 
+                            : 'bg-[#F9F7F2]/30 border-[#E2DCC8]/50 hover:border-[#8B9D83]/60'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 space-x-reverse">
+                          {/* Toggle Button */}
+                          <button
+                            onClick={() => toggleHabitCompletion(habit.id, selectedDate)}
+                            className={`w-6.5 h-6.5 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                              isCompleted 
+                                ? 'bg-[#8B9D83] text-white scale-105 shadow-xs' 
+                                : 'border border-[#E2DCC8] hover:border-[#8B9D83] text-transparent hover:bg-white'
+                            }`}
+                          >
+                            <span className="text-[10px] font-bold">✓</span>
+                          </button>
+
+                          <div className="space-y-1">
+                            <span className={`text-xs font-bold block transition-all ${isCompleted ? 'line-through text-gray-400' : 'text-[#3A3A3A]'}`}>
+                              {habit.name}
+                            </span>
+                            <div className="flex items-center space-x-2 space-x-reverse">
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded-md border font-medium ${catInfo.color}`}>
+                                {catInfo.label}
+                              </span>
+                              {habit.reminderTime && (
+                                <span className="text-[9px] text-gray-400 flex items-center space-x-0.5 space-x-reverse">
+                                  <span>⏰ {habit.reminderTime}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center space-x-1 space-x-reverse">
+                          <button
+                            onClick={() => triggerSimulatedHabitNotification(habit)}
+                            className="p-1.5 text-[#5A5A40] hover:text-[#D4A373] hover:bg-[#FAEDCD]/50 rounded-lg transition-colors cursor-pointer"
+                            title="محاكاة إشعار التذكير اليومي"
+                          >
+                            <Bell className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteHabit(habit.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="حذف العادة"
+                          >
+                            <Trash className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {habits.filter(h => selectedHabitCategory === 'all' || h.category === selectedHabitCategory).length === 0 && (
+                  <div className="col-span-full py-8 text-center bg-[#F9F7F2]/50 border border-dashed border-[#E2DCC8]/60 rounded-2xl">
+                    <p className="text-xs text-gray-400 font-medium">لا توجد عادات مسجلة في هذا التصنيف حالياً.</p>
+                    <button
+                      onClick={() => setShowAddHabitModal(true)}
+                      className="text-xs font-bold text-[#8B9D83] underline mt-1.5 block mx-auto cursor-pointer"
+                    >
+                      أضف عادتك الأولى الآن 🚀
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 📊 Habits Evaluation & Psychiatric Insights Panel */}
+            <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+              <div className="space-y-1">
+                <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                  <span className="text-base">📊</span>
+                  <span>التقييم السلوكي وتقارير العادات الذكية (AI)</span>
+                </h3>
+                <p className="text-[10px] text-gray-500 font-medium">
+                  حدد الفترة الزمنية المطلوبة ليقوم الذكاء الاصطناعي برصد اتجاهاتك السلوكية وتقديم توصيات علمية لتعزيز صحتك النفسية.
+                </p>
+              </div>
+
+              {/* Timeframe selector */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: 'daily', label: 'تقييم يومي 📅' },
+                  { id: 'weekly', label: 'تقييم أسبوعي 📅' },
+                  { id: 'monthly', label: 'تقييم شهري 📅' },
+                  { id: 'quarterly', label: 'ربع سنوي (90 يوماً) 📅' },
+                  { id: 'semi-annually', label: 'نصف سنوي (180 يوماً) 📅' },
+                  { id: 'annually', label: 'تقييم سنوي 📅' },
+                  { id: 'custom', label: 'فترة مخصصة 🎯' },
+                ].map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setHabitPeriod(p.id as any)}
+                    className={`p-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                      habitPeriod === p.id 
+                        ? 'bg-[#8B9D83] text-white border-[#8B9D83]' 
+                        : 'bg-[#F9F7F2]/60 hover:bg-[#F0EDE4] text-[#5A5A40] border-[#E2DCC8]/60'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom date range inputs (only if custom is selected) */}
+              {habitPeriod === 'custom' && (
+                <div className="grid grid-cols-2 gap-3 p-3.5 bg-[#F9F7F2] rounded-2xl border border-[#E2DCC8]/60">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-[#5A5A40]">تاريخ البدء:</label>
+                    <input 
+                      type="date"
+                      value={habitCustomStart}
+                      onChange={e => setHabitCustomStart(e.target.value)}
+                      className="w-full bg-white border border-[#E2DCC8] rounded-xl px-2.5 py-1.5 text-xs text-[#3A3A3A] focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-[#5A5A40]">تاريخ الانتهاء:</label>
+                    <input 
+                      type="date"
+                      value={habitCustomEnd}
+                      onChange={e => setHabitCustomEnd(e.target.value)}
+                      className="w-full bg-white border border-[#E2DCC8] rounded-xl px-2.5 py-1.5 text-xs text-[#3A3A3A] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action Button */}
+              <button
+                onClick={generateHabitReport}
+                disabled={habitEvaluationLoading || habits.length === 0}
+                className="w-full py-2.5 bg-[#8B9D83] hover:bg-[#5A5A40] disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-2xl text-xs font-bold transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer shadow-xs"
+              >
+                {habitEvaluationLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>جاري تحليل البيانات وإعداد التقرير السلوكي...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🧠</span>
+                    <span>توليد تقرير التقييم السلوكي بالذكاء الاصطناعي</span>
+                  </>
+                )}
+              </button>
+
+              {/* Evaluation Report Result Display Box */}
+              {habitEvaluationReport && (
+                <div className="p-5 bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#E2DCC8]/60 pb-2">
+                    <span className="text-xs font-extrabold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                      <span>📊</span>
+                      <span>التقرير السلوكي والتحليل العصبي المعتمد</span>
+                    </span>
+                    <span className="text-[9px] bg-[#8B9D83]/10 text-[#8B9D83] px-2 py-0.5 rounded-full font-bold">
+                      مستشار الصحة النفسية AI
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-[#3A3A3A] leading-relaxed whitespace-pre-wrap font-sans font-normal space-y-4">
+                    {habitEvaluationReport}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Life Map timeline view for selected day */}
+            <LifeMap selectedDate={selectedDate} diaries={diaries} />
+
+            {/* Quick tips display for psychiatric support */}
+            <div className="p-4 bg-[#FAEDCD]/40 border border-[#D4A373]/30 text-[#D4A373] rounded-2xl text-xs leading-relaxed flex items-start space-x-3 space-x-reverse">
+              <span className="text-lg">💡</span>
+              <div>
+                <strong className="block font-bold mb-0.5">نصيحة اليوم للصحة النفسية:</strong>
+                <span>عندما تشعر بضغط الامتحانات أو القلق، خذ دقيقة كاملة لممارسة تنفس الصندوق (شهيق 4 ثوانٍ، كتم 4 ثوانٍ، زفير 4 ثوانٍ، كتم 4 ثوانٍ)؛ فهذا ينشط العصب الحائر ويهدئ الجهاز العصبي فوراً.</span>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* --- TAB VIEW 2: DIARIES JOURNAL (DIARY WRITING) --- */}
+        {activeTab === 'diaries' && (
+          <div className="space-y-6">
+            
+            {/* Editor Container if editing or creating a diary */}
+            {editingDiary ? (
+              <div className="bg-white border border-[#E2DCC8] rounded-3xl p-6 shadow-xs space-y-6">
+                
+                {/* Editor Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-[#E2DCC8]/55">
+                  <h3 className="font-bold text-[#3A3A3A] text-base">
+                    {isNewEntry ? '✍️ تدوين مذكرات يومية جديدة' : '✏️ تعديل مذكرتك الشخصية'}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setEditingDiary(null);
+                      setIsNewEntry(false);
+                      setDiaryAiAnswer('');
+                    }}
+                    className="text-xs font-semibold text-[#5A5A40] hover:text-[#3A3A3A] bg-[#F0EDE4] px-3 py-1.5 rounded-lg cursor-pointer"
+                  >
+                    إلغاء وحفظ المسودة
+                  </button>
+                </div>
+
+                {/* Title & Star Rating Input */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-[#5A5A40] mb-1.5">عنوان المذكرة:</label>
+                    <input
+                      type="text"
+                      value={editingDiary.title}
+                      onChange={(e) => setEditingDiary(prev => prev ? { ...prev, title: e.target.value } : null)}
+                      placeholder="عنوان معبر عن يومك..."
+                      className="w-full bg-[#F9F7F2] hover:bg-[#F0EDE4] focus:bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-xl px-4 py-2 text-sm text-[#3A3A3A] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#5A5A40] mb-1.5">تقييم الأهمية والعمق الذاتي:</label>
+                    <div className="flex items-center space-x-1.5 space-x-reverse h-9">
+                      {[1, 2, 3, 4, 5].map((stars) => (
+                        <button
+                          key={stars}
+                          type="button"
+                          onClick={() => setEditingDiary(prev => prev ? { ...prev, importance: stars } : null)}
+                          className="focus:outline-none cursor-pointer"
+                        >
+                          <Star 
+                            className={`w-6 h-6 transition-transform hover:scale-110 ${
+                              stars <= editingDiary.importance ? 'text-[#D4A373] fill-[#D4A373]' : 'text-gray-300'
+                            }`} 
+                          />
+                        </button>
+                      ))}
+                      <span className="text-xs text-gray-400 mr-2">({editingDiary.importance} من 5 نجوم)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* تصنيف التدوينة الأساسي (يومياتي vs خواطري) */}
+                <div>
+                  <label className="block text-xs font-bold text-[#5A5A40] mb-2">تصنيف التدوينة الأساسي:</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditingDiary(prev => prev ? { ...prev, diaryType: 'diary' } : null)}
+                      className={`py-3 px-4 rounded-2xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center space-x-2 space-x-reverse ${
+                        (editingDiary.diaryType || 'diary') === 'diary'
+                          ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-3xs font-extrabold scale-[1.01]'
+                          : 'bg-[#F9F7F2] text-[#5A5A40] border-[#E2DCC8] hover:bg-[#F0EDE4]'
+                      }`}
+                    >
+                      <span>📝</span>
+                      <span>يومياتي العادية والفضفضة العامة</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingDiary(prev => prev ? { ...prev, diaryType: 'thought' } : null)}
+                      className={`py-3 px-4 rounded-2xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center space-x-2 space-x-reverse ${
+                        editingDiary.diaryType === 'thought'
+                          ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-3xs font-extrabold scale-[1.01]'
+                          : 'bg-[#F9F7F2] text-[#5A5A40] border-[#E2DCC8] hover:bg-[#F0EDE4]'
+                      }`}
+                    >
+                      <span>✍️</span>
+                      <span>خواطري وأفكاري الخاصة</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#5A5A40] mb-1.5">كيف كان مزاجك السلوكي اليوم؟ (اختر متعدد):</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['سعيد', 'متحمس', 'مرتاح', 'طبيعي', 'حزين', 'مكتئب', 'قلق', 'غاضب', 'مرهق', 'ممتن'].map((m) => {
+                      const isSelected = editingDiary.moods.includes(m);
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => {
+                            setEditingDiary(prev => {
+                              if (!prev) return null;
+                              const currentMoods = [...prev.moods];
+                              if (currentMoods.includes(m)) {
+                                return { ...prev, moods: currentMoods.filter(x => x !== m) };
+                              } else {
+                                return { ...prev, moods: [...currentMoods, m] };
+                              }
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                            isSelected 
+                              ? 'bg-[#8B9D83] text-white border-[#8B9D83] scale-105 font-semibold' 
+                              : 'bg-[#F9F7F2] text-[#5A5A40] border-[#E2DCC8] hover:bg-[#F0EDE4]'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {editingDiary.aiMoodAnalysis && editingDiary.aiMoodAnalysis.length > 0 && (
+                  <div className="bg-purple-50/50 border border-purple-100 rounded-2xl p-4 space-y-2">
+                    <span className="block text-xs font-black text-purple-950 flex items-center space-x-1.5 space-x-reverse">
+                      <span>🧠</span>
+                      <span>تحليل المزاج التلقائي بالذكاء الاصطناعي (Gemini Smart Analysis):</span>
+                    </span>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {editingDiary.aiMoodAnalysis.map((analysis, idx) => {
+                        const scoreColor = analysis.percentage >= 60 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : analysis.percentage >= 30 ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-purple-50 text-purple-700 border-purple-100';
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 rounded-xl text-xs font-extrabold border shadow-3xs ${scoreColor}`}
+                          >
+                            <span>{analysis.mood}</span>
+                            <span className="opacity-80">|</span>
+                            <span>{analysis.percentage}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-purple-600/80 font-bold leading-relaxed">
+                      * يتم تحديث هذا التحليل تلقائياً بدقة فور نقرك على زر "حفظ المذكرة بنجاح ✓" بناءً على الكلمات والفضفضة المكتوبة.
+                    </p>
+                  </div>
+                )}
+
+                {/* Content text area */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-xs font-bold text-[#5A5A40]">{isEn ? "Write your feelings and thoughts:" : "اكتب فضفضتك ومشاعرك بالتفصيل (بدون قيود):"}</label>
+                    {gratitudeCards.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          const todaysCards = gratitudeCards.filter(c => c.createdAt.startsWith(todayStr));
+                          if (todaysCards.length > 0) {
+                            const formatted = "\n\n🌸 لقطات امتناني اليوم:\n" + todaysCards.map((c, i) => `${i + 1}. ${c.text}`).join("\n");
+                            setEditingDiary(prev => prev ? { ...prev, content: prev.content + formatted } : null);
+                          } else {
+                            const lastThree = gratitudeCards.slice(0, 3);
+                            const formatted = "\n\n🌸 من مذكرات امتناني الأخيرة:\n" + lastThree.map((c, i) => `${i + 1}. ${c.text}`).join("\n");
+                            setEditingDiary(prev => prev ? { ...prev, content: prev.content + formatted } : null);
+                          }
+                        }}
+                        className="text-[10px] text-[#8B9D83] hover:text-[#5A5A40] font-extrabold flex items-center space-x-1 space-x-reverse cursor-pointer bg-[#8B9D83]/8 px-2.5 py-1 rounded-lg transition-colors border border-[#8B9D83]/20 animate-pulse"
+                      >
+                        <span>🌸</span>
+                        <span>{isEn ? "Import Gratitude Moments" : "استيراد لقطات الامتنان السعيدة"}</span>
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    rows={8}
+                    value={editingDiary.content}
+                    onChange={(e) => setEditingDiary(prev => prev ? { ...prev, content: e.target.value } : null)}
+                    placeholder="اكتب هنا كل ما يدور بخلدك من أفكار، مخاوف، آمال، أو أحداث حدثت لك اليوم..."
+                    className="w-full bg-[#F9F7F2] focus:bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-2xl p-4 text-sm text-[#3A3A3A] leading-relaxed transition-all"
+                  />
+                </div>
+
+                {/* Adding modifications / subsequent additions (التعديلات والإضافات اللاحقة) */}
+                {!isNewEntry && (
+                  <div className="space-y-3 bg-[#FAEDCD]/20 border border-[#D4A373]/30 rounded-2xl p-4">
+                    <span className="block text-xs font-extrabold text-[#D4A373] flex items-center space-x-1.5 space-x-reverse">
+                      <span>✍️</span>
+                      <span>إضافة ملحق أو تعديل نصي لاحق (يُعرض مع وقته وتاريخه):</span>
+                    </span>
+                    <textarea
+                      rows={3}
+                      value={newEditAddition}
+                      onChange={(e) => setNewEditAddition(e.target.value)}
+                      placeholder="اكتب هنا الكلمات أو الجمل التي تود إضافتها أسفل النص الأساسي لتدون بلحظتها وتاريخها..."
+                      className="w-full bg-white focus:bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#D4A373] focus:border-[#D4A373] focus:outline-none rounded-xl p-3 text-xs text-[#3A3A3A] leading-relaxed transition-all"
+                    />
+                    <p className="text-[10px] text-gray-400 font-medium leading-relaxed">
+                      * عند الحفظ، سيتم إدراج هذا النص الإضافي أسفل النص الأساسي مع وسم توقيت وتاريخ دقيق، وسيتم تمييز المذكرة من الخارج بـ "تم التعديل".
+                    </p>
+                  </div>
+                )}
+
+                {/* Render previous modifications (الإضافات اللاحقة المسجلة) */}
+                {editingDiary.edits && editingDiary.edits.length > 0 && (
+                  <div className="space-y-3">
+                    <span className="block text-xs font-extrabold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                      <span>📜</span>
+                      <span>سجل الإضافات والتعديلات التاريخية للمذكرة:</span>
+                    </span>
+                    <div className="space-y-3">
+                      {editingDiary.edits.map((edit) => (
+                        <div key={edit.id} className="bg-[#F9F7F2] border-r-4 border-[#8B9D83] p-4 rounded-l-xl rounded-r-sm space-y-1">
+                          <div className="flex items-center justify-between text-[10px] text-gray-400 font-bold">
+                            <span className="flex items-center space-x-1 space-x-reverse">
+                              <span>📆</span>
+                              <span>{edit.timestamp}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingDiary(prev => {
+                                  if (!prev) return null;
+                                  return {
+                                    ...prev,
+                                    edits: (prev.edits || []).filter(e => e.id !== edit.id)
+                                  };
+                                });
+                              }}
+                              className="text-red-500 hover:text-red-700 cursor-pointer text-[10px] font-bold"
+                            >
+                              حذف هذه الإضافة
+                            </button>
+                          </div>
+                          <p className="text-xs text-[#3A3A3A] leading-relaxed font-normal">
+                            {edit.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tags input bar */}
+                <div>
+                  <label className="block text-xs font-bold text-[#5A5A40] mb-1.5">الوسوم والتصنيفات (اضغط مفتاح المسافة أو فاصلة للإضافة):</label>
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-[#F9F7F2] border border-[#E2DCC8] rounded-xl">
+                    {editingDiary.tags.map((t, idx) => (
+                      <span key={idx} className="bg-[#F0EDE4] text-[#5A5A40] text-xs py-1 px-2.5 rounded-lg border border-[#E2DCC8] flex items-center space-x-1 space-x-reverse">
+                        <span>#{t}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingDiary(prev => prev ? { ...prev, tags: prev.tags.filter(x => x !== t) } : null)}
+                          className="text-[10px] text-[#5A5A40]/70 hover:text-[#3A3A3A] cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      type="text"
+                      placeholder="إضافة وسم..."
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === ',') {
+                          e.preventDefault();
+                          const val = e.currentTarget.value.trim().replace('#', '');
+                          if (val && !editingDiary.tags.includes(val)) {
+                            setEditingDiary(prev => prev ? { ...prev, tags: [...prev.tags, val] } : null);
+                            e.currentTarget.value = '';
+                          }
+                        }
+                      }}
+                      className="bg-transparent border-0 focus:ring-0 text-xs px-2 focus:outline-none py-1 flex-grow"
+                    />
+                  </div>
+                </div>
+
+                {/* Drawing / Image thumbnail Display inside editor */}
+                {(editingDiary.images.length > 0 || editingDiary.drawing) && (
+                  <div className="space-y-2">
+                    <span className="block text-xs font-bold text-[#5A5A40]">الصور والتخطيطات المرفقة:</span>
+                    <div className="flex flex-wrap gap-3">
+                      {editingDiary.images.map((img, idx) => (
+                        <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-[#E2DCC8] shadow-xs group">
+                          <img src={img} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setEditingDiary(prev => prev ? { ...prev, images: prev.images.filter((_, i) => i !== idx) } : null)}
+                            className="absolute inset-0 bg-red-700/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      ))}
+
+                      {editingDiary.drawing && (
+                        <div className="relative w-24 h-20 rounded-xl overflow-hidden border border-[#E2DCC8] shadow-xs group bg-white">
+                          <img src={editingDiary.drawing} className="w-full h-full object-contain" />
+                          <div className="absolute top-0 right-0 bg-[#8B9D83] text-white text-[8px] px-1.5 py-0.5 rounded-bl">رسمة</div>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDiary(prev => prev ? { ...prev, drawing: undefined } : null)}
+                            className="absolute inset-0 bg-red-700/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"
+                          >
+                            حذف الرسمة
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 🎥 Attached Videos Display inside editor */}
+                {editingDiary.videos && editingDiary.videos.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <span className="block text-xs font-bold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                      <span>🎥</span>
+                      <span>الفيديوهات المرفقة بالمذكرة:</span>
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {editingDiary.videos.map((vid, idx) => (
+                        <div key={idx} className="relative bg-[#F9F7F2] p-3 border border-[#E2DCC8] rounded-xl flex flex-col space-y-2">
+                          {vid.startsWith('data:video/') || vid.startsWith('blob:') || vid.includes('mp4') || vid.startsWith('data:application/octet-stream') ? (
+                            <video src={vid} controls className="w-full h-32 rounded-lg bg-black object-cover" />
+                          ) : (
+                            <div className="bg-white p-2.5 rounded-lg border border-[#E2DCC8]/60 text-xs text-[#5A5A40] truncate flex items-center space-x-2 space-x-reverse">
+                              <span className="font-semibold shrink-0">رابط فيديو:</span>
+                              <a href={vid} target="_blank" rel="noopener noreferrer" className="text-[#8B9D83] underline truncate flex-grow">
+                                {vid}
+                              </a>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setEditingDiary(prev => prev ? { ...prev, videos: prev.videos.filter((_, i) => i !== idx) } : null)}
+                            className="text-xs text-red-600 hover:text-red-700 font-bold self-end cursor-pointer"
+                          >
+                            حذف الفيديو
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 📄 Attached PDFs Display inside editor */}
+                {editingDiary.files && editingDiary.files.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <span className="block text-xs font-bold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                      <span>📄</span>
+                      <span>ملفات PDF المرفقة بالمذكرة:</span>
+                    </span>
+                    <div className="space-y-2">
+                      {editingDiary.files.map((file) => (
+                        <div key={file.id} className="p-3 bg-[#F9F7F2] border border-[#E2DCC8] rounded-xl flex items-center justify-between text-xs">
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            <div className="p-2 bg-red-100 text-red-700 rounded-lg font-bold text-[11px] shrink-0">
+                              PDF
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-semibold block text-[#3A3A3A] truncate">{file.name}</span>
+                              <span className="text-[10px] text-gray-400">الحجم: {file.size}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            {file.dataUrl && (
+                              <a
+                                href={file.dataUrl}
+                                download={file.name}
+                                className="bg-[#8B9D83] hover:bg-[#72856A] text-white text-[10px] px-2.5 py-1 rounded-lg font-semibold cursor-pointer"
+                              >
+                                تحميل
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingDiary(prev => prev ? { ...prev, files: prev.files.filter(x => x.id !== file.id) } : null);
+                              }}
+                              className="text-red-600 hover:text-red-700 font-bold px-2 cursor-pointer text-xs"
+                            >
+                              حذف
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 🔗 Attached Web Links Display inside editor */}
+                {editingDiary.links && editingDiary.links.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <span className="block text-xs font-bold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                      <span>🔗</span>
+                      <span>الروابط والمراجع المرفقة:</span>
+                    </span>
+                    <div className="space-y-1.5">
+                      {editingDiary.links.map((link, idx) => (
+                        <div key={idx} className="p-3 bg-blue-50/30 border border-blue-200/50 rounded-xl flex items-center justify-between text-xs">
+                          <div className="flex items-center space-x-2 space-x-reverse min-w-0">
+                            <span className="text-blue-500 font-bold">🌐</span>
+                            <a 
+                              href={link} 
+                              target="_blank" 
+                              referrerPolicy="no-referrer"
+                              className="text-blue-700 hover:underline truncate font-medium"
+                            >
+                              {link}
+                            </a>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDiary(prev => prev ? { ...prev, links: (prev.links || []).filter((_, i) => i !== idx) } : null);
+                            }}
+                            className="text-red-600 hover:text-red-700 font-bold px-2 cursor-pointer text-xs shrink-0"
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Media, Sketch and Voice attachment bar */}
+                <div className="bg-[#F9F7F2] p-4 rounded-2xl border border-[#E2DCC8]/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <span className="text-xs font-bold text-[#5A5A40]">إضافة وسائط ومرفقات لتوسيع الذاكرة الزمنية:</span>
+                  <div className="flex flex-wrap gap-2">
+                    
+                    {/* Image Snapper / File upload */}
+                    <label className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs">
+                      <Image className="w-3.5 h-3.5 text-[#D4A373]" />
+                      <span>إضافة لقطة/صورة</span>
+                      <input
+                        id="image-upload-trigger"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Sketch Canvas sketchpad button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowSketchboard(true)}
+                      className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs"
+                    >
+                      <span className="text-[#8B9D83] font-bold">🎨</span>
+                      <span>ارسم تخطيطاً ذهنيّاً</span>
+                    </button>
+
+                    {/* Voice record mic button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleRecording}
+                      className={`flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs ${
+                        isRecording 
+                          ? 'bg-red-500 text-white border-red-500 animate-pulse' 
+                          : 'bg-white hover:bg-[#F0EDE4] border-[#E2DCC8] text-[#5A5A40]'
+                      }`}
+                    >
+                      <Mic className="w-3.5 h-3.5 text-red-500" />
+                      <span>{isRecording ? `جاري التسجيل (${recordingSeconds}ث)` : '🎤 فضفضة صوتية سريعة'}</span>
+                    </button>
+
+                    {/* Web Link button */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveInputSection(activeInputSection === 'link' ? 'none' : 'link')}
+                      className={`flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs ${
+                        activeInputSection === 'link'
+                          ? 'bg-[#8B9D83] text-white border-[#8B9D83]'
+                          : 'bg-white hover:bg-[#F0EDE4] border-[#E2DCC8] text-[#5A5A40]'
+                      }`}
+                    >
+                      <span>🌐</span>
+                      <span>رابط ويب</span>
+                    </button>
+
+                    {/* Video attachment button */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveInputSection(activeInputSection === 'video' ? 'none' : 'video')}
+                      className={`flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs ${
+                        activeInputSection === 'video'
+                          ? 'bg-[#8B9D83] text-white border-[#8B9D83]'
+                          : 'bg-white hover:bg-[#F0EDE4] border-[#E2DCC8] text-[#5A5A40]'
+                      }`}
+                    >
+                      <span>🎥</span>
+                      <span>فيديو</span>
+                    </button>
+
+                    {/* PDF attachment button */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveInputSection(activeInputSection === 'pdf' ? 'none' : 'pdf')}
+                      className={`flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs ${
+                        activeInputSection === 'pdf'
+                          ? 'bg-[#8B9D83] text-white border-[#8B9D83]'
+                          : 'bg-white hover:bg-[#F0EDE4] border-[#E2DCC8] text-[#5A5A40]'
+                      }`}
+                    >
+                      <span>📄</span>
+                      <span>ملف PDF</span>
+                    </button>
+
+                  </div>
+                </div>
+
+                {/* Expandable Extra Attachment Sections */}
+                {activeInputSection !== 'none' && (
+                  <div className="bg-[#F9F7F2] p-4 rounded-2xl border border-[#E2DCC8]/60 space-y-3">
+                    {activeInputSection === 'link' && (
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-[#5A5A40]">أدخل رابط الموقع الإلكتروني أو المراجع للفضفضة:</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={tempWebUrl}
+                            onChange={(e) => setTempWebUrl(e.target.value)}
+                            placeholder="https://example.com"
+                            className="flex-grow bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-xl px-3.5 py-2 text-xs text-[#3A3A3A]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddWebLink(tempWebUrl)}
+                            className="bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs px-4 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0"
+                          >
+                            إضافة الرابط
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeInputSection === 'video' && (
+                      <div className="space-y-3">
+                        <span className="block text-xs font-bold text-[#5A5A40]">إضافة فيديو للمذكرة:</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Option 1: File upload */}
+                          <div className="p-3 bg-white border border-[#E2DCC8] rounded-xl flex flex-col justify-between space-y-2">
+                            <span className="text-[11px] font-bold text-gray-500">الخيار 1: رفع ملف فيديو محلي</span>
+                            <label className="flex items-center justify-center space-x-1.5 space-x-reverse py-2 bg-[#F9F7F2] hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-lg text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs">
+                              <span>📁 اختر فيديو من جهازك</span>
+                              <input
+                                type="file"
+                                accept="video/*"
+                                onChange={handleVideoUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+
+                          {/* Option 2: Enter URL */}
+                          <div className="p-3 bg-white border border-[#E2DCC8] rounded-xl flex flex-col justify-between space-y-2">
+                            <span className="text-[11px] font-bold text-gray-500">الخيار 2: أدخل رابط فيديو (YouTube أو رابط مباشر)</span>
+                            <div className="flex gap-1.5">
+                              <input
+                                type="text"
+                                value={tempVideoUrl}
+                                onChange={(e) => setTempVideoUrl(e.target.value)}
+                                placeholder="https://youtube.com/..."
+                                className="flex-grow bg-[#F9F7F2] border border-[#E2DCC8] focus:outline-none rounded-lg px-2.5 py-1 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAddVideoLink(tempVideoUrl)}
+                                className="bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs px-3 py-1 rounded-lg font-bold transition-all cursor-pointer shrink-0"
+                              >
+                                إضافة
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeInputSection === 'pdf' && (
+                      <div className="space-y-3">
+                        <span className="block text-xs font-bold text-[#5A5A40]">إضافة ملف PDF للمذكرة:</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Option 1: PDF File upload */}
+                          <div className="p-3 bg-white border border-[#E2DCC8] rounded-xl flex flex-col justify-between space-y-2">
+                            <span className="text-[11px] font-bold text-gray-500">الخيار 1: رفع ملف PDF من جهازك</span>
+                            <label className="flex items-center justify-center space-x-1.5 space-x-reverse py-2 bg-[#F9F7F2] hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-lg text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs">
+                              <span>📄 اختر ملف PDF</span>
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                onChange={handlePdfUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+
+                          {/* Option 2: Simulated PDF addition */}
+                          <div className="p-3 bg-white border border-[#E2DCC8] rounded-xl flex flex-col justify-between space-y-2">
+                            <span className="text-[11px] font-bold text-gray-500">الخيار 2: إضافة مستند مرجعي أو رابط PDF</span>
+                            <div className="flex gap-1.5">
+                              <input
+                                id="manual-pdf-name"
+                                type="text"
+                                placeholder="اسم ملف الـ PDF..."
+                                className="w-1/2 bg-[#F9F7F2] border border-[#E2DCC8] focus:outline-none rounded-lg px-2 py-1 text-xs"
+                              />
+                              <input
+                                id="manual-pdf-url"
+                                type="text"
+                                placeholder="رابط الملف..."
+                                className="w-1/2 bg-[#F9F7F2] border border-[#E2DCC8] focus:outline-none rounded-lg px-2 py-1 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nameEl = document.getElementById('manual-pdf-name') as HTMLInputElement;
+                                  const urlEl = document.getElementById('manual-pdf-url') as HTMLInputElement;
+                                  if (nameEl && urlEl && nameEl.value.trim()) {
+                                    const newFile: FileAttachment = {
+                                      id: `file-${Date.now()}`,
+                                      name: nameEl.value.trim().endsWith('.pdf') ? nameEl.value.trim() : nameEl.value.trim() + '.pdf',
+                                      size: 'رابط خارجي',
+                                      type: 'application/pdf',
+                                      dataUrl: urlEl.value.trim() || '#'
+                                    };
+                                    setEditingDiary(prev => prev ? { ...prev, files: [...(prev.files || []), newFile] } : null);
+                                    nameEl.value = '';
+                                    urlEl.value = '';
+                                    setActiveInputSection('none');
+                                  }
+                                }}
+                                className="bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs px-3 py-1 rounded-lg font-bold transition-all cursor-pointer shrink-0"
+                              >
+                                إضافة
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}      {editingDiary.audioRecordings.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="block text-xs font-bold text-[#5A5A40]">التسجيلات الصوتية المرفقة:</span>
+                    <div className="space-y-1.5">
+                      {editingDiary.audioRecordings.map((rec) => (
+                        <div key={rec.id} className="p-3 bg-[#F9F7F2] border border-[#E2DCC8] rounded-xl flex items-center justify-between text-xs">
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            <div className="p-1.5 bg-[#8B9D83]/15 text-[#8B9D83] rounded-lg">
+                              <Mic className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="font-semibold block text-[#3A3A3A]">{rec.name}</span>
+                              <span className="text-[10px] text-gray-400">المدة: {rec.duration} ثانية</span>
+                            </div>
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDiary(prev => prev ? { ...prev, audioRecordings: prev.audioRecordings.filter(x => x.id !== rec.id) } : null);
+                            }}
+                            className="text-red-600 hover:text-red-700 font-bold px-2 cursor-pointer text-xs"
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Media, Sketch and Voice attachment bar */}
+                <div className="bg-[#F9F7F2] p-4 rounded-2xl border border-[#E2DCC8]/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <span className="text-xs font-bold text-[#5A5A40]">إضافة وسائط ومرفقات لتوسيع الذاكرة الزمنية:</span>
+                  <div className="flex flex-wrap gap-2">
+                    
+                    {/* Image Snapper / File upload */}
+                    <label className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs">
+                      <Image className="w-3.5 h-3.5 text-[#D4A373]" />
+                      <span>إضافة لقطة/صورة</span>
+                      <input
+                        id="image-upload-trigger"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Sketch Canvas sketchpad button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowSketchboard(true)}
+                      className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs"
+                    >
+                      <span className="text-[#8B9D83] font-bold">🎨</span>
+                      <span>ارسم تخطيطاً ذهنيّاً</span>
+                    </button>
+
+                    {/* Voice record mic button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleRecording}
+                      className={`flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs ${
+                        isRecording 
+                          ? 'bg-red-500 text-white border-red-500 animate-pulse' 
+                          : 'bg-white hover:bg-[#F0EDE4] border-[#E2DCC8] text-[#5A5A40]'
+                      }`}
+                    >
+                      <Mic className="w-3.5 h-3.5 text-red-500" />
+                      <span>{isRecording ? `جاري التسجيل (${recordingSeconds}ث)` : '🎤 فضفضة صوتية سريعة'}</span>
+                    </button>
+
+                  </div>
+                </div>
+
+                {/* Custom Drawing Board Canvas Modal */}
+                {showSketchboard && (
+                  <div className="fixed inset-0 bg-[#5A5A40]/45 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-2xl h-[450px]">
+                      <DrawingCanvas
+                        initialDataUrl={editingDiary.drawing}
+                        onSave={(dataUrl) => {
+                          setEditingDiary(prev => prev ? { ...prev, drawing: dataUrl } : null);
+                          setShowSketchboard(false);
+                        }}
+                        onCancel={() => setShowSketchboard(false)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 🧠 Flagship AI Assistant Panel - Real-time Psychological Chat */}
+                <div className="border border-[#E2DCC8] bg-[#F9F7F2] rounded-3xl p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#E2DCC8]/60 pb-3">
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <span className="p-1.5 bg-[#8B9D83]/15 text-[#8B9D83] rounded-xl text-sm">🧠</span>
+                      <span className="text-xs font-black text-[#5A5A40]">
+                        جلسة الفضفضة والتحليل النفسي التفاعلية (AI)
+                      </span>
+                    </div>
+                    <span className="text-[10px] bg-[#8B9D83] text-white px-3 py-1 rounded-full font-bold">تفاعل مباشر</span>
+                  </div>
+
+                  {/* Chat Messages Log Box */}
+                  <div className="max-h-[320px] overflow-y-auto space-y-3 p-3 bg-white border border-[#E2DCC8]/80 rounded-2xl" id="diary-chat-log-box">
+                    {(editingDiary.chatLogs || []).length === 0 ? (
+                      <div className="text-center py-6 px-4 space-y-2">
+                        <span className="text-2xl block">💬</span>
+                        <p className="text-xs font-bold text-[#5A5A40]">مرحباً بك في مساحتك العلاجية الآمنة!</p>
+                        <p className="text-[10px] text-gray-400 leading-relaxed max-w-sm mx-auto">
+                          فضفض عما بداخلك، أو اطرح سؤالاً حول هذه المذكرة. سأستمع إليك بإنصات تام وأحلل مشاعرك وأساعدك في التغلب على الصعاب.
+                        </p>
+                      </div>
+                    ) : (
+                      (editingDiary.chatLogs || []).map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex flex-col max-w-[85%] ${
+                            msg.sender === 'user' ? 'mr-auto items-start' : 'ml-auto items-end'
+                          }`}
+                        >
+                          <div
+                            className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                              msg.sender === 'user'
+                                ? 'bg-[#FAF6EC] text-[#5A5A40] rounded-tr-none border border-[#E2DCC8]/50'
+                                : 'bg-[#EEF1EB] text-[#4E685B] rounded-tl-none border border-[#DCE4D8]'
+                            }`}
+                          >
+                            {msg.text}
+                          </div>
+                          <span className="text-[9px] text-gray-400 mt-1 px-1 font-medium">
+                            {msg.sender === 'user' ? 'أنا' : 'مستشارك النفسي AI'} • {new Date(msg.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ))
+                    )}
+
+                    {/* Chat Loading Indicator */}
+                    {diaryChatLoading && (
+                      <div className="flex items-center space-x-2 space-x-reverse ml-auto bg-[#EEF1EB] border border-[#DCE4D8] p-3 rounded-2xl rounded-tl-none text-xs text-[#4E685B] max-w-[85%] animate-pulse">
+                        <span className="w-2 h-2 bg-[#8B9D83] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-2 h-2 bg-[#8B9D83] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-2 h-2 bg-[#8B9D83] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                        <span className="text-[10px] font-bold">جاري كتابة الرد العلاجي والتحليل...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Input Chat Messages */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={diaryChatMessage}
+                      onChange={(e) => setDiaryChatMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSendDiaryChatMessage();
+                        }
+                      }}
+                      placeholder="فضفض عما ببالك أو اسألني هنا..."
+                      className="flex-grow bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-2xl px-4 py-2.5 text-xs text-[#3A3A3A] font-medium"
+                    />
+                    <button
+                      type="button"
+                      disabled={diaryChatLoading || !diaryChatMessage.trim()}
+                      onClick={() => handleSendDiaryChatMessage()}
+                      className="px-4 py-2.5 bg-[#8B9D83] hover:bg-[#72856A] disabled:opacity-50 text-white rounded-2xl text-xs font-black transition-all cursor-pointer shadow-3xs flex items-center space-x-1.5 space-x-reverse"
+                    >
+                      <span>إرسال</span>
+                      <span>🚀</span>
+                    </button>
+                  </div>
+
+                  {/* Built-in quick psychologist suggestions */}
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[10px] text-gray-400 font-bold">إجراءات سريعة لتحليل التدوينة الحالية بنقرة واحدة:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSendDiaryChatMessage('📝 لخص تدوينتي الحالية بايجاز والخص مشاعري الحقيقية')}
+                        className="px-2.5 py-1.5 bg-white hover:bg-[#F0EDE4] text-[#5A5A40] border border-[#E2DCC8]/60 rounded-xl text-[10px] font-bold cursor-pointer transition-all shadow-3xs"
+                      >
+                        📝 لخص تدوينتي بايجاز
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSendDiaryChatMessage('💡 استخرج الأخطاء المعرفية والتشوهات الفكرية من تدوينتي وانصحني بموازنتها عقلانياً')}
+                        className="px-2.5 py-1.5 bg-white hover:bg-[#F0EDE4] text-[#5A5A40] border border-[#E2DCC8]/60 rounded-xl text-[10px] font-bold cursor-pointer transition-all shadow-3xs"
+                      >
+                        💡 استخرج الأخطاء المعرفية
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSendDiaryChatMessage('🎯 اقترح خطة عملية مبسطة ليوم الغد تساهم في بناء مرونتي النفسية وتحسين إنتاجيتي')}
+                        className="px-2.5 py-1.5 bg-white hover:bg-[#F0EDE4] text-[#5A5A40] border border-[#E2DCC8]/60 rounded-xl text-[10px] font-bold cursor-pointer transition-all shadow-3xs"
+                      >
+                        🎯 خطة عملية ليوم الغد
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Editor Bottom Actions */}
+                <div className="flex items-center justify-between pt-4 border-t border-[#E2DCC8]/55">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDiary(editingDiary.id)}
+                    className="flex items-center space-x-1 space-x-reverse px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Trash className="w-4 h-4" />
+                    <span>حذف المذكرة نهائياً</span>
+                  </button>
+
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingDiary(null);
+                        setIsNewEntry(false);
+                        setDiaryAiAnswer('');
+                      }}
+                      className="px-4 py-2 text-xs font-bold text-[#5A5A40] hover:bg-[#F0EDE4] rounded-xl transition-colors cursor-pointer"
+                    >
+                      إلغاء
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isExportingPdf}
+                      onClick={handleExportPDF}
+                      className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#D4A373] hover:bg-[#B58554] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isExportingPdf ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>جاري التصدير...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Printer className="w-4 h-4" />
+                          <span>تصدير كملف PDF</span>
+                        </>
+                      )}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={handleSaveDiary}
+                      className="flex items-center space-x-1.5 space-x-reverse px-5 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+                    >
+                      <span>حفظ المذكرة بنجاح ✓</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              <div className="space-y-6">
+                
+                 {/* Replicated Quick Action Badges matching the requested screenshot EXACTLY */}
+                 <div className="flex flex-wrap items-center gap-2.5 w-full justify-start sm:justify-end border-b border-[#E2DCC8]/60 pb-5">
+                   
+                   {/* 1. Habits and Tasks Button (المهام اليومية) with red circular badge containing incomplete count on the left */}
+                   <button
+                     onClick={() => {
+                       setActiveDiariesSubTab('tasks');
+                     }}
+                     className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#EEF1EB] text-[#556E4F] border border-[#DCE4D8] rounded-xl text-xs font-black shadow-3xs hover:bg-[#E2E9DF] active:scale-95 transition-all cursor-pointer shrink-0"
+                   >
+                     <span className="flex items-center justify-center bg-[#C5221F] text-white text-[10px] font-black w-4.5 h-4.5 rounded-full border border-white shrink-0">
+                       {incompleteTasksCount}
+                     </span>
+                     <span>المهام اليومية</span>
+                   </button>
+ 
+                   {/* 2. My Diary Thoughts Button (خواطري ✍️) with light orange/yellow background and border */}
+                   <button
+                     onClick={() => {
+                       setActiveDiariesSubTab('journal');
+                       setDiaryTypeFilter('thought');
+                     }}
+                     className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4] rounded-xl text-xs font-black shadow-3xs hover:bg-[#F9ECC4] active:scale-95 transition-all cursor-pointer shrink-0"
+                   >
+                     <span>خواطري</span>
+                     <span className="text-sm">✍️</span>
+                   </button>
+ 
+                   {/* 3. Therapist Session Button (جلسة العلاج 🎓) with dark slate/green background and white text */}
+                   <button
+                     onClick={() => {
+                       setActiveTab('analytics');
+                       setAnalyticsSubTab('report');
+                     }}
+                     className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#446A5E] hover:bg-[#3B5A50] text-white rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0"
+                   >
+                     <span>جلسة العلاج</span>
+                     <span className="flex items-center justify-center w-5 h-5 bg-[#FCF5DE] border border-[#E9E1C4] rounded-full shrink-0 shadow-3xs animate-pulse">
+                       <svg className="w-3 h-3 text-[#A67E2E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                       </svg>
+                     </span>
+                   </button>
+
+                  {/* 4. Lock Button (🔒) with grey-brown background and border */}
+                  <button
+                    onClick={() => setSettings(prev => ({ ...prev, isAppLocked: true }))}
+                    className="p-2.5 bg-[#EEECDF] border border-[#D1CCBA] text-[#5A5A40] rounded-xl hover:bg-[#DDD8C3] active:scale-95 transition-all cursor-pointer shadow-3xs shrink-0 flex items-center justify-center"
+                    title="قفل التطبيق لحماية الخصوصية"
+                  >
+                    <Lock className="w-4 h-4 text-[#4A4A30]" />
+                  </button>
+
+                </div>
+
+                 {/* Diaries & Gratitude Sub-Tab Swapper */}
+                 <div className="flex bg-[#F0EDE4] p-1.5 rounded-2xl border border-[#E2DCC8]/60 max-w-xl mx-auto sm:mx-0 shadow-3xs overflow-x-auto scrollbar-none" id="diaries-subtab-selector">
+                   <button
+                     onClick={() => setActiveDiariesSubTab('journal')}
+                     className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                       activeDiariesSubTab === 'journal'
+                         ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                         : 'text-gray-500 hover:text-[#5A5A40]'
+                     }`}
+                   >
+                     <span>📓</span>
+                     <span>{isEn ? "Daily Journal" : "يومياتي والفضفضة"}</span>
+                   </button>
+                   <button
+                     onClick={() => setActiveDiariesSubTab('gratitude')}
+                     className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                       activeDiariesSubTab === 'gratitude'
+                         ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                         : 'text-gray-500 hover:text-[#5A5A40]'
+                     }`}
+                   >
+                     <span>🌸</span>
+                     <span>{isEn ? "Gratitude Journal" : "مفكرة الامتنان"}</span>
+                   </button>
+                   <button
+                     onClick={() => setActiveDiariesSubTab('cbt')}
+                     className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                       activeDiariesSubTab === 'cbt'
+                         ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                         : 'text-gray-500 hover:text-[#5A5A40]'
+                     }`}
+                   >
+                     <span>🧠</span>
+                     <span>CBT تمارين التفكير</span>
+                   </button>
+                   <button
+                     onClick={() => setActiveDiariesSubTab('tasks')}
+                     className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                       activeDiariesSubTab === 'tasks'
+                         ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                         : 'text-gray-500 hover:text-[#5A5A40]'
+                     }`}
+                   >
+                     <span>📋</span>
+                     <span>المهام اليومية والنشاط</span>
+                   </button>
+                 </div>
+
+                {activeDiariesSubTab === 'journal' ? (
+                  <div className="space-y-4">
+                    
+                    {/* Filter Tabs: اليوميات vs الخواطر */}
+                    <div className="flex border-b border-[#E2DCC8]/40 pb-1.5 gap-6">
+                      <button
+                        onClick={() => setDiaryTypeFilter('all')}
+                        className={`pb-2 text-xs font-black transition-all relative cursor-pointer ${
+                          diaryTypeFilter === 'all'
+                            ? 'text-[#5A5A40]'
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        الكل
+                        {diaryTypeFilter === 'all' && (
+                          <span className="absolute bottom-[-6px] left-0 right-0 h-0.5 bg-[#8B9D83] rounded-full" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setDiaryTypeFilter('diary')}
+                        className={`pb-2 text-xs font-black transition-all relative cursor-pointer flex items-center space-x-1 space-x-reverse ${
+                          diaryTypeFilter === 'diary'
+                            ? 'text-[#5A5A40]'
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        <span>📓</span>
+                        <span>اليوميات</span>
+                        {diaryTypeFilter === 'diary' && (
+                          <span className="absolute bottom-[-6px] left-0 right-0 h-0.5 bg-[#8B9D83] rounded-full" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setDiaryTypeFilter('thought')}
+                        className={`pb-2 text-xs font-black transition-all relative cursor-pointer flex items-center space-x-1 space-x-reverse ${
+                          diaryTypeFilter === 'thought'
+                            ? 'text-[#5A5A40]'
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        <span>✍️</span>
+                        <span>الخواطر</span>
+                        {diaryTypeFilter === 'thought' && (
+                          <span className="absolute bottom-[-6px] left-0 right-0 h-0.5 bg-[#8B9D83] rounded-full" />
+                        )}
+                      </button>
+                    </div>
+                    
+                    {/* Search Bar - Separate floating input */}
+                    <div className="relative w-full">
+                      <Search className="absolute right-4 top-3.5 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="البحث في المذكرات، العناوين، أو الوسوم..."
+                        className="w-full bg-[#FBFBFA] hover:bg-[#F3F2F0] focus:bg-white border border-[#E2DCC8]/85 focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-2xl pr-11 pl-4 py-3.5 text-xs text-[#3A3A3A] transition-all placeholder-gray-400 font-bold shadow-3xs"
+                      />
+                    </div>
+
+                    {/* Write New Note Button - Separate floating button */}
+                    <button
+                      onClick={startNewDiary}
+                      className="w-full flex items-center justify-center space-x-2 space-x-reverse py-3.5 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-2xl text-xs font-black transition-all cursor-pointer shadow-3xs hover:scale-[1.01] active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>كتابة مذكرات جديدة</span>
+                    </button>
+
+                    {/* Filter Pills of tags if they exist */}
+                    {allUniqueTags.length > 0 && (
+                      <div className="flex items-center space-x-2 space-x-reverse overflow-x-auto pb-1 mt-1">
+                        <span className="text-[10px] font-black text-gray-400 whitespace-nowrap shrink-0">تصفية الوسوم:</span>
+                        <button
+                          onClick={() => setSelectedTagFilter('')}
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer shrink-0 ${
+                            selectedTagFilter === ''
+                              ? 'bg-[#8B9D83] text-white font-bold shadow-3xs'
+                              : 'bg-white hover:bg-[#F0EDE4] text-[#5A5A40] border border-[#E2DCC8]/85'
+                          }`}
+                        >
+                          الكل
+                        </button>
+                        {allUniqueTags.map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() => setSelectedTagFilter(tag)}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer shrink-0 ${
+                              selectedTagFilter === tag
+                                ? 'bg-[#8B9D83] text-white font-bold shadow-3xs'
+                                : 'bg-white hover:bg-[#F0EDE4] text-[#5A5A40] border border-[#E2DCC8]/85'
+                            }`}
+                          >
+                            #{tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                {/* Grouped Day-by-Day representation of entries */}
+                {(() => {
+                  // Helper to group entries by day (YYYY-MM-DD)
+                  const groupDiariesByDay = (entries: DiaryEntry[]) => {
+                    const groups: { [key: string]: DiaryEntry[] } = {};
+                    // Sort entries descending by creation time so newest entries show first
+                    const sorted = [...entries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                    sorted.forEach(entry => {
+                      const dayKey = entry.createdAt.split('T')[0];
+                      if (!groups[dayKey]) {
+                        groups[dayKey] = [];
+                      }
+                      groups[dayKey].push(entry);
+                    });
+                    return groups;
+                  };
+
+                  const groupedEntries = groupDiariesByDay(filteredDiariesList);
+                  const sortedDays = Object.keys(groupedEntries).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+                  if (sortedDays.length === 0) {
+                    return (
+                      <div className="bg-white border border-[#E2DCC8] rounded-3xl p-12 text-center text-gray-400 text-sm">
+                        <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30 text-[#8B9D83]" />
+                        <p className="font-bold text-[#3A3A3A]">لا توجد مذكرات مطابقة حالياً.</p>
+                        <p className="text-xs mt-1 text-gray-400">انقر على زر "كتابة مذكرات جديدة" للبدء بالفضفضة وبناء ملفك النفسي!</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-8">
+                      {sortedDays.map((dayKey) => {
+                        const dayEntries = groupedEntries[dayKey];
+                        // Format the day nicely in Arabic
+                        const formattedDayLabel = new Date(dayKey + 'T12:00:00').toLocaleDateString('ar-EG', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        });
+                        
+                        return (
+                          <div key={dayKey} className="bg-white border border-[#E2DCC8] rounded-3xl p-6 shadow-xs space-y-5">
+                            {/* Large parent Day header */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2DCC8]/50 pb-3 gap-2">
+                              <div className="flex items-center space-x-2.5 space-x-reverse">
+                                <div className="p-2 bg-[#8B9D83]/10 text-[#8B9D83] rounded-2xl">
+                                  <Calendar className="w-5 h-5" />
+                                </div>
+                                <h3 className="font-extrabold text-[#3A3A3A] text-sm md:text-base">
+                                  {formattedDayLabel}
+                                </h3>
+                              </div>
+                              <span className="text-[10px] md:text-xs font-bold text-[#5A5A40] bg-[#F9F7F2] border border-[#E2DCC8]/60 px-3 py-1 rounded-xl self-start sm:self-auto">
+                                {dayEntries.length} {dayEntries.length === 1 ? 'مذكرة فرعية' : 'مذكرات فرعية'}
+                              </span>
+                            </div>
+
+                            {/* Grid of smaller sub-notes on that day */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {dayEntries.map((diary) => {
+                                // Format the precise entry time
+                                const preciseTime = new Date(diary.createdAt).toLocaleTimeString('ar-EG', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                });
+                                
+                                return (
+                                  <div
+                                    key={diary.id}
+                                    onClick={() => {
+                                      setEditingDiary(diary);
+                                      setIsNewEntry(false);
+                                      setDiaryAiAnswer('');
+                                      setNewEditAddition('');
+                                    }}
+                                    className={`relative group border border-[#E2DCC8]/65 rounded-2xl p-5 hover:border-[#8B9D83] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 ${
+                                      diary.color || 'bg-[#F9F7F2]/45'
+                                    }`}
+                                  >
+                                    {/* Top Corner: precise entry time, edit flag, and ratings aligned with the screenshot */}
+                                    <div className="flex items-center justify-between text-[11px] text-gray-500 w-full" dir="rtl">
+                                      {/* Star Ratings & Actions on the Right in RTL */}
+                                      <div className="flex items-center space-x-1.5 space-x-reverse">
+                                        {/* Importance Rating Stars */}
+                                        <div className="flex items-center space-x-0.5 space-x-reverse">
+                                          {[1, 2, 3, 4, 5].map((s) => (
+                                            <Star 
+                                              key={s} 
+                                              className={`w-3.5 h-3.5 ${
+                                                s <= diary.importance ? 'text-[#D4A373] fill-[#D4A373]' : 'text-gray-200'
+                                              }`} 
+                                            />
+                                          ))}
+                                        </div>
+
+                                        {/* Archive Button */}
+                                        <button
+                                          type="button"
+                                          title={isEn ? "Archive Note" : "أرشفة المذكرة"}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleArchiveDiary(diary.id);
+                                          }}
+                                          className="p-1.5 bg-white/90 hover:bg-amber-50 text-gray-500 hover:text-amber-600 rounded-lg border border-gray-100/50 hover:shadow-2xs transition-all cursor-pointer"
+                                        >
+                                          📥
+                                        </button>
+
+                                        {/* Move to Trash Button */}
+                                        <button
+                                          type="button"
+                                          title={isEn ? "Move to Trash" : "نقل لسلة المهملات"}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteDiary(diary.id);
+                                          }}
+                                          className="p-1.5 bg-white/90 hover:bg-red-50 text-gray-500 hover:text-red-600 rounded-lg border border-gray-100/50 hover:shadow-2xs transition-all cursor-pointer"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+
+                                        {/* Edited Flag */}
+                                        {(diary.isEdited || (diary.edits && diary.edits.length > 0)) && (
+                                          <span className="bg-[#D4A373] text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-lg shadow-2xs">
+                                            تم التعديل
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Time Pill on the Left in RTL */}
+                                      <span className="font-bold flex items-center space-x-1 space-x-reverse bg-white/85 px-2.5 py-1 rounded-xl border border-[#E2DCC8]/50 shadow-3xs shrink-0">
+                                        <span>⏰</span>
+                                        <span>{preciseTime}</span>
+                                      </span>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                      {/* Title with type badge */}
+                                      <div className="flex items-center space-x-1.5 space-x-reverse">
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-lg font-black shrink-0 ${
+                                          diary.diaryType === 'thought'
+                                            ? 'bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4]'
+                                            : 'bg-[#EEF1EB] text-[#556E4F] border border-[#DCE4D8]'
+                                        }`}>
+                                          {diary.diaryType === 'thought' ? '✍️ خاطرة' : '📓 يومية'}
+                                        </span>
+                                        <h4 className="font-extrabold text-[#3A3A3A] text-xs md:text-sm line-clamp-1">
+                                          {diary.title || 'مذكرة فرعية'}
+                                        </h4>
+                                      </div>
+                                      
+                                      {/* Content Snippet */}
+                                      <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">
+                                        {diary.content || <em className="text-gray-400 font-light text-[11px]">مرفقات صوتية أو تخطيطات فقط</em>}
+                                      </p>
+
+                                      {/* Appended Edits Count / Snippet Preview */}
+                                      {diary.edits && diary.edits.length > 0 && (
+                                        <div className="text-[10px] text-[#8B9D83] font-bold flex items-center space-x-1 space-x-reverse">
+                                          <span>💬</span>
+                                          <span>يحتوي على {diary.edits.length} تعديلات مضافة</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Footer with Moods and Tags matching the layout of the screenshots */}
+                                    <div className="pt-2 border-t border-[#E2DCC8]/40 flex items-center justify-between gap-2 w-full">
+                                      {/* Tags on the right in RTL */}
+                                      <div>
+                                        {diary.tags && diary.tags.length > 0 ? (
+                                          <span className="text-[9px] text-[#8B9D83] font-black">
+                                            #{diary.tags[0]}
+                                          </span>
+                                        ) : (
+                                          <span className="text-[9px] text-gray-300 font-bold">#عام</span>
+                                        )}
+                                      </div>
+
+                                      {/* Mood badge on the left in RTL - showing both manual and AI analyzed mood percentages */}
+                                      <div className="flex flex-wrap items-center gap-1.5 shrink-0 justify-end">
+                                        {/* Manual moods */}
+                                        {diary.moods && diary.moods.slice(0, 2).map((m, idx) => (
+                                          <span key={idx} className="bg-[#8B9D83]/15 text-[#4E685B] text-[10px] px-2.5 py-1 rounded-lg font-black border border-[#8B9D83]/20 shadow-3xs">
+                                            {m}
+                                          </span>
+                                        ))}
+                                        
+                                        {/* AI Mood percentages */}
+                                        {diary.aiMoodAnalysis && diary.aiMoodAnalysis.length > 0 && (
+                                          <div className="flex flex-wrap gap-1">
+                                            {diary.aiMoodAnalysis.slice(0, 2).map((analysis, idx) => (
+                                              <span 
+                                                key={idx} 
+                                                className="bg-purple-50 text-purple-700 text-[10px] px-2.5 py-1 rounded-lg font-black border border-purple-100 shadow-3xs flex items-center space-x-1 space-x-reverse"
+                                                title="تحليل المزاج التلقائي بالذكاء الاصطناعي"
+                                              >
+                                                <span>🧠</span>
+                                                <span>{analysis.mood} ({analysis.percentage}%)</span>
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                  </div>
+                ) : activeDiariesSubTab === 'gratitude' ? (
+                  <GratitudeJournal
+                    gratitudeCards={gratitudeCards}
+                    setGratitudeCards={setGratitudeCards}
+                    settings={settings}
+                    diaries={diaries}
+                    setActiveTab={setActiveTab}
+                    setActiveDiariesSubTab={setActiveDiariesSubTab}
+                    triggerGratitudeNotificationNow={() => setActiveGratitudeReminderNotification(true)}
+                  />
+                ) : activeDiariesSubTab === 'cbt' ? (
+                  /* Rendering CBT Worksheets List and Wizard Trigger Button */
+                  <div className="space-y-6">
+                    <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                          <span>🧠</span>
+                          <span>سجل تمارين إعادة الهيكلة المعرفية (CBT Worksheets)</span>
+                        </h4>
+                        <p className="text-[10px] text-gray-500 font-medium">
+                          استخدم أداة العلاج المعرفي السلوكي المعتمدة لتفكيك الأفكار السلبية والوساوس وإيجاد بدائل عقلانية متزنة بدعم من الذكاء الاصطناعي.
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setCbtTriggerEvent('');
+                          setCbtNegativeThoughts('');
+                          setCbtCognitiveDistortion('');
+                          setCbtRationalAlternative('');
+                          setCbtEmotionBefore(7);
+                          setCbtEmotionAfter(4);
+                          setShowAddCbtModal(true);
+                        }}
+                        className="flex items-center justify-center space-x-1.5 space-x-reverse py-2.5 px-4 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs self-start sm:self-auto"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>بدء تمرين تفكير جديد (CBT)</span>
+                      </button>
+                    </div>
+
+                    {/* Worksheets Grid of current diaries */}
+                    {(() => {
+                      // Extract all CBT worksheets from diaries
+                      const allWorksheets = diaries.flatMap(d => (d.cbtWorksheets || []).map(w => ({ ...w, diaryDate: d.createdAt.split('T')[0] })));
+                      
+                      if (allWorksheets.length === 0) {
+                        return (
+                          <div className="bg-white border border-[#E2DCC8] rounded-3xl p-12 text-center text-gray-400 text-sm">
+                            <Brain className="w-12 h-12 mx-auto mb-3 opacity-30 text-[#8B9D83]" />
+                            <p className="font-bold text-[#3A3A3A]">لم تقم بأي تمارين تفكير (CBT) حتى الآن.</p>
+                            <p className="text-xs mt-1 text-gray-400">انقر على زر "بدء تمرين تفكير جديد" لإخضاع أفكارك المعيقة والمقلقة لإعادة بناء عقلانية سريعة.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          {allWorksheets.map((sheet, idx) => (
+                            <div key={sheet.id || idx} className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs hover:shadow-md transition-all space-y-4">
+                              <div className="flex items-center justify-between border-b border-[#E2DCC8]/50 pb-2.5">
+                                <span className="text-xs font-bold text-[#8B9D83] flex items-center space-x-1.5 space-x-reverse">
+                                  <span>🧠</span>
+                                  <span>تمرين إعادة هيكلة الأفكار</span>
+                                </span>
+                                <span className="text-[10px] font-mono text-gray-400 font-bold bg-[#F9F7F2] px-2.5 py-1 rounded-lg border border-[#E2DCC8]/50">
+                                  📅 {sheet.diaryDate}
+                                </span>
+                              </div>
+
+                              <div className="space-y-3 text-xs leading-relaxed font-sans font-normal">
+                                <div>
+                                  <span className="font-extrabold text-[#5A5A40] block mb-0.5">🚩 الموقف أو المحفز السلوكي:</span>
+                                  <p className="text-[#3A3A3A] bg-[#F9F7F2]/50 p-2.5 rounded-xl border border-[#E2DCC8]/40 font-normal">{sheet.triggerEvent}</p>
+                                </div>
+
+                                <div>
+                                  <span className="font-extrabold text-[#5A5A40] block mb-0.5">💭 الفكرة التلقائية السلبية:</span>
+                                  <p className="text-[#3A3A3A] bg-red-50/20 p-2.5 rounded-xl border border-red-100 font-normal">{sheet.negativeThoughts}</p>
+                                </div>
+
+                                {sheet.cognitiveDistortion && (
+                                  <div>
+                                    <span className="font-extrabold text-[#5A5A40] block mb-0.5">🔍 نوع التشوه المعرفي:</span>
+                                    <span className="inline-block bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                                      {sheet.cognitiveDistortion}
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div>
+                                  <span className="font-extrabold text-emerald-700 block mb-0.5">✨ البديل الفكري العقلاني المستنتج:</span>
+                                  <p className="text-[#3A3A3A] bg-emerald-50/20 p-2.5 rounded-xl border border-emerald-100 font-medium whitespace-pre-wrap">{sheet.rationalAlternative}</p>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-[#E2DCC8]/40 text-[10px] font-bold">
+                                  <span className="text-gray-400">شدة القلق والتوتر قبل التمرين:</span>
+                                  <span className="text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-lg font-mono font-extrabold">{sheet.emotionBefore} / 10</span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[10px] font-bold">
+                                  <span className="text-gray-400">الشدة بعد إعادة الهيكلة:</span>
+                                  <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg font-mono font-extrabold">{sheet.emotionAfter} / 10</span>
+                                </div>
+
+                                <div className="text-[10px] text-emerald-600 bg-emerald-50/30 text-center p-1.5 rounded-xl border border-emerald-100/50 font-bold">
+                                  📉 نسبة تحسن وتراجع القلق: <span className="font-mono text-xs font-black">{Math.round(((sheet.emotionBefore - sheet.emotionAfter) / sheet.emotionBefore) * 100)}%</span> في هذه الجلسة!
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <TasksChecklistSection
+                    activeDiaryForSelectedDate={activeDiaryForSelectedDate}
+                    selectedDate={selectedDate}
+                    handleUpdateHabit={handleUpdateHabit}
+                    handleUpdateTasks={handleUpdateTasks}
+                    habits={habits}
+                    toggleHabitCompletion={toggleHabitCompletion}
+                    isDarkMode={settings.isDarkMode}
+                  />
+                )}
+
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* --- TAB VIEW 3: FLAGSHIP SMART ADVISOR --- */}
+        {activeTab === 'advisor' && (
+          <div className="space-y-6">
+            <SmartAdvisor diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
+          </div>
+        )}
+
+        {/* --- TAB VIEW 4: MOOD & PROGRESS ANALYTICS (CHARTS) --- */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            
+            {/* Analytics & Therapy Sub-Tab Swapper */}
+            <div className="flex bg-[#F0EDE4] p-1.5 rounded-2xl border border-[#E2DCC8]/60 max-w-md mx-auto sm:mx-0 shadow-3xs" id="analytics-subtab-selector">
+              <button
+                onClick={() => setAnalyticsSubTab('report')}
+                className={`flex-grow flex items-center justify-center space-x-1.5 space-x-reverse py-2.5 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                  analyticsSubTab === 'report'
+                    ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                    : 'text-gray-500 hover:text-[#5A5A40]'
+                }`}
+              >
+                <span>🎓</span>
+                <span>جلسة العلاج والتقرير</span>
+              </button>
+              <button
+                onClick={() => setAnalyticsSubTab('charts')}
+                className={`flex-grow flex items-center justify-center space-x-1.5 space-x-reverse py-2.5 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                  analyticsSubTab === 'charts'
+                    ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                    : 'text-gray-500 hover:text-[#5A5A40]'
+                }`}
+              >
+                <span>📊</span>
+                <span>الرسوم البيانية ومتابعة التقدم</span>
+              </button>
+            </div>
+
+            {analyticsSubTab === 'report' ? (
+              <IntegratedTherapyReport diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
+            ) : (
+              <div className="space-y-6">
+                {/* Visual Intro card */}
+                <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-2">
+                  <h3 className="font-extrabold text-[#3A3A3A] text-sm flex items-center space-x-2 space-x-reverse">
+                    <span className="text-lg">📊</span>
+                    <span>لوحة متابعة التقدم والأنماط السلوكية</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    يتم استخلاص هذه البيانات تلقائياً من المذكرات وعدادات النوم والرياضة لرصد الترابط السلوكي لمساعدتك في معالجة القلق والتوتر.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Chart 1: Sleep trend vs Sports trend */}
+                  <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+                    <span className="block text-xs font-bold text-[#5A5A40]">💤 الترابط بين الرياضة وساعات النوم:</span>
+                    <div className="h-60">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={diaries.map(d => ({
+                          name: d.createdAt.split('T')[0].substring(5),
+                          النوم: d.sleepHours || 0,
+                          الرياضة: d.sportsDuration || 0
+                        })).reverse()}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E2DCC8" />
+                          <XAxis dataKey="name" stroke="#5A5A40" style={{ fontSize: '10px' }} />
+                          <YAxis stroke="#5A5A40" style={{ fontSize: '10px' }} />
+                          <ChartTooltip />
+                          <Legend style={{ fontSize: '11px' }} />
+                          <Line type="monotone" dataKey="النوم" stroke="#8B9D83" strokeWidth={2.5} name="ساعات النوم" />
+                          <Line type="monotone" dataKey="الرياضة" stroke="#D4A373" strokeWidth={2.5} name="دقائق الرياضة" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Chart 2: Mood counts distribution bar chart */}
+                  <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-4">
+                    <span className="block text-xs font-bold text-[#5A5A40]">🧠 توزيع المشاعر المسجلة:</span>
+                    <div className="h-60">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={Object.entries(
+                          diaries.flatMap(d => d.moods).reduce((acc, m) => {
+                            acc[m] = (acc[m] || 0) + 1;
+                            return acc;
+                          }, {} as Record<string, number>)
+                        ).map(([mood, count]) => ({ mood, تكرار: count }))}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E2DCC8" />
+                          <XAxis dataKey="mood" stroke="#5A5A40" style={{ fontSize: '11px' }} />
+                          <YAxis stroke="#5A5A40" style={{ fontSize: '10px' }} />
+                          <ChartTooltip />
+                          <Bar dataKey="تكرار" fill="#8B9D83" radius={[6, 6, 0, 0]}>
+                            {/* Dynamic cell coloring for beautiful look */}
+                            {diaries.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#8B9D83' : '#D4A373'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Insight Statement box */}
+                <div className="bg-[#F0EDE4] border border-[#E2DCC8] p-5 rounded-3xl space-y-2">
+                  <h4 className="font-bold text-[#5A5A40] text-xs">💡 رصد الذكاء الاصطناعي للتحسن السلوكي:</h4>
+                  <p className="text-xs text-[#3A3A3A] leading-relaxed font-normal">
+                    تظهر البيانات أن فترات نومك تستقر عند حاجز 8 ساعات في الأيام التي مارست فيها الرياضة لأكثر من 30 دقيقة. كما يسجل المساعد تراجعاً كبيراً في مشاعر "القلق" بنسبة 40% في أيام تدوينات "الغذاء العائلي" والتواصل الاجتماعي. استمر في التدوين لترسيخ هذه الأنماط المعرفية والتقدم الذاتي!
+                  </p>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* --- TAB VIEW 5: SETTINGS & BACKUP (إعدادات والنسخ الاحتياطي) --- */}
+        {activeTab === 'settings' && (
+          <div className="bg-[#FAF8F5]/90 rounded-3xl p-1 md:p-6 space-y-8 max-w-2xl mx-auto font-sans" dir={isEn ? "ltr" : "rtl"}>
+            
+            {/* Header Banner */}
+            <div className="text-center py-5">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-[#8B9D83]/10 text-[#4E685B] rounded-[20px] mb-3 border border-[#8B9D83]/20 shadow-3xs">
+                <SettingsIcon className="w-6 h-6" />
+              </div>
+              <h3 className="font-black text-[#2B3E50] text-xl md:text-2xl tracking-wide">{t.settingsTitle}</h3>
+              <p className="text-xs text-gray-500 mt-1.5 font-bold leading-normal max-w-md mx-auto">{t.settingsSubtitle}</p>
+            </div>
+
+            <div className="space-y-4">
+
+              {/* CARD 1: API KEY */}
+              <div 
+                onClick={() => setShowGeminiKeyModal(true)}
+                className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#8B9D83]/5 transition-all hover:border-[#8B9D83]/40 group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-gray-100 text-gray-500 rounded-2xl group-hover:bg-gray-200 transition-all">
+                    <Key className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.apiKeyTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-extrabold leading-normal">
+                      {settings.userApiKey ? t.apiKeySub : t.apiKeySubAuto}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+              </div>
+
+              {/* CARD 2: FLOATING BALL TOGGLE */}
+              <div className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between transition-all hover:border-[#8B9D83]/30">
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-[#FEF6E4] text-[#D4A373] rounded-2xl">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.floatingBallTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.floatingBallSub}</p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => setSettings(prev => ({ ...prev, floatingBallEnabled: !prev.floatingBallEnabled }))}
+                  className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer ${
+                    settings.floatingBallEnabled ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-white shadow-md" />
+                </button>
+              </div>
+
+              {/* CARD 3: BACKUP AND SYNC */}
+              <div 
+                onClick={() => setShowBackupSyncModal(true)}
+                className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#8B9D83]/5 transition-all hover:border-[#8B9D83]/40 group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-orange-50 text-orange-500 rounded-2xl group-hover:bg-orange-100 transition-all">
+                    <Cloud className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.backupTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.backupSub}</p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+              </div>
+
+              {/* CARD 4: APP LOCK */}
+              <div className="bg-white border border-[#E2DCC8] rounded-[24px] overflow-hidden shadow-3xs transition-all">
+                <div className="p-5 flex items-center justify-between hover:bg-[#FAF8F5]/40 transition-colors">
+                  <div 
+                    onClick={() => setExpandedSettingsCard(expandedSettingsCard === 'pin' ? null : 'pin')}
+                    className="flex items-center gap-4 cursor-pointer flex-grow"
+                  >
+                    <div className="p-3.5 bg-red-50 text-red-500 rounded-2xl">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#2B3E50] text-sm">{t.appLockTitle}</h4>
+                      <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.appLockSub}</p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => setSettings(prev => ({ ...prev, isAppLocked: !prev.isAppLocked }))}
+                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer ${
+                      settings.isAppLocked ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-white shadow-md" />
+                  </button>
+                </div>
+
+                {(expandedSettingsCard === 'pin' || settings.isAppLocked) && (
+                  <div className="p-5 border-t border-[#E2DCC8]/60 bg-[#FAF8F5]/40 space-y-3">
+                    <h5 className="font-black text-[#5A5A40] text-xs">
+                      {isEn ? "🔐 Change App Passcode (PIN):" : "🔐 تغيير رمز قفل الشاشة (PIN):"}
+                    </h5>
+                    <div className="flex items-center gap-3 max-w-sm">
+                      <input
+                        type="password"
+                        maxLength={4}
+                        value={settings.appPinCode || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setSettings(prev => ({ ...prev, appPinCode: val }));
+                        }}
+                        placeholder={isEn ? "Current (Default 1234)" : "الرمز الحالي (الافتراضي 1234)"}
+                        className="w-28 bg-white border border-[#E2DCC8] rounded-xl px-3 py-2 text-xs text-[#2B3E50] font-mono text-center focus:outline-none focus:ring-1 focus:ring-[#8B9D83] font-black"
+                      />
+                      <span className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                        {isEn ? "Enter a 4-digit numeric code to completely safeguard your app." : "أدخل رمزاً مكوناً من 4 أرقام لحماية تطبيقك بالكامل."}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 5: FAVORITES DIRECT LINKS */}
+              <div 
+                onClick={() => {
+                  setActiveTab('diaries');
+                  setShowFavoritesOnly(true);
+                }}
+                className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#8B9D83]/5 transition-all hover:border-[#8B9D83]/40 group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-yellow-50 text-yellow-500 rounded-2xl group-hover:bg-yellow-100 transition-all">
+                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.favoritesTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.favoritesSub}</p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+              </div>
+
+              {/* CARD 6: REMINDERS & ALARMS */}
+              <div className="bg-white border border-[#E2DCC8] rounded-[24px] overflow-hidden shadow-3xs transition-all">
+                <div 
+                  onClick={() => setExpandedSettingsCard(expandedSettingsCard === 'reminders' ? null : 'reminders')}
+                  className="p-5 flex items-center justify-between cursor-pointer hover:bg-[#FAF8F5]/40 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-3.5 bg-indigo-50 text-indigo-500 rounded-2xl">
+                      <Bell className="w-5 h-5 text-indigo-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#2B3E50] text-sm">{t.remindersTitle}</h4>
+                      <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.remindersSub}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'} ${expandedSettingsCard === 'reminders' ? 'rotate-90' : ''}`} />
+                </div>
+
+                {expandedSettingsCard === 'reminders' && (
+                  <div className="p-5 border-t border-[#E2DCC8]/60 bg-[#FAF8F5]/40 space-y-4">
+                    {/* Alarms list */}
+                    <div className="space-y-2">
+                      {(!settings.reminders || settings.reminders.length === 0) ? (
+                        <p className="text-xs text-gray-400 text-center py-2 font-medium">
+                          {isEn ? "No custom alarms added." : "لا توجد أي منبهات نشطة حالياً."}
+                        </p>
+                      ) : (
+                        settings.reminders.map((rem) => (
+                          <div key={rem.id} className="flex items-center justify-between bg-white border border-[#E2DCC8]/60 p-3.5 rounded-xl">
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm">⏰</span>
+                              <div>
+                                <span className="text-xs font-black text-[#2B3E50] block">{rem.title}</span>
+                                <span className="text-[10px] text-gray-400 font-mono font-bold">{rem.time}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              {/* Toggle Alarm */}
+                              <button
+                                onClick={() => {
+                                  setSettings(prev => ({
+                                    ...prev,
+                                    reminders: prev.reminders?.map(r => r.id === rem.id ? { ...r, active: !r.active } : r)
+                                  }));
+                                }}
+                                className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer ${
+                                  rem.active ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
+                                }`}
+                              >
+                                <span className="w-3.5 h-3.5 rounded-full bg-white shadow-xs" />
+                              </button>
+
+                              {/* Delete custom alarm */}
+                              {rem.type === 'custom' && (
+                                <button
+                                  onClick={() => {
+                                    setSettings(prev => ({
+                                      ...prev,
+                                      reminders: prev.reminders?.filter(r => r.id !== rem.id)
+                                    }));
+                                  }}
+                                  className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                                  title={isEn ? "Delete Alarm" : "حذف المنبه"}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Add Custom Alarm Form */}
+                    <div className="bg-[#8B9D83]/5 border border-[#8B9D83]/15 p-4 rounded-xl space-y-3">
+                      <span className="text-xs font-black text-[#5A5A40] block">⚡ {isEn ? "Add Custom Reminder Alarm:" : "إضافة منبه/تذكير سلوكي جديد:"}</span>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={newAlarmTitle}
+                          onChange={(e) => setNewAlarmTitle(e.target.value)}
+                          placeholder={isEn ? "e.g. Meditate or Drink Water" : "مثل: جلسة كتابة حرة، استراحة شرب ماء..."}
+                          className="bg-white border border-[#E2DCC8] text-xs px-3 py-2 rounded-lg text-[#2B3E50] focus:outline-none placeholder-gray-400 font-bold"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="time"
+                            value={newAlarmTime}
+                            onChange={(e) => setNewAlarmTime(e.target.value)}
+                            className="bg-white border border-[#E2DCC8] text-xs px-2.5 py-2 rounded-lg text-[#2B3E50] focus:outline-none flex-grow font-mono font-bold"
+                          />
+                          <button
+                            onClick={() => {
+                              if (!newAlarmTitle.trim()) return;
+                              const newAlarm = {
+                                id: `alarm-${Date.now()}`,
+                                title: newAlarmTitle.trim(),
+                                time: newAlarmTime,
+                                active: true,
+                                type: 'custom' as const
+                              };
+                              setSettings(prev => ({
+                                ...prev,
+                                reminders: [...(prev.reminders || []), newAlarm]
+                              }));
+                              setNewAlarmTitle('');
+                            }}
+                            className="bg-[#3F5449] hover:bg-[#2C3E50] text-white text-xs px-4 py-2 rounded-lg font-black transition-all cursor-pointer"
+                          >
+                            {isEn ? "Add" : "+ إضافة"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 7: DIARY ARCHIVE */}
+              <div className="bg-white border border-[#E2DCC8] rounded-[24px] overflow-hidden shadow-3xs transition-all">
+                <div 
+                  onClick={() => setExpandedSettingsCard(expandedSettingsCard === 'archive' ? null : 'archive')}
+                  className="p-5 flex items-center justify-between cursor-pointer hover:bg-[#FAF8F5]/40 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-3.5 bg-emerald-50 text-emerald-500 rounded-2xl">
+                      <Download className="w-5 h-5 text-emerald-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#2B3E50] text-sm">{t.archiveTitle}</h4>
+                      <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.archiveSub}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'} ${expandedSettingsCard === 'archive' ? 'rotate-90' : ''}`} />
+                </div>
+
+                {expandedSettingsCard === 'archive' && (
+                  <div className="p-5 border-t border-[#E2DCC8]/60 bg-[#FAF8F5]/40 space-y-3">
+                    {diaries.filter(d => d.isArchived && !d.isTrash).length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-4 font-bold">
+                        {isEn ? "Your diary archive is completely empty." : "أرشيف مذكراتك فارغ حالياً."}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {diaries.filter(d => d.isArchived && !d.isTrash).map(diary => (
+                          <div key={diary.id} className="flex items-center justify-between bg-white border border-[#E2DCC8]/60 p-3 rounded-xl hover:border-[#8B9D83]/40 transition-colors">
+                            <div className="truncate pr-2">
+                              <span className="text-xs font-black text-[#2B3E50] block truncate">{diary.title || 'بدون عنوان'}</span>
+                              <span className="text-[10px] text-gray-400 font-bold">{diary.createdAt.split('T')[0]}</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setDiaries(prev => prev.map(d => d.id === diary.id ? { ...d, isArchived: false } : d));
+                              }}
+                              className="px-3.5 py-1.5 bg-[#8B9D83]/10 hover:bg-[#8B9D83] text-[#8B9D83] hover:text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shrink-0"
+                            >
+                              {isEn ? "Unarchive" : "استرجاع من الأرشيف"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 8: TRASH CAN */}
+              <div className="bg-white border border-[#E2DCC8] rounded-[24px] overflow-hidden shadow-3xs transition-all">
+                <div 
+                  onClick={() => setExpandedSettingsCard(expandedSettingsCard === 'trash' ? null : 'trash')}
+                  className="p-5 flex items-center justify-between cursor-pointer hover:bg-[#FAF8F5]/40 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-3.5 bg-red-50 text-red-500 rounded-2xl">
+                      <Trash2 className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#2B3E50] text-sm">{t.trashTitle}</h4>
+                      <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.trashSub}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'} ${expandedSettingsCard === 'trash' ? 'rotate-90' : ''}`} />
+                </div>
+
+                {expandedSettingsCard === 'trash' && (
+                  <div className="p-5 border-t border-[#E2DCC8]/60 bg-[#FAF8F5]/40 space-y-4">
+                    {diaries.filter(d => d.isTrash).length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-4 font-bold">
+                        {isEn ? "Trash can is completely empty." : "سلة المهملات فارغة حالياً 🗑️"}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                          <span className="text-[11px] text-gray-500 font-bold">
+                            {diaries.filter(d => d.isTrash).length} {isEn ? "items deleted" : "مذكرات في السلة"}
+                          </span>
+                          <button
+                            onClick={handleEmptyTrash}
+                            className="text-xs text-red-600 hover:text-red-700 font-black cursor-pointer"
+                          >
+                            {isEn ? "🗑️ Empty Trash Can" : "🗑️ تفريغ السلة بالكامل"}
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          {diaries.filter(d => d.isTrash).map(diary => (
+                            <div key={diary.id} className="flex items-center justify-between bg-white border border-[#E2DCC8]/60 p-3.5 rounded-xl">
+                              <div className="truncate pr-2">
+                                <span className="text-xs font-black text-[#2B3E50] block truncate">{diary.title || 'بدون عنوان'}</span>
+                                <span className="text-[10px] text-gray-400 font-bold">{diary.createdAt.split('T')[0]}</span>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  onClick={() => handleRestoreDiary(diary.id)}
+                                  className="px-2.5 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-[#3F5449] hover:text-white rounded-lg text-[10px] font-black transition-all cursor-pointer"
+                                  title={isEn ? "Restore" : "استرجاع"}
+                                >
+                                  {isEn ? "Restore" : "استرجاع"}
+                                </button>
+                                <button
+                                  onClick={() => handlePermanentDeleteDiary(diary.id)}
+                                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title={isEn ? "Delete Permanently" : "حذف نهائي"}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 9: DARK MODE */}
+              <div className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between transition-all hover:border-[#8B9D83]/30">
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-purple-50 text-purple-600 rounded-2xl">
+                    <Moon className="w-5 h-5 text-purple-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.darkModeTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.darkModeSub}</p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => setSettings(prev => ({ ...prev, isDarkMode: !prev.isDarkMode }))}
+                  className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer ${
+                    settings.isDarkMode ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-white shadow-md" />
+                </button>
+              </div>
+
+              {/* CARD 10: NOTIFICATIONS */}
+              <div className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between transition-all hover:border-[#8B9D83]/30">
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-[#E8F0FE] text-blue-500 rounded-2xl">
+                    <Bell className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.notificationsTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.notificationsSub}</p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => setSettings(prev => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }))}
+                  className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer ${
+                    settings.notificationsEnabled ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-white shadow-md" />
+                </button>
+              </div>
+
+              {/* CARD 11: APP LANGUAGES */}
+              <div 
+                onClick={() => setShowLanguagesModal(true)}
+                className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#8B9D83]/5 transition-all hover:border-[#8B9D83]/40 group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-sky-50 text-sky-500 rounded-2xl group-hover:bg-sky-100 transition-all">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.languagesTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.languagesSub}</p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+              </div>
+
+              {/* CARD 12: RATE US */}
+              <div 
+                onClick={() => {
+                  setRatingSuccess(false);
+                  setRatingFeedback('');
+                  setRatingValue(5);
+                  setShowRatingModal(true);
+                }}
+                className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#8B9D83]/5 transition-all hover:border-[#8B9D83]/40 group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-100 transition-all">
+                    <Star className="w-5 h-5 fill-emerald-500 text-emerald-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.rateTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.rateSub}</p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+              </div>
+
+              {/* CARD 13: CONTACT OWNER */}
+              <div 
+                onClick={() => setShowContactModal(true)}
+                className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#8B9D83]/5 transition-all hover:border-[#8B9D83]/40 group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-indigo-50 text-indigo-500 rounded-2xl group-hover:bg-indigo-100 transition-all">
+                    <User className="w-5 h-5 text-indigo-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.contactTitle}</h4>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.contactSub}</p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+              </div>
+
+            </div>
+
+            {/* Developer/System credits details */}
+            <div className="pt-6 border-t border-[#E2DCC8]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-gray-400 font-bold leading-relaxed text-center">
+              <span>{isEn ? "✨ My Diaries AI — Stable Private Version 1.0.0" : "✨ يومياتي AI — الإصدار المستقر والخاص 1.0.0"}</span>
+              <span className="max-w-xs">{isEn ? "Developed with 100% privacy protection & smart behavioral support." : "تم التطوير بخصوصية مطلقة وأعلى درجات الحماية المعرفية السلوكية والذكاء الاصطناعي لراحتك النفسية."}</span>
+            </div>
+
+          </div>
+        )}
+
+
+
+      </main>
+
+      {/* Floating radial assistant ball for quick navigation */}
+      {settings.floatingBallEnabled && <FloatingBall onAction={handleQuickAction} />}
+
+      {/* Sleek Floating Physical Phone Power Button Simulator */}
+      <div className="fixed right-0 top-1/3 -translate-y-1/2 z-50 flex items-center group">
+        <button
+          onClick={() => setSettings(prev => ({ ...prev, isAppLocked: !prev.isAppLocked }))}
+          className="bg-[#4E685B] hover:bg-[#3F5449] active:scale-95 text-white p-3.5 rounded-l-2xl border-l-2 border-y-2 border-[#E5E1D4] shadow-2xl flex flex-col items-center space-y-1.5 transition-all cursor-pointer"
+          title="محاكاة الضغط على زر الطاقة (Power Key)"
+        >
+          <span className="text-xl group-hover:scale-115 transition-transform">🔌</span>
+          <span className="text-[9px] font-black tracking-widest text-[#FEFAE0]" style={{ writingMode: 'vertical-lr' }}>
+            POWER KEY
+          </span>
+        </button>
+        <div className="absolute right-12 bg-[#3A3A3A]/90 text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all shadow-lg border border-gray-600/50" dir="rtl">
+          اضغط زر الطاقة (Power) لمحاكاة شاشة القفل والإشعار 📱
+        </div>
+      </div>
+
+      {/* Persistent Bottom Tab Navigation Bar with Lucide icons */}
+      <nav className="fixed bottom-0 inset-x-0 bg-[#F9F7F2] border-t border-[#E2DCC8] py-2.5 z-35 shadow-xs font-sans">
+        <div className="max-w-md mx-auto px-6 grid grid-cols-5 gap-1 text-center font-bold">
+          
+          {/* Tab 1: Dashboard */}
+          <button
+            onClick={() => {
+              setActiveTab('dashboard');
+              setEditingDiary(null);
+            }}
+            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+              activeTab === 'dashboard' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
+            }`}
+          >
+            <Calendar className="w-5 h-5 mb-1" />
+            <span className="text-[10px]">{t.homeTab}</span>
+          </button>
+
+          {/* Tab 2: Journal Diaries */}
+          <button
+            onClick={() => setActiveTab('diaries')}
+            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+              activeTab === 'diaries' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
+            }`}
+          >
+            <BookOpen className="w-5 h-5 mb-1" />
+            <span className="text-[10px]">{t.diariesTab}</span>
+          </button>
+
+          {/* Tab 3: Flagship Smart Advisor */}
+          <button
+            onClick={() => {
+              setActiveTab('advisor');
+              setEditingDiary(null);
+            }}
+            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+              activeTab === 'advisor' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
+            }`}
+          >
+            <div className="relative">
+              <Brain className="w-5 h-5 mb-1" />
+              <span className="absolute top-[-4px] left-[-4px] w-2 h-2 bg-[#D4A373] rounded-full animate-ping"></span>
+            </div>
+            <span className="text-[10px]">{t.advisorTab}</span>
+          </button>
+
+          {/* Tab 4: Interactive Charts & Analytics */}
+          <button
+            onClick={() => {
+              setActiveTab('analytics');
+              setEditingDiary(null);
+            }}
+            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+              activeTab === 'analytics' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
+            }`}
+          >
+            <Activity className="w-5 h-5 mb-1" />
+            <span className="text-[10px]">{t.analyticsTab}</span>
+          </button>
+
+          {/* Tab 5: Settings and Backup */}
+          <button
+            onClick={() => {
+              setActiveTab('settings');
+              setEditingDiary(null);
+            }}
+            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+              activeTab === 'settings' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
+            }`}
+          >
+            <SettingsIcon className="w-5 h-5 mb-1" />
+            <span className="text-[10px]">{t.settingsTab}</span>
+          </button>
+
+        </div>
+      </nav>
+
+      {/* 🎓 Therapist Report Modal Window */}
+      <TherapistReportModal
+        isOpen={showTherapistModal}
+        onClose={() => setShowTherapistModal(false)}
+        diaries={diaries}
+        userApiKey={settings.userApiKey}
+      />
+
+      {/* ⭐ Rating Modal Window */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        isEn={isEn}
+      />
+
+      {/* ✉️ Contact Owner Modal Window */}
+      <ContactOwnerModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        isEn={isEn}
+      />
+
+      {/* 🔑 Gemini API Key Modal Window */}
+      <GeminiKeyModal
+        isOpen={showGeminiKeyModal}
+        onClose={() => setShowGeminiKeyModal(false)}
+        apiKey={settings.userApiKey || ''}
+        onSave={(key) => setSettings(prev => ({ ...prev, userApiKey: key }))}
+        onClear={() => setSettings(prev => ({ ...prev, userApiKey: '' }))}
+        isEn={isEn}
+      />
+
+      {/* ☁️ Backup & Sync Modal Window */}
+      <BackupSyncModal
+        isOpen={showBackupSyncModal}
+        onClose={() => setShowBackupSyncModal(false)}
+        isEn={isEn}
+        isCloudSyncing={isCloudSyncing}
+        cloudSyncMessage={cloudSyncMessage}
+        onCloudSync={() => performCloudSync()}
+        onCloudRestore={handleCloudRestore}
+        onExportBackup={handleExportBackup}
+        onImportBackup={handleImportBackup}
+        backupEmail={backupEmail}
+        setBackupEmail={setBackupEmail}
+        isSendingEmailBackup={isSendingEmailBackup}
+        onSendEmailBackup={handleSendEmailBackup}
+        emailBackupStatus={emailBackupStatus}
+        onClearEmailBackupStatus={() => setEmailBackupStatus(null)}
+        autoBackupInterval={(settings.backupSettings?.autoBackup === 'onWrite' ? 'daily' : settings.backupSettings?.autoBackup) as any || 'off'}
+        onChangeAutoBackupInterval={(interval) => setSettings(prev => ({
+          ...prev,
+          backupSettings: {
+            ...prev.backupSettings,
+            autoBackup: interval === 'daily' ? 'onWrite' : interval
+          }
+        }))}
+        onOpenWriteDiaryImport={() => setShowWriteDiaryImporter(true)}
+      />
+
+      {/* 📖 WriteDiary (يومياتي) Importer Modal */}
+      <WriteDiaryImporter
+        isOpen={showWriteDiaryImporter}
+        onClose={() => setShowWriteDiaryImporter(false)}
+        isEn={isEn}
+        onImportCompleted={handleWriteDiaryImportCompleted}
+      />
+
+      {/* 🌐 Languages Modal Window */}
+      <LanguagesModal
+        isOpen={showLanguagesModal}
+        onClose={() => setShowLanguagesModal(false)}
+        appLanguage={settings.appLanguage}
+        onChangeLanguage={(lang) => setSettings(prev => ({ ...prev, appLanguage: lang }))}
+        isEn={isEn}
+      />
+
+      {/* Hidden PDF template for export - beautifully styled like a real physical A4 page */}
+      {editingDiary && (
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -100 }}>
+          <div 
+            id="diary-to-pdf" 
+            className="w-[794px] bg-white text-[#2C3E50] p-12 font-sans flex flex-col justify-between"
+            style={{ 
+              direction: 'rtl',
+              minHeight: '1123px', // A4 aspect ratio height at 794px width
+              fontFamily: '"Cairo", "Inter", sans-serif'
+            }}
+          >
+            {/* Elegant Header Block */}
+            <div className="border-b-2 border-[#8B9D83] pb-6 mb-8 flex items-center justify-between">
+              <div className="flex items-center space-x-3 space-x-reverse">
+                <div className="w-12 h-12 bg-[#8B9D83]/10 border border-[#8B9D83] rounded-2xl flex items-center justify-center text-2xl shadow-sm">
+                  📓
+                </div>
+                <div>
+                  <h1 className="text-xl font-black text-[#8B9D83] tracking-wide">يومياتي الذكية</h1>
+                  <p className="text-[10px] text-gray-400 font-bold mt-0.5">سجل المذكرات والفضفضة النفسية الآمن</p>
+                </div>
+              </div>
+              <div className="text-left">
+                <div className="text-[10px] text-gray-400 font-bold">تاريخ التصدير ومستند الحفظ</div>
+                <div className="text-xs text-gray-600 font-bold mt-1" style={{ direction: 'ltr' }}>
+                  {new Date().toLocaleString('ar-EG', { dateStyle: 'long', timeStyle: 'short' })}
+                </div>
+              </div>
+            </div>
+
+            {/* Main Document Body */}
+            <div className="flex-1 space-y-6">
+              
+              {/* Note Metadata Block */}
+              <div className="bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl p-6 grid grid-cols-3 gap-4">
+                <div>
+                  <span className="block text-[10px] text-gray-400 font-bold mb-1">تاريخ كتابة المذكرة:</span>
+                  <span className="text-xs text-[#3A3A3A] font-extrabold">
+                    {new Date(editingDiary.createdAt).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-gray-400 font-bold mb-1">العمق والأهمية الذاتية:</span>
+                  <span className="text-xs text-[#D4A373] font-black flex items-center">
+                    {'★'.repeat(editingDiary.importance)}
+                    {'☆'.repeat(5 - editingDiary.importance)}
+                    <span className="text-gray-400 font-bold mr-1.5 text-[10px]">({editingDiary.importance}/5)</span>
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-gray-400 font-bold mb-1">الحالة المزاجية المسجلة:</span>
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {editingDiary.moods.length > 0 ? (
+                      editingDiary.moods.map((m, i) => (
+                        <span key={i} className="text-[10px] font-bold bg-[#8B9D83]/10 text-[#5A5A40] border border-[#8B9D83]/20 px-2 py-0.5 rounded-full">
+                          {m}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] text-gray-400 italic">لم يتم تحديد مزاج</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Title Section */}
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black text-[#3A3A3A] leading-tight pr-4 border-r-4 border-[#8B9D83]">
+                  {editingDiary.title || 'مذكرة يومية بدون عنوان'}
+                </h2>
+              </div>
+
+              {/* Content Box */}
+              <div className="pt-4 pb-8 border-b border-dashed border-gray-200">
+                <p className="text-sm text-[#3A3A3A] leading-relaxed whitespace-pre-wrap font-normal" style={{ minHeight: '200px' }}>
+                  {editingDiary.content}
+                </p>
+              </div>
+
+              {/* Tasks Checklist if any */}
+              {editingDiary.tasks && editingDiary.tasks.length > 0 && (
+                <div className="bg-[#F4F6F4]/50 border border-gray-100 rounded-2xl p-6 space-y-3">
+                  <h3 className="text-xs font-black text-[#5A5A40] flex items-center">
+                    <span className="ml-1.5">📋</span>
+                    <span>قائمة المهام المرتبطة باليوم:</span>
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {editingDiary.tasks.map((task) => (
+                      <div key={task.id} className="flex items-center space-x-2 space-x-reverse text-xs text-[#3A3A3A]">
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] font-black ${
+                          task.completed 
+                            ? 'bg-[#8B9D83] border-[#8B9D83] text-white' 
+                            : 'bg-white border-gray-300 text-transparent'
+                        }`}>
+                          ✓
+                        </span>
+                        <span className={`${task.completed ? 'line-through text-gray-400 font-medium' : 'font-semibold text-gray-700'}`}>
+                          {task.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Associated Drawing if any */}
+              {editingDiary.drawing && (
+                <div className="border border-gray-200 rounded-2xl p-6 space-y-3 bg-white shadow-3xs">
+                  <h3 className="text-xs font-black text-[#5A5A40] flex items-center">
+                    <span className="ml-1.5">🎨</span>
+                    <span>الرسم التعبيري المصاحب:</span>
+                  </h3>
+                  <div className="w-full h-48 bg-[#F9F7F2] rounded-xl flex items-center justify-center overflow-hidden border border-gray-100">
+                    <img src={editingDiary.drawing} className="max-w-full max-h-full object-contain" alt="associated drawing" referrerPolicy="no-referrer" />
+                  </div>
+                </div>
+              )}
+
+              {/* Subsequent Additions & Edits Timeline if any */}
+              {editingDiary.edits && editingDiary.edits.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black text-[#5A5A40] flex items-center">
+                    <span className="ml-1.5">⏱️</span>
+                    <span>سجل الإضافات والتعديلات اللاحقة:</span>
+                  </h3>
+                  <div className="space-y-3">
+                    {editingDiary.edits.map((edit) => (
+                      <div key={edit.id} className="bg-[#FAEDCD]/15 border-r-4 border-[#D4A373] p-4 rounded-l-xl rounded-r-xs space-y-1">
+                        <div className="text-[9px] text-[#D4A373] font-black">
+                          📆 تم الإدراج في: {edit.timestamp}
+                        </div>
+                        <p className="text-xs text-[#3A3A3A] leading-relaxed font-normal">
+                          {edit.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Aesthetic Calming Footer */}
+            <div className="border-t border-gray-100 pt-6 mt-8 flex flex-col items-center text-center space-y-2">
+              <p className="text-xs italic text-[#8B9D83] font-bold">
+                "إن كتابة اليوميات والوعي بالمشاعر هو أولى خطوات التوازن النفسي والسلام الداخلي."
+              </p>
+              <div className="text-[9px] text-gray-400 font-bold flex items-center space-x-1.5 space-x-reverse mt-2">
+                <span>تطبيق يومياتي الذكية</span>
+                <span>•</span>
+                <span>تصدير آمن للمعلومات الشخصية</span>
+                <span>•</span>
+                <span>جميع الحقوق محفوظة للمستخدم 🔐</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 🧠 CBT Step-by-Step Restructuring Wizard Modal */}
+      {showAddCbtModal && (
+        <div className="fixed inset-0 bg-[#5A5A40]/45 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto" dir="rtl">
+          <div className="bg-white border border-[#E2DCC8] rounded-3xl max-w-lg w-full p-6 shadow-2xl relative space-y-5 animate-fade-in text-right">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#E2DCC8]/60">
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <span className="text-xl">🧠</span>
+                <div>
+                  <h4 className="font-extrabold text-sm text-[#3A3A3A]">تمرين تفكيك وإعادة هيكلة الأفكار (CBT)</h4>
+                  <p className="text-[9px] text-gray-400 font-bold">الخطوة {cbtStep} من 5</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddCbtModal(false);
+                  setCbtStep(1);
+                }}
+                className="text-gray-400 hover:text-gray-600 font-bold text-lg p-1.5 hover:bg-[#F9F7F2] rounded-xl cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Step 1: Trigger Event */}
+            {cbtStep === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-extrabold text-[#5A5A40]">🚩 ما هو الموقف أو الحدث المحفز لتوترك وقلقك؟</label>
+                  <p className="text-[10px] text-gray-400 font-medium">صف الموقف بواقعية دون أحكام مسبقة (مثال: تأخر الرد على رسالتي البريدية، أو اقتراب موعد تسليم المشروع البرمجي).</p>
+                </div>
+                <textarea
+                  value={cbtTriggerEvent}
+                  onChange={(e) => setCbtTriggerEvent(e.target.value)}
+                  placeholder="اكتب هنا ما حدث بالتفصيل وبشكل موضوعي..."
+                  className="w-full h-24 bg-[#F9F7F2]/50 hover:bg-[#F0EDE4]/40 focus:bg-white border border-[#E2DCC8] rounded-2xl p-3 text-xs text-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#8B9D83]"
+                />
+                <div className="flex justify-end">
+                  <button
+                    disabled={!cbtTriggerEvent.trim()}
+                    onClick={() => setCbtStep(2)}
+                    className="px-5 py-2 bg-[#8B9D83] hover:bg-[#72856A] disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer transition-colors"
+                  >
+                    التالي ➔
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Negative Thoughts */}
+            {cbtStep === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-extrabold text-[#5A5A40]">💭 ما هي الفكرة السلبية التلقائية التي خطرت ببالك فوراً؟</label>
+                  <p className="text-[10px] text-gray-400 font-medium">الأفكار التلقائية هي الوساوس والسيناريوهات الكارثية التي تهاجم ذهنك (مثال: سيفشل مشروعي وسوف يطردونني، أو بالتأكيد هم يكرهونني ويتجنبونني).</p>
+                </div>
+                <textarea
+                  value={cbtNegativeThoughts}
+                  onChange={(e) => setCbtNegativeThoughts(e.target.value)}
+                  placeholder="اكتب الفكرة التلقائية التي تدور في ذهنك حالياً بكل صراحة..."
+                  className="w-full h-24 bg-red-50/10 hover:bg-red-50/20 focus:bg-white border border-red-200/50 rounded-2xl p-3 text-xs text-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-red-300"
+                />
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => setCbtStep(1)}
+                    className="px-4 py-2 bg-[#F0EDE4] hover:bg-[#E2DCC8] text-[#5A5A40] rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    🠔 السابق
+                  </button>
+                  <button
+                    disabled={!cbtNegativeThoughts.trim()}
+                    onClick={() => setCbtStep(3)}
+                    className="px-5 py-2 bg-[#8B9D83] hover:bg-[#72856A] disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    التالي ➔
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Cognitive Distortion Selector */}
+            {cbtStep === 3 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-extrabold text-[#5A5A40]">🔍 حدد نوع التشويه الفكري أو الفخ المعرفي المصاحب لفكرتك السلبية:</label>
+                  <p className="text-[10px] text-gray-400 font-medium">العقليات القلقة تقع دوماً في أخطاء تفكير شائعة؛ اختر الخطأ الذي تجده في فكرتك التلقائية (أو دعه فارغاً ليقوم المستشار بتحديده تلقائياً):</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1">
+                  {[
+                    { id: 'التفكير الكارثي (Catastrophizing) 🌪️', label: 'التفكير الكارثي (تهويل الأمور) 🌪️' },
+                    { id: 'الكل أو لا شيء (All-or-Nothing) 🔲', label: 'الكل أو لا شيء (المثالية القاتلة) 🔲' },
+                    { id: 'قراءة الأفكار (Mind Reading) 🔮', label: 'قراءة الأفكار (توقع السوء) 🔮' },
+                    { id: 'شخصنة الأمور (Personalization) 👤', label: 'شخصنة الأمور (جلد الذات واللوم) 👤' },
+                    { id: 'الترشيح السلبي (Mental Filter) ❌', label: 'الترشيح السلبي (تجاهل الإيجابيات) ❌' },
+                    { id: 'التعميم الزائد (Overgeneralization) ♾️', label: 'التعميم الزائد (حكم مطلق مفرط) ♾️' },
+                  ].map(dist => (
+                    <button
+                      key={dist.id}
+                      onClick={() => setCbtCognitiveDistortion(dist.id)}
+                      className={`p-2.5 rounded-xl border text-xs text-right font-bold transition-all cursor-pointer ${
+                        cbtCognitiveDistortion === dist.id
+                          ? 'bg-[#8B9D83]/20 border-[#8B9D83] text-[#5A5A40] scale-102 font-black shadow-2xs'
+                          : 'bg-[#F9F7F2] border-[#E2DCC8]/60 hover:bg-[#F0EDE4] text-gray-600'
+                      }`}
+                    >
+                      {dist.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => setCbtStep(2)}
+                    className="px-4 py-2 bg-[#F0EDE4] hover:bg-[#E2DCC8] text-[#5A5A40] rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    🠔 السابق
+                  </button>
+                  <button
+                    onClick={() => setCbtStep(4)}
+                    className="px-5 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    التالي ➔
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Emotion intensity */}
+            {cbtStep === 4 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-extrabold text-[#5A5A40]">📊 ما هي شدة قلقك وضيقك حالياً قبل تطبيق التمرين؟ (1 - 10)</label>
+                  <p className="text-[10px] text-gray-400 font-medium">سجل درجة التوتر الحالي حتى نتمكن من رصد نسبة الانخفاض والارتياح العصبي والذهني بعد التمرين.</p>
+                </div>
+                
+                <div className="flex flex-col items-center py-4 bg-[#F9F7F2]/50 border border-[#E2DCC8]/50 rounded-2xl space-y-2">
+                  <span className="font-mono text-2xl text-red-600 font-extrabold">{cbtEmotionBefore} / 10</span>
+                  <span className="text-xs text-gray-400 font-bold">
+                    {cbtEmotionBefore <= 3 ? 'قلق خفيف ومسيطر عليه 👍' :
+                     cbtEmotionBefore <= 7 ? 'توتر وتفكير مفرط مستهلك للطاقة ⚠️' : 'هلع وضيق عارم وعطلة كاملة 🚨'}
+                  </span>
+                  
+                  <div className="w-full px-8 pt-3">
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      step="1"
+                      value={cbtEmotionBefore}
+                      onChange={(e) => setCbtEmotionBefore(Number(e.target.value))}
+                      className="w-full h-2 bg-[#E2DCC8] rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => setCbtStep(3)}
+                    className="px-4 py-2 bg-[#F0EDE4] hover:bg-[#E2DCC8] text-[#5A5A40] rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    🠔 السابق
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCbtStep(5);
+                      // Auto trigger Gemini restructuring as soon as they land on Step 5
+                      handleGenerateCbtAlternative();
+                    }}
+                    className="px-5 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    التالي ➔
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Rational Alternative (with AI help) */}
+            {cbtStep === 5 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-extrabold text-emerald-700">✨ البديل الفكري العقلاني المتزن المقترح:</label>
+                  <p className="text-[10px] text-gray-400 font-medium">قّم بصياغة فكرة عقلانية متزنة وموضوعية تحارب الفكرة السلبية، أو استخدم اقتراح المستشار الذكي AI وتعديله يدوياً:</p>
+                </div>
+
+                {cbtLoading ? (
+                  <div className="flex flex-col items-center justify-center p-6 border border-[#E2DCC8] rounded-2xl bg-[#F9F7F2]/40 space-y-2">
+                    <RefreshCw className="w-6 h-6 text-[#8B9D83] animate-spin" />
+                    <span className="text-[10px] text-gray-400 font-bold">جاري تشغيل محرك العلاج المعرفي بالذكاء الاصطناعي وصياغة فكرتك المتزنة...</span>
+                  </div>
+                ) : (
+                  <textarea
+                    value={cbtRationalAlternative}
+                    onChange={(e) => setCbtRationalAlternative(e.target.value)}
+                    placeholder="اكتب البديل العقلاني المتزن هنا..."
+                    className="w-full h-28 bg-emerald-50/10 hover:bg-emerald-50/20 focus:bg-white border border-emerald-200/50 rounded-2xl p-3 text-xs text-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-emerald-400 font-medium font-sans"
+                  />
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#F9F7F2] p-2.5 rounded-xl border border-[#E2DCC8]/60">
+                  <button
+                    type="button"
+                    onClick={handleGenerateCbtAlternative}
+                    disabled={cbtLoading}
+                    className="flex items-center space-x-1 space-x-reverse text-[10px] font-black text-[#8B9D83] hover:text-[#5A5A40] disabled:text-gray-300 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>توليد بالذكاء الاصطناعي مجدداً (AI)</span>
+                  </button>
+
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <span className="text-[10px] text-gray-400 font-bold">شدة التوتر بعد التمرين:</span>
+                    <select
+                      value={cbtEmotionAfter}
+                      onChange={(e) => setCbtEmotionAfter(Number(e.target.value))}
+                      className="bg-white border border-[#E2DCC8] text-xs font-mono font-bold rounded-lg p-1 text-emerald-700"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                        <option key={n} value={n}>{n} / 10</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => setCbtStep(4)}
+                    className="px-4 py-2 bg-[#F0EDE4] hover:bg-[#E2DCC8] text-[#5A5A40] rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    🠔 السابق
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!cbtRationalAlternative.trim()) return;
+                      // Generate CBT worksheet item
+                      const newWorksheet = {
+                        id: `cbt-${Date.now()}`,
+                        triggerEvent: cbtTriggerEvent,
+                        negativeThoughts: cbtNegativeThoughts,
+                        cognitiveDistortion: cbtCognitiveDistortion,
+                        rationalAlternative: cbtRationalAlternative,
+                        emotionBefore: cbtEmotionBefore,
+                        emotionAfter: cbtEmotionAfter,
+                        createdAt: new Date().toISOString()
+                      };
+
+                      // Append to active selected date diary
+                      let targetDiary = activeDiaryForSelectedDate;
+                      if (!targetDiary) {
+                        targetDiary = {
+                          id: `diary-${Date.now()}`,
+                          title: `مذكرة يومية لـ ${selectedDate}`,
+                          content: '',
+                          createdAt: `${selectedDate}T20:00:00.000Z`,
+                          updatedAt: `${selectedDate}T20:00:00.000Z`,
+                          moods: ['طبيعي'],
+                          importance: 3,
+                          color: 'bg-white border-[#E2DCC8]',
+                          images: [],
+                          videos: [],
+                          audioRecordings: [],
+                          files: [],
+                          tasks: [],
+                          tags: [],
+                          chatLogs: [],
+                          isLocked: false,
+                          sleepHours: 8,
+                          sportsDuration: 0,
+                          medications: [
+                            { id: 'm1', name: 'مكمل فيتامين D', time: '10:00 ص', taken: false }
+                          ],
+                          waterCups: 0,
+                          fastMoodScore: 5,
+                          symptomsChecklist: [],
+                          cbtWorksheets: []
+                        };
+                      }
+
+                      const updatedWorksheets = [...(targetDiary.cbtWorksheets || []), newWorksheet];
+                      handleUpdateHabit('cbt', updatedWorksheets);
+
+                      // Reset states & close modal
+                      setCbtTriggerEvent('');
+                      setCbtNegativeThoughts('');
+                      setCbtCognitiveDistortion('');
+                      setCbtRationalAlternative('');
+                      setCbtEmotionBefore(7);
+                      setCbtEmotionAfter(4);
+                      setCbtStep(1);
+                      setShowAddCbtModal(false);
+
+                      alert('تمت إضافة تمرين إعادة الهيكلة بنجاح وحفظه في مذكراتك لليوم! 🎉🧠');
+                    }}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    💾 حفظ الجلسة بنجاح
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* 📅 Redesigned Comprehensive Calendar & Library Modal (التقويم والمكتبة الشاملة • اقرأً 📖🗓️) */}
+      {showCalendarModal && (() => {
+        const year = calendarViewDate.getFullYear();
+        const month = calendarViewDate.getMonth(); // 0-indexed
+
+        // First day of the month
+        const firstDayOfMonth = new Date(year, month, 1);
+        const startDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday, 6 is Saturday
+
+        // Number of days in the month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Arabic month names
+        const arabicMonths = [
+          'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+          'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+        ];
+
+        // Days list
+        const days = [];
+        // Pad with empty cells for offset
+        for (let i = 0; i < startDayOfWeek; i++) {
+          days.push(null);
+        }
+        // Add day numbers
+        for (let d = 1; d <= daysInMonth; d++) {
+          days.push(new Date(year, month, d));
+        }
+
+        const weekdays = ['أح', 'اث', 'ثلاث', 'أر', 'خم', 'جم', 'سب'];
+
+        const handlePrevMonth = () => {
+          setCalendarViewDate(new Date(year, month - 1, 1));
+        };
+
+        const handleNextMonth = () => {
+          setCalendarViewDate(new Date(year, month + 1, 1));
+        };
+
+        // Get details of active day
+        const dayEntry = diaries.find(d => d.createdAt.split('T')[0] === selectedCalendarDate && !d.isTrash);
+        const hasDiaryOnSelectedDay = !!dayEntry;
+
+        // Count books registered on selected day
+        const dayBooks = books.filter(b => b.createdAt.split('T')[0] === selectedCalendarDate);
+
+        // Helper to get formatted date label
+        const formattedDateLabel = new Date(selectedCalendarDate + 'T12:00:00').toLocaleDateString('ar-EG', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        // Save book handler
+        const handleSaveBook = (e: React.FormEvent) => {
+          e.preventDefault();
+          if (!bookFormTitle.trim()) {
+            alert('يرجى إدخال عنوان الكتاب!');
+            return;
+          }
+          const newBook: Book = {
+            id: `book-${Date.now()}`,
+            title: bookFormTitle,
+            notes: bookFormNotes,
+            rating: bookFormRating,
+            pdfPath: bookFormPdf || undefined,
+            referenceLink: bookFormLink || undefined,
+            audioAttachment: bookFormAudio || undefined,
+            coverAttachment: bookFormCover || undefined,
+            videoAttachment: bookFormVideo || undefined,
+            hasMindMap: bookFormHasMindMap,
+            createdAt: selectedCalendarDate + 'T12:00:00.000Z' // Associate with selected calendar day
+          };
+          setBooks(prev => [newBook, ...prev]);
+          
+          // Reset form states
+          setBookFormTitle('');
+          setBookFormNotes('');
+          setBookFormRating(5);
+          setBookFormPdf('');
+          setBookFormLink('');
+          setBookFormAudio('');
+          setBookFormCover('');
+          setBookFormVideo('');
+          setBookFormHasMindMap(false);
+          setShowAddBookForm(false);
+          alert('تم حفظ الكتاب في مكتبتك الشاملة بنجاح! 📖✨');
+        };
+
+        const handleDeleteBook = (id: string) => {
+          if (confirm('هل أنت متأكد من حذف هذا الكتاب من مكتبتك الشاملة؟')) {
+            setBooks(prev => prev.filter(b => b.id !== id));
+            if (selectedBookDetail?.id === id) {
+              setSelectedBookDetail(null);
+            }
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center p-4 z-50 transition-all font-sans" dir="rtl">
+            <div className="bg-white border border-[#E2DCC8] rounded-3xl max-w-5xl w-full h-[680px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              
+              {/* Header */}
+              <div className="p-5 bg-gradient-to-r from-[#5A5A40] to-[#8B9D83] text-white flex items-center justify-between">
+                <div className="flex items-center space-x-3 space-x-reverse">
+                  <div className="p-2 bg-white/10 rounded-2xl">
+                    <BookOpen className="w-6 h-6 text-[#FEFAE0]" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-extrabold flex items-center">
+                      <span>التقويم والمكتبة الشاملة • اقرأً 📖🗓️</span>
+                    </h2>
+                    <p className="text-[10px] text-[#E2DCC8]">تصفح اليوميات والكتب المقروءة والتقارير النفسية المتكاملة</p>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowCalendarModal(false);
+                    setSelectedBookDetail(null);
+                    setShowAddBookForm(false);
+                  }}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white font-bold cursor-pointer transition-colors text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Sub-tab Navigation Switcher */}
+              <div className="flex border-b border-[#E2DCC8]/40 bg-[#F9F7F2] p-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCalendarSubTab('calendar');
+                    setSelectedBookDetail(null);
+                  }}
+                  className={`flex-1 py-3 text-center text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer ${
+                    calendarSubTab === 'calendar' 
+                      ? 'bg-white text-[#5A5A40] shadow-sm border border-[#E2DCC8]/55' 
+                      : 'text-gray-500 hover:text-[#5A5A40]'
+                  }`}
+                >
+                  <span>يومياتي وأنشطتي (اقرأ) ☀️</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarSubTab('library')}
+                  className={`flex-1 py-3 text-center text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer ${
+                    calendarSubTab === 'library' 
+                      ? 'bg-white text-[#5A5A40] shadow-sm border border-[#E2DCC8]/55' 
+                      : 'text-gray-500 hover:text-[#5A5A40]'
+                  }`}
+                >
+                  <span>مكتبتي الشاملة 📖</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCalendarSubTab('reports');
+                    setSelectedBookDetail(null);
+                  }}
+                  className={`flex-1 py-3 text-center text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer ${
+                    calendarSubTab === 'reports' 
+                      ? 'bg-white text-[#5A5A40] shadow-sm border border-[#E2DCC8]/55' 
+                      : 'text-gray-500 hover:text-[#5A5A40]'
+                  }`}
+                >
+                  <span>الحكمة والتقارير 🧠</span>
+                </button>
+              </div>
+
+              {/* Main Workspace split into Left (DatePicker) and Right (Details) */}
+              <div className="flex-1 flex overflow-hidden">
+                
+                {/* LEFT COLUMN: Clean Calendar Widget */}
+                <div className="w-[280px] shrink-0 border-l border-[#E2DCC8]/40 p-4 bg-[#F9F7F2]/40 flex flex-col justify-start space-y-4 overflow-y-auto">
+                  <div className="text-[11px] font-black text-gray-400">التقويم الكامل والبحث التاريخي</div>
+
+                  <div className="bg-white border border-[#E2DCC8]/60 rounded-2xl p-3.5 space-y-3.5 shadow-3xs">
+                    {/* Month Picker Navigation */}
+                    <div className="flex items-center justify-between">
+                      <button 
+                        type="button"
+                        onClick={handlePrevMonth}
+                        className="p-1 hover:bg-[#F0EDE4] border border-[#E2DCC8]/50 rounded-lg text-xs font-extrabold cursor-pointer transition-colors text-gray-600"
+                      >
+                        ◀
+                      </button>
+                      <span className="text-xs font-black text-[#5A5A40]">
+                        {arabicMonths[month]} {year}
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={handleNextMonth}
+                        className="p-1 hover:bg-[#F0EDE4] border border-[#E2DCC8]/50 rounded-lg text-xs font-extrabold cursor-pointer transition-colors text-gray-600"
+                      >
+                        ▶
+                      </button>
+                    </div>
+
+                    {/* Weekday Labels */}
+                    <div className="grid grid-cols-7 gap-1 text-center border-b border-gray-100 pb-1">
+                      {weekdays.map((wd, i) => (
+                        <span key={i} className="text-[10px] font-extrabold text-gray-400">{wd}</span>
+                      ))}
+                    </div>
+
+                    {/* Days Grid */}
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {days.map((dayDate, idx) => {
+                        if (!dayDate) {
+                          return <div key={`empty-${idx}`} className="aspect-square" />;
+                        }
+
+                        const isoString = dayDate.toISOString().split('T')[0];
+                        const isSelected = selectedCalendarDate === isoString;
+                        const isToday = new Date().toISOString().split('T')[0] === isoString;
+                        
+                        const hasDiary = diaries.some(d => d.createdAt.split('T')[0] === isoString && !d.isTrash);
+                        const hasBook = books.some(b => b.createdAt.split('T')[0] === isoString);
+
+                        return (
+                          <button
+                            key={isoString}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCalendarDate(isoString);
+                              setSelectedBookDetail(null);
+                            }}
+                            className={`aspect-square rounded-xl flex flex-col items-center justify-center text-[11px] font-extrabold transition-all relative cursor-pointer border ${
+                              isSelected
+                                ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-xs scale-105'
+                                : isToday
+                                  ? 'bg-[#FAEDCD] text-[#D4A373] border-[#D4A373]'
+                                  : 'bg-[#F9F7F2] hover:bg-[#F0EDE4] text-gray-700 border-transparent'
+                            }`}
+                            title={`${dayDate.getDate()} ${arabicMonths[month]}`}
+                          >
+                            <span>{dayDate.getDate()}</span>
+                            <div className="absolute bottom-1 flex space-x-0.5 space-x-reverse justify-center w-full">
+                              {hasDiary && (
+                                <span className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-[#8B9D83] animate-pulse'}`} />
+                              )}
+                              {hasBook && (
+                                <span className={`w-1 h-1 rounded-full ${isSelected ? 'bg-[#FEFAE0]' : 'bg-[#D4A373]'}`} />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-[#E2DCC8]/50 rounded-2xl p-3 space-y-1 shadow-3xs">
+                    <span className="block text-[10px] text-gray-400 font-bold">التاريخ المحدد حالياً:</span>
+                    <span className="text-xs font-black text-[#5A5A40] block leading-tight">
+                      {formattedDateLabel}
+                    </span>
+                  </div>
+
+                  {/* Indicators legend */}
+                  <div className="bg-white border border-gray-100 rounded-2xl p-3 space-y-2 text-[10px] font-bold text-gray-500 shadow-3xs">
+                    <div className="flex items-center space-x-1.5 space-x-reverse">
+                      <span className="w-2 h-2 rounded-full bg-[#8B9D83]" />
+                      <span>يوميات أو مذكرات مسجلة 🟢</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 space-x-reverse">
+                      <span className="w-2 h-2 rounded-full bg-[#D4A373]" />
+                      <span>قراءات أو كتب مضافة للمكتبة 📚</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: Interactive Workspaces */}
+                <div className="flex-1 p-6 overflow-y-auto bg-white flex flex-col justify-between">
+                  
+                  {/* TAB 1: CALENDAR VIEW & DAY ACTIVITIES */}
+                  {calendarSubTab === 'calendar' && (
+                    <div className="space-y-5 flex-1 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-[#E2DCC8]/50 pb-3">
+                          <h3 className="text-base font-black text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                            <span className="p-1 bg-[#8B9D83]/10 text-[#8B9D83] rounded-lg">☀️</span>
+                            <span>ما حدث في يوم: {selectedCalendarDate}</span>
+                          </h3>
+                          <span className="text-xs font-bold text-[#8B9D83] bg-[#8B9D83]/10 px-3 py-1 rounded-full">
+                            {hasDiaryOnSelectedDay ? 'يوميات مسجلة' : 'يوم هادئ/فارغ'}
+                          </span>
+                        </div>
+
+                        {hasDiaryOnSelectedDay ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Left: Content Card */}
+                            <div className="bg-[#F9F7F2]/40 border border-[#E2DCC8]/60 rounded-2xl p-4 space-y-3">
+                              <div>
+                                <span className="text-[10px] font-bold text-gray-400">عنوان المذكرة 📓</span>
+                                <h4 className="text-sm font-black text-[#3A3A3A] mt-0.5">{dayEntry.title || 'بدون عنوان'}</h4>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold text-gray-400">المحتوى والفضفضة ✍️</span>
+                                <p className="text-xs text-gray-600 leading-relaxed max-h-[160px] overflow-y-auto mt-1 whitespace-pre-wrap">
+                                  {dayEntry.content || 'مذكرة فارغة بدون تفاصيل نصية.'}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-1 pt-2 border-t border-[#E2DCC8]/30">
+                                {dayEntry.moods.map((m, idx) => (
+                                  <span key={idx} className="text-[10px] font-bold bg-[#8B9D83]/10 text-[#5A5A40] border border-[#8B9D83]/20 px-2 py-0.5 rounded-full">
+                                    {m}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Right: Health & Behavior KPI Stats */}
+                            <div className="bg-[#F9F7F2]/40 border border-[#E2DCC8]/60 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+                              <h4 className="text-xs font-black text-[#5A5A40] border-b border-[#E2DCC8]/30 pb-1.5 flex items-center justify-between">
+                                <span>الالتزام والقياسات النفسية والصحية 📊</span>
+                                <span className="text-[10px] font-extrabold text-[#D4A373]">مؤشرات اليوم</span>
+                              </h4>
+                              
+                              <div className="space-y-2.5 flex-1 justify-center flex flex-col">
+                                <div className="flex items-center justify-between text-xs font-bold text-gray-600">
+                                  <span className="flex items-center gap-1">💊 جرعة العلاج والالتزام:</span>
+                                  <span className="font-extrabold text-[#3A3A3A]">
+                                    {dayEntry.medications && dayEntry.medications.length > 0 ? (
+                                      <span className="text-emerald-600">تم الالتزام ({dayEntry.medications.filter(m => m.taken).length}/{dayEntry.medications.length})</span>
+                                    ) : (
+                                      <span className="text-gray-400 italic">لم تسجل مكملات</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs font-bold text-gray-600">
+                                  <span className="flex items-center gap-1">🏃 النشاط والرياضة البدنية:</span>
+                                  <span className="font-extrabold text-[#3A3A3A]">
+                                    {dayEntry.sportsDuration && dayEntry.sportsDuration > 0 ? (
+                                      <span className="text-[#8B9D83]">{dayEntry.sportsDuration} دقيقة ممارسة</span>
+                                    ) : (
+                                      <span className="text-gray-400 italic">لا توجد تمارين</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs font-bold text-gray-600">
+                                  <span className="flex items-center gap-1">💤 جودة وساعات النوم:</span>
+                                  <span className="font-extrabold text-[#3A3A3A]">
+                                    {dayEntry.sleepHours ? (
+                                      <span>{dayEntry.sleepHours} ساعات</span>
+                                    ) : (
+                                      <span className="text-gray-400 italic">غير مسجل</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs font-bold text-gray-600">
+                                  <span className="flex items-center gap-1">🥤 نسبة ترطيب الجسم (الماء):</span>
+                                  <span className="font-extrabold text-[#3A3A3A]">
+                                    {dayEntry.waterCups ? (
+                                      <span className="text-blue-600 font-black">{dayEntry.waterCups} أكواب 🥤</span>
+                                    ) : (
+                                      <span className="text-gray-400 italic">0 كوب</span>
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {dayBooks.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-[#E2DCC8]/30 flex items-center justify-between text-[11px] font-black text-[#D4A373]">
+                                  <span>📚 قراءات مضافة في هذا اليوم:</span>
+                                  <span>{dayBooks.length} كتب</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-[#F9F7F2]/20 border border-dashed border-[#E2DCC8] rounded-3xl p-10 text-center space-y-4 my-8">
+                            <Calendar className="w-12 h-12 text-gray-300 mx-auto" />
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-black text-[#5A5A40]">لا توجد يوميات أو مذكرات مسجلة لهذا اليوم</h4>
+                              <p className="text-xs text-gray-400">تاريخ {selectedCalendarDate} يخلو حالياً من التوثيقات والمذكرات النفسية.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDate(selectedCalendarDate);
+                                setShowCalendarModal(false);
+                                setActiveTab('diaries');
+                              }}
+                              className="px-5 py-2 bg-[#8B9D83] hover:bg-[#5A5A40] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs inline-flex items-center gap-2"
+                            >
+                              <span>+ تدوين مذكرات جديدة لليوم</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-[10px] text-gray-400 text-center leading-relaxed border-t border-gray-100 pt-3">
+                        <span>💡 يمكنك اختيار أي يوم من التقويم باليسار لتظهر لك تفاصيل المزاج، النوم، الرياضة والعلاج فوراً وبكل سرية.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: LIBRARY VIEW & ADD BOOK FORM */}
+                  {calendarSubTab === 'library' && (
+                    <div className="space-y-4 flex-1 flex flex-col justify-between">
+                      {showAddBookForm ? (
+                        /* ADD BOOK FORM */
+                        <form onSubmit={handleSaveBook} className="space-y-3.5 flex-1">
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                            <h3 className="text-sm font-black text-[#5A5A40] flex items-center space-x-2 space-x-reverse">
+                              <span>إضافة كتاب جديد للمكتبة 📖✨</span>
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddBookForm(false)}
+                              className="text-xs font-bold text-gray-400 hover:text-gray-600 cursor-pointer"
+                            >
+                              إلغاء التعديل
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Column 1: Info */}
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-[11px] font-black text-gray-500 mb-1">عنوان الكتاب أو الرواية *</label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={bookFormTitle}
+                                  onChange={(e) => setBookFormTitle(e.target.value)}
+                                  placeholder="مثال: العلاج النفسي الذاتي، رواية السلام"
+                                  className="w-full bg-[#F9F7F2]/50 border border-[#E2DCC8] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#8B9D83] text-[#3A3A3A] font-bold"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-black text-gray-500 mb-1">ملاحظات واقتباسات أو مؤلف الكتاب</label>
+                                <textarea
+                                  value={bookFormNotes}
+                                  onChange={(e) => setBookFormNotes(e.target.value)}
+                                  placeholder="أضف مراجعة قصيرة، مؤلف الكتاب، أو اقتباس ملهماً شعرت به..."
+                                  rows={4}
+                                  className="w-full bg-[#F9F7F2]/50 border border-[#E2DCC8] rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#8B9D83] text-[#3A3A3A] font-bold leading-relaxed resize-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-black text-gray-500 mb-1">تقييمك الشخصي للكتاب:</label>
+                                <div className="flex items-center space-x-1.5 space-x-reverse">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                      key={star}
+                                      type="button"
+                                      onClick={() => setBookFormRating(star)}
+                                      className="text-lg hover:scale-110 transition-transform cursor-pointer"
+                                    >
+                                      {star <= bookFormRating ? '★' : '☆'}
+                                    </button>
+                                  ))}
+                                  <span className="text-[10px] text-gray-400 font-bold mr-2">({bookFormRating}/5 نجوم)</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Column 2: Attachments & Simulation */}
+                            <div className="space-y-3 bg-[#F9F7F2]/35 border border-[#E2DCC8]/40 rounded-2xl p-4">
+                              <span className="block text-xs font-black text-[#5A5A40] border-b border-[#E2DCC8]/30 pb-1 mb-2">الملحقات الكاملة للكتاب (PDF، صوت، رسم، إلخ) : 📎</span>
+                              
+                              <div>
+                                <label className="block text-[10px] font-black text-gray-500 mb-1">مسار ملف PDF (أو اسم المرجع الملحق)</label>
+                                <input
+                                  type="text"
+                                  value={bookFormPdf}
+                                  onChange={(e) => setBookFormPdf(e.target.value)}
+                                  placeholder="مثال: كتاب_العلاج_المعرفي_الكامل.pdf"
+                                  className="w-full bg-white border border-[#E2DCC8] rounded-lg px-2.5 py-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#8B9D83] text-[#3A3A3A] font-bold"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-black text-gray-500 mb-1">رابط مرجعي للموقع أو الكتاب الإلكتروني</label>
+                                <input
+                                  type="text"
+                                  value={bookFormLink}
+                                  onChange={(e) => setBookFormLink(e.target.value)}
+                                  placeholder="https://example.com/mybook"
+                                  className="w-full bg-white border border-[#E2DCC8] rounded-lg px-2.5 py-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#8B9D83] text-[#3A3A3A] font-bold"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBookFormAudio(bookFormAudio ? '' : 'سجل_ملخص_كتابي_رائع.mp3');
+                                  }}
+                                  className={`py-1.5 text-[10px] font-black rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                                    bookFormAudio 
+                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
+                                      : 'bg-white border-[#E2DCC8] hover:bg-gray-50 text-[#3A3A3A]'
+                                  }`}
+                                >
+                                  <span>🎙️ {bookFormAudio ? 'صوت مرفق ✓' : 'أضف صوت'}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBookFormVideo(bookFormVideo ? '' : 'فيديو_شرح_مهم.mp4');
+                                  }}
+                                  className={`py-1.5 text-[10px] font-black rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                                    bookFormVideo 
+                                      ? 'bg-blue-50 border-blue-300 text-blue-800' 
+                                      : 'bg-white border-[#E2DCC8] hover:bg-gray-50 text-[#3A3A3A]'
+                                  }`}
+                                >
+                                  <span>📹 {bookFormVideo ? 'فيديو مرفق ✓' : 'أضف فيديو'}</span>
+                                </button>
+                              </div>
+
+                              <div className="flex items-center justify-between border-t border-gray-200/50 pt-2.5 mt-2.5">
+                                <span className="text-[10px] font-black text-[#5A5A40]">رسم مخطط ذهني أو انطباع للرواية يدوياً: 🎨</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setBookFormHasMindMap(!bookFormHasMindMap)}
+                                  className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer ${
+                                    bookFormHasMindMap ? 'bg-[#8B9D83]' : 'bg-gray-300'
+                                  }`}
+                                >
+                                  <span className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${
+                                    bookFormHasMindMap ? 'right-5' : 'right-1'
+                                  }`} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-end space-x-3 space-x-reverse pt-2 border-t border-gray-100">
+                            <button
+                              type="button"
+                              onClick={() => setShowAddBookForm(false)}
+                              className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-xs font-bold rounded-xl transition-all cursor-pointer text-gray-500"
+                            >
+                              إلغاء وحفظ لاحقاً
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-5 py-2 bg-[#8B9D83] hover:bg-[#5A5A40] text-white text-xs font-black rounded-xl transition-all cursor-pointer shadow-sm"
+                            >
+                              حفظ الكتاب
+                            </button>
+                          </div>
+                        </form>
+                      ) : selectedBookDetail ? (
+                        /* BOOK DETAIL OVERLAY VIEW */
+                        <div className="space-y-4 flex-1 flex flex-col justify-between">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedBookDetail(null)}
+                                className="text-xs font-black text-[#8B9D83] hover:text-[#5A5A40] flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                                <span>العودة لقائمة الكتب</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBook(selectedBookDetail.id)}
+                                className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                                title="حذف الكتاب"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-3">
+                                <div>
+                                  <span className="text-[10px] font-bold text-gray-400">اسم الكتاب والتقييم 📚</span>
+                                  <h4 className="text-base font-black text-[#3A3A3A] mt-0.5">{selectedBookDetail.title}</h4>
+                                  <div className="flex items-center text-amber-500 text-sm mt-1">
+                                    {'★'.repeat(selectedBookDetail.rating)}
+                                    {'☆'.repeat(5 - selectedBookDetail.rating)}
+                                    <span className="text-xs text-gray-400 font-bold mr-2">({selectedBookDetail.rating}/5)</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-bold text-gray-400">ملاحظات، تلخيص واقتباسات 📝</span>
+                                  <p className="text-xs text-gray-600 leading-relaxed max-h-[160px] overflow-y-auto mt-1 whitespace-pre-wrap bg-[#F9F7F2]/45 border border-[#E2DCC8]/50 p-3.5 rounded-2xl font-medium">
+                                    {selectedBookDetail.notes || 'لا توجد ملاحظات تفصيلية مسجلة.'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="bg-[#F9F7F2]/30 border border-[#E2DCC8]/50 rounded-2xl p-4 space-y-3 flex flex-col justify-start">
+                                <span className="block text-xs font-black text-[#5A5A40] border-b border-gray-100 pb-1">المحاكاة التفاعلية للملحقات: 📎</span>
+                                
+                                {selectedBookDetail.pdfPath && (
+                                  <button
+                                    type="button"
+                                    onClick={() => alert(`📖 محاكاة فتح مستند PDF:\nاسم المستند: ${selectedBookDetail.pdfPath}\nتنبيه: جاري تحميل وقراءة الفصول والملخص الشامل بنجاح وسرية تامة...`)}
+                                    className="w-full text-right p-2.5 bg-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-xl flex items-center justify-between transition-all text-xs font-bold text-gray-700 cursor-pointer shadow-3xs"
+                                  >
+                                    <span className="flex items-center gap-2"><span>📂</span> <span>فتح ملف PDF والكتاب</span></span>
+                                    <span className="text-[10px] text-[#8B9D83]">جاهز للقراءة 📖</span>
+                                  </button>
+                                )}
+
+                                {selectedBookDetail.referenceLink && (
+                                  <a
+                                    href={selectedBookDetail.referenceLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full text-right p-2.5 bg-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-xl flex items-center justify-between transition-all text-xs font-bold text-gray-700 cursor-pointer shadow-3xs"
+                                  >
+                                    <span className="flex items-center gap-2"><span>🔗</span> <span>رابط الموقع المرجعي للكتاب</span></span>
+                                    <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                                  </a>
+                                )}
+
+                                {selectedBookDetail.audioAttachment && (
+                                  <button
+                                    type="button"
+                                    onClick={() => alert(`🎙️ جاري تفعيل مشغل الملخص الصوتي للكتاب...\nالملف: ${selectedBookDetail.audioAttachment}\nاستمع للمراجعة الصوتية القصيرة بنجاح.`)}
+                                    className="w-full text-right p-2.5 bg-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-xl flex items-center justify-between transition-all text-xs font-bold text-gray-700 cursor-pointer shadow-3xs"
+                                  >
+                                    <span className="flex items-center gap-2"><span>🎙️</span> <span>الاستماع للملخص الصوتي</span></span>
+                                    <Music className="w-3.5 h-3.5 text-[#8B9D83]" />
+                                  </button>
+                                )}
+
+                                {selectedBookDetail.videoAttachment && (
+                                  <button
+                                    type="button"
+                                    onClick={() => alert(`📹 تشغيل المراجعة المرئية السريعة:\nالملف: ${selectedBookDetail.videoAttachment}\nالعرض ناجح ومحمي وسريع الاستجابة.`)}
+                                    className="w-full text-right p-2.5 bg-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-xl flex items-center justify-between transition-all text-xs font-bold text-gray-700 cursor-pointer shadow-3xs"
+                                  >
+                                    <span className="flex items-center gap-2"><span>📹</span> <span>تشغيل الفيديو المرفق</span></span>
+                                    <span className="text-[10px] text-[#D4A373]">مقطع مرئي 📹</span>
+                                  </button>
+                                )}
+
+                                {selectedBookDetail.hasMindMap && (
+                                  <div className="border border-dashed border-[#E2DCC8] rounded-xl p-3 bg-white space-y-2">
+                                    <span className="block text-[10px] font-black text-gray-400">مخطط ذهني لربط وتلخيص الرواية 🎨:</span>
+                                    <div className="flex flex-col items-center justify-center p-2 bg-[#F9F7F2] rounded-lg border border-[#E2DCC8]/40 space-y-1.5">
+                                      <div className="text-[11px] font-black text-[#5A5A40] bg-white border border-[#E2DCC8] px-2.5 py-0.5 rounded-full shadow-3xs">
+                                        {selectedBookDetail.title.slice(0, 18)}...
+                                      </div>
+                                      <div className="w-0.5 h-3 bg-[#8B9D83]/60" />
+                                      <div className="flex justify-center gap-2 w-full">
+                                        <span className="text-[9px] font-bold bg-white border border-gray-100 px-1.5 py-0.5 rounded-lg text-gray-500 shadow-3xs">المحور الأول</span>
+                                        <span className="text-[9px] font-bold bg-white border border-gray-100 px-1.5 py-0.5 rounded-lg text-gray-500 shadow-3xs">المحور الثاني</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-[10px] text-gray-400 text-center leading-relaxed border-t border-gray-100 pt-3">
+                            <span>💡 هذه الملحقات مدمجة وتفاعلية لمساعدتك على قراءة مراجعك وتلخيصها يدوياً أو صوتياً وبناء أرشيفك الثقافي.</span>
+                          </div>
+                        </div>
+                      ) : (
+                        /* LIST BOOKS AND SEARCH */
+                        (() => {
+                          const getCoverBg = (id: string) => {
+                            const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                            const colors = [
+                              'from-[#5A5A40] to-[#3D3D2A] border-[#FEFAE0]/30 text-amber-100/90', // Olive Gold
+                              'from-[#5C2E2B] to-[#3D1E1C] border-[#E2DCC8]/30 text-[#FEFAE0]', // Crimson Leather
+                              'from-[#2E4A62] to-[#1A2D3C] border-blue-200/30 text-blue-100', // Royal Blue
+                              'from-[#4A5D4E] to-[#2D3A30] border-[#CCD5AE]/40 text-[#FEFAE0]', // Sage Pine
+                              'from-[#78350F] to-[#451A03] border-amber-400/30 text-amber-100', // Rich Mahogany
+                            ];
+                            return colors[hash % colors.length];
+                          };
+
+                          const filteredBooks = books.filter(book => {
+                            const matchesSearch = book.title.toLowerCase().includes(bookSearchQuery.toLowerCase()) ||
+                                                  (book.notes || '').toLowerCase().includes(bookSearchQuery.toLowerCase());
+                            const matchesRating = bookRatingFilter === 0 || book.rating >= bookRatingFilter;
+                            const matchesAttachment = bookAttachmentFilter === 'all' ||
+                                                      (bookAttachmentFilter === 'pdf' && book.pdfPath) ||
+                                                      (bookAttachmentFilter === 'audio' && book.audioAttachment) ||
+                                                      (bookAttachmentFilter === 'video' && book.videoAttachment) ||
+                                                      (bookAttachmentFilter === 'mindmap' && book.hasMindMap);
+                            return matchesSearch && matchesRating && matchesAttachment;
+                          });
+
+                          return (
+                            <div className="space-y-4 flex-1 flex flex-col justify-between overflow-hidden">
+                              <div className="space-y-4 flex-1 flex flex-col overflow-hidden">
+                                
+                                {/* Top bar: Title & Add Book Button */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                  <div>
+                                    <h3 className="text-base font-extrabold text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                                      <span className="p-1.5 bg-[#8B9D83]/10 text-[#8B9D83] rounded-xl">📚</span>
+                                      <span>مكتبتي الشاملة وأرشيفي الثقافي</span>
+                                    </h3>
+                                    <p className="text-[10px] text-gray-400 font-medium mt-0.5">تصفح وتصفية جميع المراجع والكتب والروايات المضافة بذكاء ميسر</p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowAddBookForm(true)}
+                                    className="px-4 py-2 bg-gradient-to-l from-[#5A5A40] to-[#8B9D83] hover:opacity-95 text-white text-xs font-black rounded-xl transition-all cursor-pointer shadow-sm active:scale-97 shrink-0"
+                                  >
+                                    + إضافة مادة قرائية جديدة
+                                  </button>
+                                </div>
+
+                                {/* Advanced Filters Bar */}
+                                <div className="bg-[#F9F7F2]/65 border border-[#E2DCC8]/60 p-3.5 rounded-2xl space-y-3">
+                                  {/* Row 1: Search Input */}
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={bookSearchQuery}
+                                      onChange={(e) => setBookSearchQuery(e.target.value)}
+                                      placeholder="ابحث عن كتاب بالاسم، المؤلف أو الكلمات الدلالية..."
+                                      className="w-full bg-white border border-[#E2DCC8] rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#8B9D83] text-[#3A3A3A] font-bold"
+                                    />
+                                    <span className="absolute left-3.5 top-2.5 text-gray-400 text-xs">🔍</span>
+                                    {bookSearchQuery && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setBookSearchQuery('')}
+                                        className="absolute left-8 top-2 text-gray-400 hover:text-[#5A5A40] text-xs font-bold cursor-pointer"
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Row 2: Attachment and Rating Filters */}
+                                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
+                                    {/* Attachment Filter */}
+                                    <div className="flex items-center space-x-1.5 space-x-reverse overflow-x-auto py-0.5">
+                                      <span className="text-[10px] text-gray-400 font-black shrink-0">الملحقات:</span>
+                                      {[
+                                        { id: 'all', label: 'الكل' },
+                                        { id: 'pdf', label: 'PDF 📂' },
+                                        { id: 'audio', label: 'صوت 🎙️' },
+                                        { id: 'video', label: 'مرئي 📹' },
+                                        { id: 'mindmap', label: 'خريطة ذهنية 🎨' }
+                                      ].map(opt => (
+                                        <button
+                                          key={opt.id}
+                                          type="button"
+                                          onClick={() => setBookAttachmentFilter(opt.id)}
+                                          className={`px-2.5 py-1 text-[10px] font-black rounded-lg border transition-all cursor-pointer whitespace-nowrap ${
+                                            bookAttachmentFilter === opt.id
+                                              ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-3xs'
+                                              : 'bg-white border-[#E2DCC8] text-gray-500 hover:text-[#5A5A40]'
+                                          }`}
+                                        >
+                                          {opt.label}
+                                        </button>
+                                      ))}
+                                    </div>
+
+                                    {/* Rating Filter */}
+                                    <div className="flex items-center space-x-1.5 space-x-reverse">
+                                      <span className="text-[10px] text-gray-400 font-black">التقييم الأدنى:</span>
+                                      <select
+                                        value={bookRatingFilter}
+                                        onChange={(e) => setBookRatingFilter(Number(e.target.value))}
+                                        className="bg-white border border-[#E2DCC8] rounded-lg px-2 py-1 text-[10px] font-black text-[#5A5A40] focus:outline-none"
+                                      >
+                                        <option value={0}>عرض الكل ⭐</option>
+                                        <option value={5}>⭐⭐⭐⭐⭐ (5)</option>
+                                        <option value={4}>⭐⭐⭐⭐+ (4)</option>
+                                        <option value={3}>⭐⭐⭐+ (3)</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Books Grid (Custom Redesigned) */}
+                                {filteredBooks.length === 0 ? (
+                                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#F9F7F2]/20 border border-dashed border-[#E2DCC8] rounded-3xl my-2">
+                                    <span className="text-3xl animate-bounce">📭</span>
+                                    <div className="space-y-1 mt-2">
+                                      <h4 className="text-xs font-black text-[#5A5A40]">لم يتم العثور على أي مراجع مطابقة للبحث</h4>
+                                      <p className="text-[10px] text-gray-400">يرجى تعديل خيارات التصفية أو إدخال مادة قرائية جديدة للبدء.</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3.5 p-1">
+                                    {filteredBooks.map((book) => (
+                                      <div
+                                        key={book.id}
+                                        onClick={() => setSelectedBookDetail(book)}
+                                        className="bg-white hover:bg-[#F9F7F2]/30 border border-[#E2DCC8]/70 hover:border-[#8B9D83] p-3 rounded-2xl flex items-stretch space-x-3.5 space-x-reverse transition-all cursor-pointer shadow-3xs hover:shadow-xs group duration-200"
+                                      >
+                                        {/* Left Side: Premium Physical Book Cover Simulation */}
+                                        <div className={`w-[85px] shrink-0 bg-gradient-to-b ${getCoverBg(book.id)} rounded-xl border p-2 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-transform group-hover:scale-102`}>
+                                          {/* Gold Leaf Accent Lines */}
+                                          <div className="absolute inset-y-0 right-1 w-0.5 bg-yellow-300/20" />
+                                          <div className="absolute inset-x-2 top-2 h-[1px] bg-yellow-300/15" />
+                                          <div className="absolute inset-x-2 bottom-2 h-[1px] bg-yellow-300/15" />
+
+                                          {/* Spine simulation */}
+                                          <div className="absolute inset-y-0 right-0 w-1.5 bg-black/15 border-l border-white/5" />
+
+                                          <div className="space-y-1 relative z-10">
+                                            <span className="block text-[8px] tracking-widest uppercase opacity-75 font-black text-center">أرشيف اقرأ</span>
+                                            <h5 className="text-[10px] font-black text-center leading-tight line-clamp-3 mt-1 text-shadow-sm font-sans">
+                                              {book.title}
+                                            </h5>
+                                          </div>
+
+                                          <div className="text-center relative z-10 pt-2">
+                                            <span className="inline-block text-[9px] bg-white/15 px-1.5 py-0.5 rounded-md font-black">
+                                              ⭐ {book.rating}.0
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Right Side: Detailed metadata and notes preview */}
+                                        <div className="flex-grow flex flex-col justify-between py-1 text-right">
+                                          <div className="space-y-1">
+                                            <div className="flex items-center justify-between gap-1">
+                                              <h4 className="text-xs font-black text-[#3A3A3A] group-hover:text-[#8B9D83] transition-colors line-clamp-1 leading-snug">
+                                                {book.title}
+                                              </h4>
+                                              <span className="text-[8px] text-gray-400 font-extrabold whitespace-nowrap bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md">
+                                                {book.createdAt ? book.createdAt.split('T')[0] : 'سابق'}
+                                              </span>
+                                            </div>
+                                            
+                                            <p className="text-[10.5px] text-gray-500 line-clamp-2 leading-relaxed">
+                                              {book.notes || 'لا توجد ملاحظات أو اقتباسات مدونة لهذه المادة القرائية.'}
+                                            </p>
+                                          </div>
+
+                                          {/* Glowing Attachment Badges */}
+                                          <div className="flex flex-wrap gap-1 mt-2.5">
+                                            {book.pdfPath && (
+                                              <span className="text-[9px] font-black bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-lg border border-emerald-100">PDF 📂</span>
+                                            )}
+                                            {book.referenceLink && (
+                                              <span className="text-[9px] font-black bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-lg border border-blue-100">مرجع 🔗</span>
+                                            )}
+                                            {book.audioAttachment && (
+                                              <span className="text-[9px] font-black bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-lg border border-purple-100">صوت 🎙️</span>
+                                            )}
+                                            {book.videoAttachment && (
+                                              <span className="text-[9px] font-black bg-amber-50 text-[#D4A373] px-1.5 py-0.5 rounded-lg border border-amber-100">مرئي 📹</span>
+                                            )}
+                                            {book.hasMindMap && (
+                                              <span className="text-[9px] font-black bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded-lg border border-rose-100">مخطط 🎨</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Footer guide statement */}
+                              <div className="text-[10px] text-gray-400 text-center leading-relaxed border-t border-gray-100 pt-3">
+                                <span>💡 اضغط على غلاف أي كتاب لاستعراض محتوياته الكاملة وملاحظاتك المترابطة أو تشغيل المراجعات المرئية والصوتية له.</span>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 3: PSYCHOLOGICAL REPORTS & AI WISDOM */}
+                  {calendarSubTab === 'reports' && (
+                    <div className="space-y-4 flex-1 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-[#E2DCC8]/50 pb-3">
+                          <h3 className="text-base font-black text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                            <span className="p-1 bg-[#8B9D83]/10 text-[#8B9D83] rounded-lg">🧠</span>
+                            <span>التقارير التحليلية والحكمة النفسية 🧠</span>
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCalendarModal(false);
+                              setShowTherapistModal(true);
+                            }}
+                            className="px-3.5 py-1.5 bg-gradient-to-l from-[#5A5A40] to-[#8B9D83] text-white text-xs font-black rounded-xl cursor-pointer transition-all hover:opacity-90 shadow-3xs"
+                          >
+                            توليد التقرير السلوكي والمزاجي الأسبوعي
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Compliance KPIs card */}
+                          <div className="bg-[#F9F7F2]/40 border border-[#E2DCC8]/60 rounded-2xl p-4 space-y-3">
+                            <h4 className="text-xs font-black text-[#5A5A40] border-b border-[#E2DCC8]/30 pb-1 flex items-center justify-between">
+                              <span>مستوى التزام العادات السلوكية 🏃‍♂️</span>
+                              <span className="text-[10px] font-extrabold text-[#8B9D83]">هذا الأسبوع</span>
+                            </h4>
+                            <div className="space-y-2.5">
+                              {habits.slice(0, 3).map((habit) => {
+                                const totalDays = Object.keys(habit.history).length;
+                                const completedDays = Object.values(habit.history).filter(v => v).length;
+                                const ratio = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
+                                return (
+                                  <div key={habit.id} className="space-y-1">
+                                    <div className="flex items-center justify-between text-xs font-bold text-gray-600">
+                                      <span>{habit.name}</span>
+                                      <span>{ratio}% ({completedDays}/{totalDays})</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-[#8B9D83] rounded-full transition-all duration-500" 
+                                        style={{ width: `${ratio}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Dynamic Custom AI Wisdom Card */}
+                          <div className="bg-[#F9F7F2]/45 border border-[#E2DCC8]/60 p-4 rounded-2xl flex flex-col justify-between">
+                            <div className="space-y-2">
+                              <span className="block text-[10px] font-black text-gray-400">توصية المستشار الطبي الذكي اليوم 🧘:</span>
+                              <p className="text-xs text-gray-700 leading-relaxed font-bold">
+                                "إن توازن جودة القراءة مع ممارسة تمارين التنفس هو ركيزة أساسية لخفض مستويات الكورتيزول وتصفية العقل. ننصحك بقراءة ٢٠ دقيقة من كتاب العلاج السلوكي المفضل لديك قبل النوم وتجنب الشاشات."
+                              </p>
+                            </div>
+                            <div className="text-[10px] text-gray-400 italic text-left border-t border-gray-100/80 pt-2.5 mt-2.5">
+                              — مستشارك النفسي الصديق
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Additional insights list */}
+                        <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3 shadow-3xs">
+                          <h4 className="text-xs font-black text-[#5A5A40]">توصيات لتحسين جودة القراءة والصحة النفسية 🧘:</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-gray-600 font-semibold leading-relaxed">
+                            <div className="flex items-start gap-1.5">
+                              <span className="text-emerald-500">✔</span>
+                              <span>ممارسة رياضة التنفس والوعي الذهني لمدة ١٠ دقائق يومياً قبل كتابة المذكرات لتخفيف التوتر.</span>
+                            </div>
+                            <div className="flex items-start gap-1.5">
+                              <span className="text-emerald-500">✔</span>
+                              <span>تخصيص ٢٠ دقيقة للقراءة من المكتبة الشاملة قبل النوم لتهدئة الدماغ واستبدال الهواتف الزرقاء.</span>
+                            </div>
+                            <div className="flex items-start gap-1.5">
+                              <span className="text-emerald-500">✔</span>
+                              <span>ربط المهام الصعبة بمكافأة ممتعة كقراءة فصل جديد من روايتك المفضلة لتشجيع العقل على الإنجاز.</span>
+                            </div>
+                            <div className="flex items-start gap-1.5">
+                              <span className="text-emerald-500">✔</span>
+                              <span>مراجعة المخططات الذهنية للكتب وقائمة الاقتباسات بشكل دوري لترسيخ المعارف والسلوكيات الإيجابية.</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-[10px] text-gray-400 text-center leading-relaxed border-t border-gray-100 pt-3">
+                        <span>💡 يمكنك تصدير تقرير علاجي مفصل وجاهز للطباعة والتسليم لطبيبك المعالج عن طريق النقر على الزر بالزاوية العلوية اليسرى.</span>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Global Hidden Input File Elements for Dashboard Quick Actions */}
+      <input 
+        type="file" 
+        id="global-image-uploader" 
+        accept="image/*" 
+        className="hidden" 
+        onChange={handleGlobalImageUpload} 
+      />
+      <input 
+        type="file" 
+        id="global-video-uploader" 
+        accept="video/*" 
+        className="hidden" 
+        onChange={handleGlobalVideoUpload} 
+      />
+      <input 
+        type="file" 
+        id="global-audio-uploader" 
+        accept="audio/*" 
+        className="hidden" 
+        onChange={handleGlobalAudioUpload} 
+      />
+      <input 
+        type="file" 
+        id="global-document-uploader" 
+        accept=".pdf,.doc,.docx,.txt" 
+        className="hidden" 
+        onChange={handleGlobalDocumentUpload} 
+      />
+
+      {/* Simulated Hardware Power Button protruding from the right edge */}
+      <div 
+        onClick={() => setSettings(prev => ({ ...prev, isAppLocked: true }))}
+        className="fixed right-0 top-[35%] w-3.5 h-16 bg-gradient-to-l from-[#222] to-[#444] rounded-l-lg hover:from-[#333] hover:to-[#555] border border-gray-600 border-r-0 shadow-xl cursor-pointer transition-all hover:w-4 z-[9999] flex items-center justify-center group"
+        title="زر الـ Power الجانبي لقفل التطبيق وشاشة القفل 🔌"
+      >
+        <span className="opacity-0 group-hover:opacity-100 absolute right-6 bg-black/85 text-white text-[10px] font-extrabold py-1 px-2 rounded-lg whitespace-nowrap transition-opacity pointer-events-none shadow-md">
+          إغلاق/قفل الشاشة 🔌
+        </span>
+      </div>
+
+    </div>
+  );
+}

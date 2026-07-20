@@ -1,0 +1,120 @@
+import React, { useState } from 'react';
+import { X, Eye, EyeOff, Globe } from 'lucide-react';
+
+interface GeminiKeyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  apiKey: string;
+  onSave: (key: string) => void;
+  onClear: () => void;
+  isEn: boolean;
+}
+
+export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClear, isEn }: GeminiKeyModalProps) {
+  const [tempKey, setTempKey] = useState(apiKey || '');
+  const [showPassword, setShowPassword] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    onSave(tempKey.trim());
+    onClose();
+  };
+
+  const handleClear = () => {
+    onClear();
+    setTempKey('');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-55 font-sans" dir={isEn ? "ltr" : "rtl"}>
+      <div className="bg-[#FAF8F5] border border-[#E2DCC8] rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl transition-all duration-300 transform scale-100">
+        
+        {/* Header */}
+        <div className="p-6 pb-2 flex items-center justify-between">
+          <h4 className="font-black text-[#2B3E50] text-base md:text-lg flex items-center gap-2">
+            <span>🔑</span>
+            <span>{isEn ? "Gemini API Key Settings" : "إعدادات مفتاح API الخاص بك 🔑"}</span>
+          </h4>
+          <button 
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-6 space-y-4">
+          <p className="text-xs text-gray-600 font-extrabold leading-relaxed text-justify">
+            {isEn 
+              ? "This section allows you to use your personal API key from Google Gemini for the full autonomous and integrated execution of the application."
+              : "يتيح لك هذا القسم استخدام مفتاح الـ API الخاص بك من Google Gemini للتشغيل الكامل والتكامل للتطبيق."}
+          </p>
+
+          <div className="bg-amber-50/10 border border-amber-200/50 rounded-2xl p-4">
+            <p className="text-[10px] text-amber-800/80 font-bold leading-relaxed text-justify">
+              {isEn
+                ? "Note: This key is stored securely and 100% locally on your device only. It is never transmitted or shared with any third party except official Google servers to process your smart requests."
+                : "ملاحظة: يتم تخزين هذا المفتاح محلياً وبشكل آمن تماماً على جهازك الخاص فقط، ولا يتم إرساله أو مشاركته مع أي طرف خارجي سوى خوادم Google الرسمية لمعالجة طلباتك الذكية."}
+            </p>
+          </div>
+
+          {/* Form Field with Label on Border */}
+          <div className="relative mt-4">
+            <label className="absolute -top-2.5 right-4 px-2 bg-[#FAF8F5] text-[10px] font-black text-gray-500">
+              {isEn ? "Gemini API Key" : "مفتاح Gemini API"}
+            </label>
+            <div className="flex items-center bg-white border-2 border-[#E2DCC8] rounded-2xl px-4 py-3 shadow-3xs focus-within:border-[#8B9D83] transition-all">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={tempKey}
+                onChange={(e) => setTempKey(e.target.value)}
+                placeholder={isEn ? "Enter Gemini API Key (AIzaSy...)" : "أدخل مفتاح Gemini API Key (مثال: AIzaSy...)"}
+                className="w-full bg-transparent text-xs text-[#2B3E50] font-mono focus:outline-none placeholder-gray-400 font-bold"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Get Free Key Link Card */}
+          <a
+            href="https://aistudio.google.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-[#F5EFE6] border border-[#E2DCC8] hover:bg-[#EADFC9] text-[#5A4F41] font-extrabold text-xs py-3.5 rounded-2xl transition-all cursor-pointer shadow-3xs"
+          >
+            <Globe className="w-4 h-4 text-sky-600 animate-pulse" />
+            <span>{isEn ? "Get a free key from Google AI Studio" : "احصل على مفتاح مجاني من Google AI Studio"}</span>
+          </a>
+
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={handleClear}
+              className="flex-1 py-3 bg-white hover:bg-red-50 border-2 border-red-100 hover:border-red-200 text-red-600 font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-3xs"
+            >
+              <span>🗑️</span>
+              <span>{isEn ? "Delete Key" : "مسح المفتاح"}</span>
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex-1 py-3 bg-[#3F5449] hover:bg-[#2C3E50] text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs hover:shadow-md"
+            >
+              <span>💾</span>
+              <span>{isEn ? "Save Key" : "حفظ المفتاح"}</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
