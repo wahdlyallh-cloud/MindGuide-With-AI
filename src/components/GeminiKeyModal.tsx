@@ -13,17 +13,54 @@ interface GeminiKeyModalProps {
 export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClear, isEn }: GeminiKeyModalProps) {
   const [tempKey, setTempKey] = useState(apiKey || '');
   const [showPassword, setShowPassword] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationSuccess, setValidationSuccess] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    onSave(tempKey.trim());
-    onClose();
+  const handleSave = async () => {
+    const trimmedKey = tempKey.trim();
+    if (!trimmedKey) {
+      onSave('');
+      onClose();
+      return;
+    }
+
+    setIsValidating(true);
+    setValidationError(null);
+    setValidationSuccess(null);
+
+    try {
+      const response = await fetch('/api/gemini/verify-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: trimmedKey })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setValidationSuccess(isEn ? "API Key verified successfully!" : "تم التحقق من مفتاح الـ API بنجاح وهو يعمل بشكل ممتاز! 🎉");
+        setTimeout(() => {
+          onSave(trimmedKey);
+          onClose();
+          setValidationSuccess(null);
+        }, 1500);
+      } else {
+        setValidationError(data.error || (isEn ? "Failed to verify API Key." : "فشل التحقق من المفتاح. يرجى التأكد من صحته ومحاولة المحاولة مجدداً."));
+      }
+    } catch (e: any) {
+      setValidationError(isEn ? "Connection error during validation." : "حدث خطأ أثناء الاتصال بالخادم للتحقق.");
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   const handleClear = () => {
     onClear();
     setTempKey('');
+    setValidationError(null);
+    setValidationSuccess(null);
     onClose();
   };
 
@@ -70,9 +107,10 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
               <input
                 type={showPassword ? "text" : "password"}
                 value={tempKey}
+                disabled={isValidating}
                 onChange={(e) => setTempKey(e.target.value)}
                 placeholder={isEn ? "Enter Gemini API Key (AIzaSy...)" : "أدخل مفتاح Gemini API Key (مثال: AIzaSy...)"}
-                className="w-full bg-transparent text-xs text-[#2B3E50] font-mono focus:outline-none placeholder-gray-400 font-bold"
+                className="w-full bg-transparent text-xs text-[#2B3E50] font-mono focus:outline-none placeholder-gray-400 font-bold disabled:opacity-50"
               />
               <button
                 type="button"
@@ -83,6 +121,24 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
               </button>
             </div>
           </div>
+
+          {/* Validation Alert Messages */}
+          {validationError && (
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-xs font-bold text-red-700 space-y-1">
+              <p className="flex items-center gap-1">
+                <span>⚠️</span>
+                <span>{isEn ? "Verification Failed:" : "فشل التحقق من المفتاح:"}</span>
+              </p>
+              <p className="font-medium text-[11px] opacity-90 leading-relaxed">{validationError}</p>
+            </div>
+          )}
+
+          {validationSuccess && (
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-xs font-bold text-emerald-800 flex items-center gap-2">
+              <span className="text-sm">✓</span>
+              <span>{validationSuccess}</span>
+            </div>
+          )}
 
           {/* Get Free Key Link Card */}
           <a
@@ -99,17 +155,28 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={handleClear}
-              className="flex-1 py-3 bg-white hover:bg-red-50 border-2 border-red-100 hover:border-red-200 text-red-600 font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-3xs"
+              disabled={isValidating}
+              className="flex-1 py-3 bg-white hover:bg-red-50 border-2 border-red-100 hover:border-red-200 text-red-600 font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-3xs disabled:opacity-50"
             >
               <span>🗑️</span>
               <span>{isEn ? "Delete Key" : "مسح المفتاح"}</span>
             </button>
             <button
               onClick={handleSave}
-              className="flex-1 py-3 bg-[#3F5449] hover:bg-[#2C3E50] text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs hover:shadow-md"
+              disabled={isValidating}
+              className="flex-1 py-3 bg-[#3F5449] hover:bg-[#2C3E50] text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs hover:shadow-md disabled:opacity-75"
             >
-              <span>💾</span>
-              <span>{isEn ? "Save Key" : "حفظ المفتاح"}</span>
+              {isValidating ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>{isEn ? "Verifying..." : "جاري التحقق..."}</span>
+                </>
+              ) : (
+                <>
+                  <span>💾</span>
+                  <span>{isEn ? "Save Key" : "حفظ المفتاح"}</span>
+                </>
+              )}
             </button>
           </div>
         </div>
