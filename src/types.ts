@@ -113,9 +113,14 @@ export interface BackupSettings {
 export interface AppReminder {
   id: string;
   title: string;
-  time: string;
+  time: string; // "HH:MM"
   active: boolean;
-  type: 'habit' | 'diary' | 'custom';
+  type?: 'habit' | 'diary' | 'custom' | 'motivational' | 'meditation';
+  frequency: 'daily' | 'weekly' | 'custom_days';
+  selectedDays?: number[]; // [0,1,2,3,4,5,6] (0 = Sunday, 6 = Saturday)
+  motivationalNote?: string;
+  categoryIcon?: string;
+  createdAt?: string;
 }
 
 export interface AppSettings {

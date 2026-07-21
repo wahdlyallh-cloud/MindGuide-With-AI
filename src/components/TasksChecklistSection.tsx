@@ -13,6 +13,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { DiaryEntry, TaskItem, Habit } from '../types';
+import WeeklyHabitsMoodChart from './WeeklyHabitsMoodChart';
 
 interface TasksChecklistSectionProps {
   activeDiaryForSelectedDate: DiaryEntry | undefined;
@@ -22,6 +23,7 @@ interface TasksChecklistSectionProps {
   habits: Habit[];
   toggleHabitCompletion: (habitId: string, dateStr: string) => void;
   isDarkMode?: boolean;
+  diaries?: DiaryEntry[];
 }
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -47,7 +49,8 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
   handleUpdateTasks,
   habits,
   toggleHabitCompletion,
-  isDarkMode = false
+  isDarkMode = false,
+  diaries = []
 }) => {
   const [newTaskText, setNewTaskText] = useState('');
 
@@ -480,6 +483,11 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
 
         </div>
 
+      </div>
+
+      {/* 📈 Weekly Habit vs Mood Correlation Chart */}
+      <div className="pt-4">
+        <WeeklyHabitsMoodChart habits={habits} diaries={diaries} />
       </div>
 
     </div>

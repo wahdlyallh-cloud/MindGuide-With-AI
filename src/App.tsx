@@ -10,7 +10,7 @@ import {
   Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book } from './types';
+import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book, AppReminder } from './types';
 import StaticNotification from './components/StaticNotification';
 import FloatingBall from './components/FloatingBall';
 import DrawingCanvas from './components/DrawingCanvas';
@@ -27,6 +27,8 @@ import LifeMap from './components/LifeMap';
 import PINLock from './components/PINLock';
 import { TasksChecklistSection } from './components/TasksChecklistSection';
 import IntegratedTherapyReport from './components/IntegratedTherapyReport';
+import WeeklyHabitsMoodChart from './components/WeeklyHabitsMoodChart';
+import SmartRemindersModal from './components/SmartRemindersModal';
 
 // Recharts components for gorgeous analytics
 import { 
@@ -147,9 +149,39 @@ const DEFAULT_SETTINGS: AppSettings = {
     autoBackup: 'daily'
   },
   reminders: [
-    { id: 'rem-1', title: 'منبه كتابة اليوميات اليومي ✍️', time: '21:00', active: true, type: 'diary' },
-    { id: 'rem-2', title: 'تنبيه شرب الماء الصباحي 💧', time: '08:00', active: true, type: 'habit' },
-    { id: 'rem-3', title: 'جلسة الاسترخاء السلوكي 🧘', time: '17:30', active: false, type: 'custom' },
+    { 
+      id: 'rem-1', 
+      title: 'منبه كتابة الخواطر واليوميات ✍️', 
+      time: '21:00', 
+      active: true, 
+      type: 'diary',
+      frequency: 'daily',
+      selectedDays: [0, 1, 2, 3, 4, 5, 6],
+      motivationalNote: 'تدوين خواطرك يفرغ طاقة التوتر ويمنحك السكينة والوضوح الذهني. ✨',
+      categoryIcon: '✍️'
+    },
+    { 
+      id: 'rem-2', 
+      title: 'تنبيه العناية بالذات وشرب الماء 💧', 
+      time: '08:00', 
+      active: true, 
+      type: 'habit',
+      frequency: 'daily',
+      selectedDays: [0, 1, 2, 3, 4, 5, 6],
+      motivationalNote: 'بداية يوم جديدة مليئة بالنشاط! اعتَنِ بجسدك ونفسك أولاً. 💖',
+      categoryIcon: '💧'
+    },
+    { 
+      id: 'rem-3', 
+      title: 'جلسة الاسترخاء الذهني والتأمل 🧘‍♂️', 
+      time: '17:30', 
+      active: true, 
+      type: 'meditation',
+      frequency: 'custom_days',
+      selectedDays: [0, 2, 4],
+      motivationalNote: 'أنت تقوم بعمل رائع! خذ 3 أنفاس عميقة واسترح الآن.',
+      categoryIcon: '🧘‍♀️'
+    },
   ]
 };
 
@@ -656,7 +688,68 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // --- Habit Management States ---
+  // --- Smart Reminders Logic ---
+  const [showSmartRemindersModal, setShowSmartRemindersModal] = useState(false);
+  const [triggeredReminder, setTriggeredReminder] = useState<AppReminder | null>(null);
+  const lastFiredReminderRef = React.useRef<{ [id: string]: string }>({});
+
+  useEffect(() => {
+    const checkSmartReminders = () => {
+      if (!settings.notificationsEnabled) return;
+      const reminders = settings.reminders || [];
+      if (reminders.length === 0) return;
+
+      const now = new Date();
+      const currentHour = String(now.getHours()).padStart(2, '0');
+      const currentMinute = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHour}:${currentMinute}`;
+      const currentDay = now.getDay(); // 0 = Sun, 6 = Sat
+
+      reminders.forEach(r => {
+        if (!r.active) return;
+        if (r.time !== currentTimeStr) return;
+
+        let matchDay = false;
+        if (r.frequency === 'daily') {
+          matchDay = true;
+        } else if (r.frequency === 'weekly') {
+          matchDay = r.selectedDays?.includes(currentDay) ?? (currentDay === new Date().getDay());
+        } else if (r.frequency === 'custom_days') {
+          matchDay = r.selectedDays ? r.selectedDays.includes(currentDay) : true;
+        }
+
+        if (matchDay && lastFiredReminderRef.current[r.id] !== currentTimeStr) {
+          lastFiredReminderRef.current[r.id] = currentTimeStr;
+          setTriggeredReminder(r);
+
+          try {
+            const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
+            if (AudioContext) {
+              const ctx = new AudioContext();
+              const n = ctx.currentTime;
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(523.25, n);
+              osc.frequency.exponentialRampToValueAtTime(783.99, n + 0.3);
+              gain.gain.setValueAtTime(0.2, n);
+              gain.gain.exponentialRampToValueAtTime(0.001, n + 0.5);
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start(n);
+              osc.stop(n + 0.5);
+            }
+          } catch {
+            // Audio context disabled
+          }
+        }
+      });
+    };
+
+    checkSmartReminders();
+    const interval = setInterval(checkSmartReminders, 15000);
+    return () => clearInterval(interval);
+  }, [settings.notificationsEnabled, settings.reminders]);
   const [showAddHabitModal, setShowAddHabitModal] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
   const [newHabitCategory, setNewHabitCategory] = useState<'health' | 'mind' | 'sport' | 'culture' | 'custom'>('custom');
@@ -946,10 +1039,82 @@ export default function App() {
   const [newAlarmTitle, setNewAlarmTitle] = useState('');
   const [newAlarmTime, setNewAlarmTime] = useState('20:00');
 
-  // --- Voice Recorder States ---
+  // --- Voice Recorder & Speech-to-Text States ---
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingIntervalId, setRecordingIntervalId] = useState<number | null>(null);
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const audioChunksRef = React.useRef<Blob[]>([]);
+  const speechRecognitionRef = React.useRef<any>(null);
+  const [speechTranscript, setSpeechTranscript] = useState('');
+
+  // --- Rich Editor & Features Sheet States ---
+  const [showFontToolbar, setShowFontToolbar] = useState(false);
+  const [showColorPalette, setShowColorPalette] = useState(false);
+  const [showAudioMenu, setShowAudioMenu] = useState(false);
+  const [showMoreFeaturesSheet, setShowMoreFeaturesSheet] = useState(false);
+  const [showFontDrawer, setShowFontDrawer] = useState(false);
+  const [fontDrawerSize, setFontDrawerSize] = useState(16);
+  const [fontDrawerFamily, setFontDrawerFamily] = useState('font-sans');
+  const [showAiWriterSheet, setShowAiWriterSheet] = useState(false);
+  const [aiWriterTopicInput, setAiWriterTopicInput] = useState('');
+  const [aiWriterLoading, setAiWriterLoading] = useState(false);
+
+  const handleAiGenerateNote = async (selectedTopic?: string) => {
+    const topic = selectedTopic || aiWriterTopicInput || 'نصائح صحية ونفسية';
+    setAiWriterLoading(true);
+    try {
+      const res = await fetch('/api/gemini/generate-note', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({ promptTopic: topic })
+      });
+      const data = await res.json();
+      if (data.success && editingDiary) {
+        setEditingDiary(prev => prev ? {
+          ...prev,
+          title: data.title || prev.title,
+          content: prev.content ? `${prev.content}\n\n${data.content}` : data.content
+        } : null);
+        setShowAiWriterSheet(false);
+        setAiWriterTopicInput('');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAiWriterLoading(false);
+    }
+  };
+
+  const insertFormatting = (prefix: string, suffix: string = '') => {
+    if (!editingDiary) return;
+    setEditingDiary(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        content: (prev.content || '') + `${prefix}نص منسق${suffix}`
+      };
+    });
+  };
+
+  const handleAddTaskItem = () => {
+    if (!editingDiary) return;
+    const newTask: TaskItem = {
+      id: `task-${Date.now()}`,
+      text: 'أضف المهمة هنا...',
+      completed: false
+    };
+    setEditingDiary(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        tasks: [...(prev.tasks || []), newTask]
+      };
+    });
+  };
 
   // --- Diary AI Assistant Inline State ---
   const [diaryAiLoading, setDiaryAiLoading] = useState(false);
@@ -1467,8 +1632,36 @@ export default function App() {
     setActiveInputSection('none');
   };
 
-  // --- Voice Recorder Trigger (Simulated Mic recording) ---
-  const handleToggleRecording = () => {
+  // --- Audio File Uploader (من جهاز المستخدم) ---
+  const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && editingDiary) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          const newRec: AudioRecording = {
+            id: `rec-${Date.now()}`,
+            name: file.name || 'ملف صوتي مرفق.mp3',
+            dataUrl: reader.result,
+            duration: Math.round(file.size / 16000) || 12,
+            transcription: 'ملف صوتي مرفق بنجاح من جهازك 🎵'
+          };
+          setEditingDiary(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              audioRecordings: [...(prev.audioRecordings || []), newRec]
+            };
+          });
+          setActiveInputSection('none');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- Voice Recorder Trigger with Real Mic Capture & Speech-to-Text ---
+  const handleToggleRecording = async () => {
     if (isRecording) {
       // Stop recording
       if (recordingIntervalId) {
@@ -1477,29 +1670,97 @@ export default function App() {
       }
       setIsRecording(false);
 
-      // Save a simulated recorded file with Cairo transcriptions
-      const newRec: AudioRecording = {
-        id: `rec-${Date.now()}`,
-        name: `تسجيل صوتي عيادي ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.mp3`,
-        dataUrl: '#',
-        duration: recordingSeconds || 12,
-        transcription: 'يتحدث المستخدم عن مشاعره وضغوطه الحالية، ويبدو نبرته مستقرة وتسعى لتحقيق التوازن الذاتي.'
-      };
+      if (speechRecognitionRef.current) {
+        try { speechRecognitionRef.current.stop(); } catch (e) {}
+      }
 
-      if (editingDiary) {
-        setEditingDiary(prev => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            audioRecordings: [...prev.audioRecordings, newRec]
-          };
-        });
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      } else {
+        // Fallback recorded audio object if MediaRecorder stream wasn't supported
+        const transcriptText = speechTranscript.trim() || 'فضفضة صوتية سريعة - يتحدث فيها المستخدم عن أفكاره ومشاعره اليومية.';
+        const newRec: AudioRecording = {
+          id: `rec-${Date.now()}`,
+          name: `تسجيل صوتي ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.mp3`,
+          dataUrl: '#',
+          duration: recordingSeconds || 12,
+          transcription: transcriptText
+        };
+        if (editingDiary) {
+          setEditingDiary(prev => prev ? { ...prev, audioRecordings: [...(prev.audioRecordings || []), newRec] } : null);
+        }
       }
       setRecordingSeconds(0);
     } else {
       // Start recording
       setIsRecording(true);
       setRecordingSeconds(0);
+      setSpeechTranscript('');
+      audioChunksRef.current = [];
+
+      // Start Browser Speech Recognition in Arabic
+      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRec) {
+        try {
+          const rec = new SpeechRec();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = 'ar-SA';
+          rec.onresult = (event: any) => {
+            let current = '';
+            for (let i = 0; i < event.results.length; i++) {
+              current += event.results[i][0].transcript;
+            }
+            setSpeechTranscript(current);
+          };
+          rec.start();
+          speechRecognitionRef.current = rec;
+        } catch (e) {
+          console.error("Speech Recognition setup error:", e);
+        }
+      }
+
+      // Try MediaRecorder for microphone recording
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const mediaRecorder = new MediaRecorder(stream);
+          mediaRecorderRef.current = mediaRecorder;
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              audioChunksRef.current.push(e.data);
+            }
+          };
+
+          mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const dataUrl = reader.result as string;
+              const transcriptText = speechTranscript.trim() || 'تفريغ صوتي تلقائي للفضفضة المسجلة 🎙️';
+              const newRec: AudioRecording = {
+                id: `rec-${Date.now()}`,
+                name: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.webm`,
+                dataUrl: dataUrl,
+                duration: recordingSeconds || 10,
+                transcription: transcriptText
+              };
+              if (editingDiary) {
+                setEditingDiary(prev => prev ? { ...prev, audioRecordings: [...(prev.audioRecordings || []), newRec] } : null);
+              }
+            };
+            reader.readAsDataURL(audioBlob);
+
+            stream.getTracks().forEach(track => track.stop());
+          };
+
+          mediaRecorder.start(200);
+        } catch (err) {
+          console.warn("Mic access error:", err);
+        }
+      }
+
       const intId = window.setInterval(() => {
         setRecordingSeconds(prev => prev + 1);
       }, 1000);
@@ -3212,7 +3473,7 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Content text area */}
+                {/* Content text area with Rich Editor Toolbar */}
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <label className="block text-xs font-bold text-[#5A5A40]">{isEn ? "Write your feelings and thoughts:" : "اكتب فضفضتك ومشاعرك بالتفصيل (بدون قيود):"}</label>
@@ -3238,14 +3499,333 @@ export default function App() {
                       </button>
                     )}
                   </div>
+
+                  {/* Rich Text Editor Toolbar */}
+                  <div className="bg-[#F4F1EA] border border-[#E2DCC8] border-b-0 rounded-t-2xl p-2 flex flex-wrap items-center gap-1.5 text-xs">
+                    <button
+                      type="button"
+                      title="تراجع"
+                      onClick={() => insertFormatting('')}
+                      className="p-1.5 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-bold text-[#5A5A40] cursor-pointer"
+                    >
+                      ↩️
+                    </button>
+                    <button
+                      type="button"
+                      title="إعادة"
+                      onClick={() => insertFormatting('')}
+                      className="p-1.5 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-bold text-[#5A5A40] cursor-pointer"
+                    >
+                      ↪️
+                    </button>
+
+                    <div className="h-4 w-px bg-[#E2DCC8] mx-0.5" />
+
+                    <button
+                      type="button"
+                      title="عريض (Bold)"
+                      onClick={() => insertFormatting('**', '**')}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-black text-[#3A3A3A] cursor-pointer"
+                    >
+                      B
+                    </button>
+                    <button
+                      type="button"
+                      title="مائل (Italic)"
+                      onClick={() => insertFormatting('*', '*')}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] italic font-serif font-bold text-[#3A3A3A] cursor-pointer"
+                    >
+                      I
+                    </button>
+                    <button
+                      type="button"
+                      title="تحته خط (Underline)"
+                      onClick={() => insertFormatting('<u>', '</u>')}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] underline font-bold text-[#3A3A3A] cursor-pointer"
+                    >
+                      U
+                    </button>
+                    <button
+                      type="button"
+                      title="يتوسطه خط (Strikethrough)"
+                      onClick={() => insertFormatting('~~', '~~')}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] line-through font-bold text-[#3A3A3A] cursor-pointer"
+                    >
+                      S
+                    </button>
+
+                    <div className="h-4 w-px bg-[#E2DCC8] mx-0.5" />
+
+                    <button
+                      type="button"
+                      title="عنوان رئيسي"
+                      onClick={() => insertFormatting('\n# ')}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-black text-[#5A5A40] cursor-pointer"
+                    >
+                      H1
+                    </button>
+                    <button
+                      type="button"
+                      title="عنوان فرعي"
+                      onClick={() => insertFormatting('\n## ')}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-bold text-[#5A5A40] cursor-pointer"
+                    >
+                      H2
+                    </button>
+
+                    <button
+                      type="button"
+                      title="اقتباس"
+                      onClick={() => insertFormatting('\n> ')}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-bold text-[#5A5A40] cursor-pointer"
+                    >
+                      💬
+                    </button>
+                    <button
+                      type="button"
+                      title="قائمة نقطية"
+                      onClick={() => insertFormatting('\n- ')}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-bold text-[#5A5A40] cursor-pointer"
+                    >
+                      • قائمة
+                    </button>
+
+                    <div className="h-4 w-px bg-[#E2DCC8] mx-0.5" />
+
+                    <button
+                      type="button"
+                      title="تنسيق ألوان الخط"
+                      onClick={() => setShowColorPalette(!showColorPalette)}
+                      className="px-2 py-1 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-bold text-amber-800 flex items-center space-x-1 space-x-reverse cursor-pointer"
+                    >
+                      <span>🎨</span>
+                      <span>ألوان الخط</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      title="مزيد من الميزات"
+                      onClick={() => setShowMoreFeaturesSheet(true)}
+                      className="px-2.5 py-1 bg-[#8B9D83] hover:bg-[#6E8066] text-white rounded-lg font-bold flex items-center space-x-1 space-x-reverse cursor-pointer shadow-3xs"
+                    >
+                      <span>✨</span>
+                      <span>مزيد من الميزات</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      title="اطلب من الذكاء الاصطناعي أن يكتب ملاحظة"
+                      onClick={() => setShowAiWriterSheet(true)}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg font-bold flex items-center space-x-1 space-x-reverse cursor-pointer shadow-3xs text-xs"
+                    >
+                      <span>✨</span>
+                      <span>كتابة بالذكاء الاصطناعي</span>
+                    </button>
+
+                    {showColorPalette && (
+                      <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-[#E2DCC8]">
+                        <button type="button" onClick={() => insertFormatting('<span style="color:#D97706">', '</span>')} className="w-4 h-4 rounded-full bg-amber-600 border cursor-pointer" title="برتقالي" />
+                        <button type="button" onClick={() => insertFormatting('<span style="color:#059669">', '</span>')} className="w-4 h-4 rounded-full bg-emerald-600 border cursor-pointer" title="أخضر" />
+                        <button type="button" onClick={() => insertFormatting('<span style="color:#2563EB">', '</span>')} className="w-4 h-4 rounded-full bg-blue-600 border cursor-pointer" title="أزرق" />
+                        <button type="button" onClick={() => insertFormatting('<span style="color:#DC2626">', '</span>')} className="w-4 h-4 rounded-full bg-red-600 border cursor-pointer" title="أحمر" />
+                        <button type="button" onClick={() => insertFormatting('<span style="color:#7C3AED">', '</span>')} className="w-4 h-4 rounded-full bg-purple-600 border cursor-pointer" title="بنفسجي" />
+                      </div>
+                    )}
+                  </div>
+
                   <textarea
                     rows={8}
                     value={editingDiary.content}
                     onChange={(e) => setEditingDiary(prev => prev ? { ...prev, content: e.target.value } : null)}
                     placeholder="اكتب هنا كل ما يدور بخلدك من أفكار، مخاوف، آمال، أو أحداث حدثت لك اليوم..."
-                    className="w-full bg-[#F9F7F2] focus:bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-2xl p-4 text-sm text-[#3A3A3A] leading-relaxed transition-all"
+                    style={{
+                      backgroundColor: editingDiary.color || '#F9F7F2',
+                      fontSize: `${fontDrawerSize}px`
+                    }}
+                    className={`w-full border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-b-none p-4 text-[#3A3A3A] leading-relaxed transition-all ${fontDrawerFamily}`}
                   />
+
+                  {/* Attachment & Features Toolbar directly attached to textarea (Image 4 format) */}
+                  <div className="bg-[#EAE5D9] border border-t-0 border-[#E2DCC8] rounded-b-2xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {/* Attach File (Paperclip) */}
+                      <label className="p-2 bg-white hover:bg-[#F4F1EA] rounded-xl border border-[#E2DCC8] text-[#5A5A40] cursor-pointer font-bold flex items-center space-x-1 space-x-reverse" title="إرفاق ملف">
+                        <span>📎</span>
+                        <span className="hidden sm:inline">إرفاق ملف</span>
+                        <input
+                          type="file"
+                          accept="*/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file && editingDiary) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                if (typeof reader.result === 'string') {
+                                  const newFile: FileAttachment = {
+                                    id: `file-${Date.now()}`,
+                                    name: file.name,
+                                    size: `${(file.size / 1024).toFixed(1)} KB`,
+                                    type: file.type || 'application/pdf',
+                                    dataUrl: reader.result
+                                  };
+                                  setEditingDiary(prev => prev ? { ...prev, files: [...(prev.files || []), newFile] } : null);
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {/* Add Voice (Mic) */}
+                      <button
+                        type="button"
+                        onClick={handleToggleRecording}
+                        className={`p-2 bg-white hover:bg-[#F4F1EA] rounded-xl border border-[#E2DCC8] cursor-pointer font-bold flex items-center space-x-1 space-x-reverse ${isRecording ? 'text-red-600 bg-red-50 border-red-200' : 'text-[#5A5A40]'}`}
+                        title="أضف صوت"
+                      >
+                        <span>🎙️</span>
+                        <span className="hidden sm:inline">{isRecording ? `جاري التسجيل (${recordingSeconds}ث)` : 'أضف صوت'}</span>
+                      </button>
+
+                      {/* Draw / Sketch (Pencil) */}
+                      <button
+                        type="button"
+                        onClick={() => setShowSketchboard(true)}
+                        className="p-2 bg-white hover:bg-[#F4F1EA] rounded-xl border border-[#E2DCC8] text-[#5A5A40] cursor-pointer font-bold flex items-center space-x-1 space-x-reverse"
+                        title="رسم"
+                      >
+                        <span>✏️</span>
+                        <span className="hidden sm:inline">رسم</span>
+                      </button>
+
+                      {/* Add Image */}
+                      <label className="p-2 bg-white hover:bg-[#F4F1EA] rounded-xl border border-[#E2DCC8] text-[#5A5A40] cursor-pointer font-bold flex items-center space-x-1 space-x-reverse" title="صورة">
+                        <span>🖼️</span>
+                        <span className="hidden sm:inline">صورة</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {/* Background Color Picker Palette */}
+                      <div className="relative group">
+                        <button
+                          type="button"
+                          className="p-2 bg-white hover:bg-[#F4F1EA] rounded-xl border border-[#E2DCC8] text-[#5A5A40] cursor-pointer font-bold flex items-center space-x-1 space-x-reverse"
+                          title="لون الخلفية"
+                        >
+                          <span>🎨</span>
+                          <span className="hidden sm:inline">لون</span>
+                        </button>
+                        <div className="absolute right-0 bottom-full mb-1 hidden group-hover:flex items-center gap-1.5 p-2 bg-white border border-[#E2DCC8] rounded-xl shadow-lg z-20">
+                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#F9F7F2' } : null)} className="w-5 h-5 rounded-full bg-[#F9F7F2] border border-gray-300" title="افتراضي" />
+                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#FFFDF5' } : null)} className="w-5 h-5 rounded-full bg-[#FFFDF5] border border-amber-300" title="أصفر دافئ" />
+                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#F2F7FB' } : null)} className="w-5 h-5 rounded-full bg-[#F2F7FB] border border-blue-300" title="أزرق سماوي" />
+                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#F4F7F2' } : null)} className="w-5 h-5 rounded-full bg-[#F4F7F2] border border-emerald-300" title="أخضر ناعم" />
+                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#FBF7FF' } : null)} className="w-5 h-5 rounded-full bg-[#FBF7FF] border border-purple-300" title="لافندر" />
+                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#FCF2F4' } : null)} className="w-5 h-5 rounded-full bg-[#FCF2F4] border border-rose-300" title="وردي" />
+                        </div>
+                      </div>
+
+                      {/* Font Effect Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowFontDrawer(true)}
+                        className="p-2 bg-white hover:bg-[#F4F1EA] rounded-xl border border-[#E2DCC8] text-[#5A5A40] cursor-pointer font-bold flex items-center space-x-1 space-x-reverse"
+                        title="تأثير الخط"
+                      >
+                        <span className="font-serif">Aa</span>
+                        <span className="hidden sm:inline">خط</span>
+                      </button>
+                    </div>
+
+                    {/* Checklist Task Add Button (Matching Image 3 & 4) */}
+                    <button
+                      type="button"
+                      onClick={handleAddTaskItem}
+                      className="px-3 py-1.5 bg-[#8B9D83] text-white hover:bg-[#6E8066] rounded-xl font-bold flex items-center space-x-1 space-x-reverse cursor-pointer shadow-3xs text-xs"
+                    >
+                      <span>☑️</span>
+                      <span>+ إضافة عنصر (قائمة)</span>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Embedded Checklist Tasks inside Note (Image 3 & 4 format) */}
+                {(editingDiary.tasks || []).length > 0 && (
+                  <div className="p-4 bg-white border border-[#E2DCC8] rounded-2xl space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                      <span className="text-xs font-bold text-[#5A5A40] flex items-center space-x-1.5 space-x-reverse">
+                        <span>☑️</span>
+                        <span>عناصر وقائمة المهام داخل المذكرة:</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleAddTaskItem}
+                        className="text-[11px] text-[#8B9D83] font-black hover:underline cursor-pointer"
+                      >
+                        + إضافة عنصر
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {editingDiary.tasks.map((task) => (
+                        <div key={task.id} className="flex items-center space-x-2 space-x-reverse">
+                          <input
+                            type="checkbox"
+                            checked={task.completed}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setEditingDiary(prev => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  tasks: prev.tasks.map(t => t.id === task.id ? { ...t, completed: checked } : t)
+                                };
+                              });
+                            }}
+                            className="w-4 h-4 rounded text-[#8B9D83] focus:ring-[#8B9D83] cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={task.text}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditingDiary(prev => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  tasks: prev.tasks.map(t => t.id === task.id ? { ...t, text: val } : t)
+                                };
+                              });
+                            }}
+                            placeholder="أضف المهمة هنا..."
+                            className={`flex-1 text-xs border-b border-transparent focus:border-[#8B9D83] focus:outline-none bg-transparent py-1 ${task.completed ? 'line-through text-gray-400' : 'text-[#3A3A3A] font-medium'}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDiary(prev => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  tasks: prev.tasks.filter(t => t.id !== task.id)
+                                };
+                              });
+                            }}
+                            className="text-red-400 hover:text-red-600 font-bold text-xs px-1.5 cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Adding modifications / subsequent additions (التعديلات والإضافات اللاحقة) */}
                 {!isNewEntry && (
@@ -3496,6 +4076,18 @@ export default function App() {
                   <span className="text-xs font-bold text-[#5A5A40]">إضافة وسائط ومرفقات لتوسيع الذاكرة الزمنية:</span>
                   <div className="flex flex-wrap gap-2">
                     
+                    {/* Audio File Upload button */}
+                    <label className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs">
+                      <span>🎵</span>
+                      <span>أضف ملف صوتي</span>
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleAudioFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+
                     {/* Image Snapper / File upload */}
                     <label className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs">
                       <Image className="w-3.5 h-3.5 text-[#D4A373]" />
@@ -3708,81 +4300,58 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                )}      {editingDiary.audioRecordings.length > 0 && (
-                  <div className="space-y-2">
-                    <span className="block text-xs font-bold text-[#5A5A40]">التسجيلات الصوتية المرفقة:</span>
-                    <div className="space-y-1.5">
+                )}
+
+                {editingDiary.audioRecordings.length > 0 && (
+                  <div className="space-y-3">
+                    <span className="block text-xs font-bold text-[#5A5A40]">التسجيلات والملفات الصوتية المرفقة:</span>
+                    <div className="space-y-2">
                       {editingDiary.audioRecordings.map((rec) => (
-                        <div key={rec.id} className="p-3 bg-[#F9F7F2] border border-[#E2DCC8] rounded-xl flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-2 space-x-reverse">
-                            <div className="p-1.5 bg-[#8B9D83]/15 text-[#8B9D83] rounded-lg">
-                              <Mic className="w-4 h-4" />
+                        <div key={rec.id} className="p-3.5 bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl space-y-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2 space-x-reverse">
+                              <div className="p-2 bg-[#8B9D83]/15 text-[#8B9D83] rounded-xl">
+                                <Mic className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="font-bold block text-[#3A3A3A]">{rec.name}</span>
+                                <span className="text-[10px] text-gray-500">المدة: {rec.duration} ثانية</span>
+                              </div>
                             </div>
-                            <div>
-                              <span className="font-semibold block text-[#3A3A3A]">{rec.name}</span>
-                              <span className="text-[10px] text-gray-400">المدة: {rec.duration} ثانية</span>
-                            </div>
+                            
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingDiary(prev => prev ? { ...prev, audioRecordings: prev.audioRecordings.filter(x => x.id !== rec.id) } : null);
+                              }}
+                              className="text-red-600 hover:text-red-700 font-bold px-2.5 py-1 bg-white border border-red-100 rounded-lg cursor-pointer text-xs transition-colors"
+                            >
+                              حذف
+                            </button>
                           </div>
-                          
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingDiary(prev => prev ? { ...prev, audioRecordings: prev.audioRecordings.filter(x => x.id !== rec.id) } : null);
-                            }}
-                            className="text-red-600 hover:text-red-700 font-bold px-2 cursor-pointer text-xs"
-                          >
-                            حذف
-                          </button>
+
+                          {/* Audio player if dataUrl exists */}
+                          {rec.dataUrl && rec.dataUrl !== '#' && (
+                            <div className="pt-1">
+                              <audio controls src={rec.dataUrl} className="w-full h-8 rounded-lg" />
+                            </div>
+                          )}
+
+                          {/* Transcription text below recording */}
+                          {rec.transcription && (
+                            <div className="bg-white/90 p-2.5 rounded-xl border border-[#E2DCC8]/80 text-[11px] text-[#5A5A40] leading-relaxed">
+                              <span className="font-extrabold text-[#8B9D83] block mb-1 flex items-center space-x-1 space-x-reverse">
+                                <span>📝</span>
+                                <span>التفريغ النصي التلقائي للصوت:</span>
+                              </span>
+                              <p className="whitespace-pre-wrap font-medium">{rec.transcription}</p>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
-
-                {/* Media, Sketch and Voice attachment bar */}
-                <div className="bg-[#F9F7F2] p-4 rounded-2xl border border-[#E2DCC8]/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <span className="text-xs font-bold text-[#5A5A40]">إضافة وسائط ومرفقات لتوسيع الذاكرة الزمنية:</span>
-                  <div className="flex flex-wrap gap-2">
-                    
-                    {/* Image Snapper / File upload */}
-                    <label className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs">
-                      <Image className="w-3.5 h-3.5 text-[#D4A373]" />
-                      <span>إضافة لقطة/صورة</span>
-                      <input
-                        id="image-upload-trigger"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-
-                    {/* Sketch Canvas sketchpad button */}
-                    <button
-                      type="button"
-                      onClick={() => setShowSketchboard(true)}
-                      className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs"
-                    >
-                      <span className="text-[#8B9D83] font-bold">🎨</span>
-                      <span>ارسم تخطيطاً ذهنيّاً</span>
-                    </button>
-
-                    {/* Voice record mic button */}
-                    <button
-                      type="button"
-                      onClick={handleToggleRecording}
-                      className={`flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs ${
-                        isRecording 
-                          ? 'bg-red-500 text-white border-red-500 animate-pulse' 
-                          : 'bg-white hover:bg-[#F0EDE4] border-[#E2DCC8] text-[#5A5A40]'
-                      }`}
-                    >
-                      <Mic className="w-3.5 h-3.5 text-red-500" />
-                      <span>{isRecording ? `جاري التسجيل (${recordingSeconds}ث)` : '🎤 فضفضة صوتية سريعة'}</span>
-                    </button>
-
-                  </div>
-                </div>
 
                 {/* Custom Drawing Board Canvas Modal */}
                 {showSketchboard && (
@@ -3796,6 +4365,330 @@ export default function App() {
                         }}
                         onCancel={() => setShowSketchboard(false)}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* 'مزيد من الميزات' Bottom Sheet / Modal (Image 3 format) */}
+                {showMoreFeaturesSheet && (
+                  <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 animate-fadeIn">
+                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-6 shadow-2xl border border-[#E2DCC8]">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                        <h3 className="text-base font-extrabold text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                          <span>✨</span>
+                          <span>مزيد من الميزات</span>
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setShowMoreFeaturesSheet(false)}
+                          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* 6 Circular Feature Grid Items (Image 3) */}
+                      <div className="grid grid-cols-3 gap-4">
+                        {/* 1. الرسم (Draw) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMoreFeaturesSheet(false);
+                            setShowSketchboard(true);
+                          }}
+                          className="flex flex-col items-center justify-center space-y-2 p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] rounded-2xl border border-[#E2DCC8] transition-all cursor-pointer group"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shadow-xs group-hover:scale-105 transition-transform">
+                            🖌️
+                          </div>
+                          <span className="text-xs font-bold text-[#3A3A3A]">رسم</span>
+                        </button>
+
+                        {/* 2. أضف صورة (Add Image) */}
+                        <label
+                          className="flex flex-col items-center justify-center space-y-2 p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] rounded-2xl border border-[#E2DCC8] transition-all cursor-pointer group"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xl shadow-xs group-hover:scale-105 transition-transform">
+                            🖼️
+                          </div>
+                          <span className="text-xs font-bold text-[#3A3A3A]">أضف صورة</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              handleImageUpload(e);
+                              setShowMoreFeaturesSheet(false);
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {/* 3. لون الخلفية (Background Color) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMoreFeaturesSheet(false);
+                            setShowColorPalette(!showColorPalette);
+                          }}
+                          className="flex flex-col items-center justify-center space-y-2 p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] rounded-2xl border border-[#E2DCC8] transition-all cursor-pointer group"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xl shadow-xs group-hover:scale-105 transition-transform">
+                            🎨
+                          </div>
+                          <span className="text-xs font-bold text-[#3A3A3A]">لون الخلفية</span>
+                        </button>
+
+                        {/* 4. إرفاق ملف (Attach File) */}
+                        <label
+                          className="flex flex-col items-center justify-center space-y-2 p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] rounded-2xl border border-[#E2DCC8] transition-all cursor-pointer group"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xl shadow-xs group-hover:scale-105 transition-transform">
+                            📎
+                          </div>
+                          <span className="text-xs font-bold text-[#3A3A3A]">إرفاق ملف</span>
+                          <input
+                            type="file"
+                            accept="*/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file && editingDiary) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  if (typeof reader.result === 'string') {
+                                    const newFile: FileAttachment = {
+                                      id: `file-${Date.now()}`,
+                                      name: file.name,
+                                      size: `${(file.size / 1024).toFixed(1)} KB`,
+                                      type: file.type || 'application/pdf',
+                                      dataUrl: reader.result
+                                    };
+                                    setEditingDiary(prev => prev ? { ...prev, files: [...(prev.files || []), newFile] } : null);
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                              setShowMoreFeaturesSheet(false);
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {/* 5. أضف صوت (Add Audio / Voice) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMoreFeaturesSheet(false);
+                            handleToggleRecording();
+                          }}
+                          className="flex flex-col items-center justify-center space-y-2 p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] rounded-2xl border border-[#E2DCC8] transition-all cursor-pointer group"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xl shadow-xs group-hover:scale-105 transition-transform">
+                            🎙️
+                          </div>
+                          <span className="text-xs font-bold text-[#3A3A3A]">أضف صوت</span>
+                        </button>
+
+                        {/* 6. تأثير الخط (Font Style) - Video 0:48 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMoreFeaturesSheet(false);
+                            setShowFontDrawer(true);
+                          }}
+                          className="flex flex-col items-center justify-center space-y-2 p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] rounded-2xl border border-[#E2DCC8] transition-all cursor-pointer group"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center text-lg font-serif font-bold shadow-xs group-hover:scale-105 transition-transform">
+                            Aa
+                          </div>
+                          <span className="text-xs font-bold text-[#3A3A3A]">تأثير الخط</span>
+                        </button>
+                      </div>
+
+                      {/* Color Palette Selector Inside Features Sheet */}
+                      <div className="pt-2 border-t border-gray-100 space-y-2">
+                        <span className="text-xs font-extrabold text-[#5A5A40]">اختر لون خلفية المذكرة:</span>
+                        <div className="flex items-center justify-around p-2 bg-[#F9F7F2] rounded-2xl border border-[#E2DCC8]">
+                          <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#F9F7F2' } : null); setShowMoreFeaturesSheet(false); }} className="w-7 h-7 rounded-full bg-[#F9F7F2] border-2 border-gray-400 cursor-pointer shadow-xs" title="افتراضي" />
+                          <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#FFFDF5' } : null); setShowMoreFeaturesSheet(false); }} className="w-7 h-7 rounded-full bg-[#FFFDF5] border-2 border-amber-300 cursor-pointer shadow-xs" title="أصفر دافئ" />
+                          <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#F2F7FB' } : null); setShowMoreFeaturesSheet(false); }} className="w-7 h-7 rounded-full bg-[#F2F7FB] border-2 border-blue-300 cursor-pointer shadow-xs" title="أزرق سماوي" />
+                          <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#F4F7F2' } : null); setShowMoreFeaturesSheet(false); }} className="w-7 h-7 rounded-full bg-[#F4F7F2] border-2 border-emerald-300 cursor-pointer shadow-xs" title="أخضر ناعم" />
+                          <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#FBF7FF' } : null); setShowMoreFeaturesSheet(false); }} className="w-7 h-7 rounded-full bg-[#FBF7FF] border-2 border-purple-300 cursor-pointer shadow-xs" title="لافندر" />
+                          <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#FCF2F4' } : null); setShowMoreFeaturesSheet(false); }} className="w-7 h-7 rounded-full bg-[#FCF2F4] border-2 border-rose-300 cursor-pointer shadow-xs" title="وردي" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Font Styling Drawer (Aa) matching video 0:48 */}
+                {showFontDrawer && (
+                  <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 animate-fadeIn">
+                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl border border-[#E2DCC8]" dir="rtl">
+                      {/* Header */}
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowFontDrawer(false)}
+                          className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm cursor-pointer hover:bg-emerald-100"
+                        >
+                          ✓
+                        </button>
+                        <h3 className="text-base font-extrabold text-[#3A3A3A]">الخط</h3>
+                        <button
+                          type="button"
+                          onClick={() => setShowFontDrawer(false)}
+                          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Font Formatting Icons Toolbar */}
+                      <div className="flex items-center justify-around p-2.5 bg-[#F9F7F2] rounded-2xl border border-[#E2DCC8]">
+                        <button type="button" onClick={() => insertFormatting('- ')} className="p-2 hover:bg-[#E2DCC8]/50 rounded-xl font-bold text-sm text-[#3A3A3A] cursor-pointer" title="قائمة">
+                          •≡
+                        </button>
+                        <button type="button" onClick={() => insertFormatting('1. ')} className="p-2 hover:bg-[#E2DCC8]/50 rounded-xl font-bold text-sm text-[#3A3A3A] cursor-pointer" title="قائمة مرقمة">
+                          1≡
+                        </button>
+                        <button type="button" onClick={() => insertFormatting('<u>', '</u>')} className="p-2 hover:bg-[#E2DCC8]/50 rounded-xl font-bold underline text-sm text-[#3A3A3A] cursor-pointer" title="تحته خط">
+                          U
+                        </button>
+                        <button type="button" onClick={() => insertFormatting('~~', '~~')} className="p-2 hover:bg-[#E2DCC8]/50 rounded-xl font-bold line-through text-sm text-[#3A3A3A] cursor-pointer" title="يتوسطه خط">
+                          S
+                        </button>
+                        <button type="button" onClick={() => insertFormatting('*', '*')} className="p-2 hover:bg-[#E2DCC8]/50 rounded-xl italic font-bold text-sm text-[#3A3A3A] cursor-pointer" title="مائل">
+                          I
+                        </button>
+                        <button type="button" onClick={() => insertFormatting('**', '**')} className="p-2 hover:bg-[#E2DCC8]/50 rounded-xl font-black text-sm text-[#3A3A3A] cursor-pointer" title="عريض">
+                          B
+                        </button>
+                      </div>
+
+                      {/* Font Size Slider */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold text-[#5A5A40]">
+                          <span className="text-xs">Aa</span>
+                          <span>حجم الخط ({fontDrawerSize}px)</span>
+                          <span className="text-base font-extrabold">Aa</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="12"
+                          max="32"
+                          value={fontDrawerSize}
+                          onChange={(e) => setFontDrawerSize(parseInt(e.target.value))}
+                          className="w-full h-2 bg-[#E2DCC8] rounded-lg appearance-none cursor-pointer accent-[#8B9D83]"
+                        />
+                      </div>
+
+                      {/* Choose Font Style Grid (اختر نمط الخط) */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-extrabold text-[#5A5A40] block">اختر نمط الخط:</span>
+                        <div className="grid grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1">
+                          {[
+                            { id: 'font-sans', name: 'Notes', style: 'font-sans' },
+                            { id: 'font-serif', name: 'Notes', style: 'font-serif italic' },
+                            { id: 'font-mono', name: 'Notes', style: 'font-mono' },
+                            { id: 'font-bold', name: 'Notes', style: 'font-sans font-black' },
+                            { id: 'font-cairo', name: 'Notes', style: 'font-serif font-bold' },
+                            { id: 'font-uppercase', name: 'NOTES', style: 'uppercase font-black' },
+                            { id: 'font-normal', name: 'Notes', style: 'font-sans font-medium' },
+                            { id: 'font-light', name: 'Notes', style: 'font-sans font-light' },
+                            { id: 'font-tracking', name: 'N o t e s', style: 'tracking-widest' },
+                          ].map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => setFontDrawerFamily(f.style)}
+                              className={`p-3 rounded-2xl border text-center text-sm transition-all cursor-pointer ${
+                                fontDrawerFamily === f.style
+                                  ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-md scale-102'
+                                  : 'bg-[#F9F7F2] hover:bg-[#F0EDE4] border-[#E2DCC8] text-[#3A3A3A]'
+                              } ${f.style}`}
+                            >
+                              {f.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Assistant Note Writer Bottom Sheet matching video 0:56 */}
+                {showAiWriterSheet && (
+                  <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 animate-fadeIn">
+                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl border border-[#E2DCC8]" dir="rtl">
+                      {/* Header */}
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                        <h3 className="text-sm font-extrabold text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                          <span className="text-amber-500">✨</span>
+                          <span>اطلب من الذكاء الاصطناعي أن يكتب ملاحظة أو أي...</span>
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setShowAiWriterSheet(false)}
+                          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Input Prompt Box with Search Icon */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={aiWriterTopicInput}
+                          onChange={(e) => setAiWriterTopicInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleAiGenerateNote();
+                            }
+                          }}
+                          placeholder="اطلب شيئاً من الذكاء الاصطناعي..."
+                          className="w-full bg-[#F9F7F2] border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:outline-none rounded-2xl py-3 pr-10 pl-24 text-xs text-[#3A3A3A]"
+                        />
+                        <div className="absolute right-3 top-3.5 text-gray-400 text-xs">
+                          🔍
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAiGenerateNote()}
+                          disabled={aiWriterLoading}
+                          className="absolute left-1.5 top-1.5 bottom-1.5 px-3 bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs font-bold rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          {aiWriterLoading ? 'جاري التوليد...' : 'إرسال ✨'}
+                        </button>
+                      </div>
+
+                      {/* Quick Prompt Badges List (Video 0:56) */}
+                      <div className="space-y-2 pt-1">
+                        <span className="text-[11px] font-extrabold text-gray-400 block">اقترحات سريعة لكتابة الملاحظة:</span>
+                        <div className="space-y-2 max-h-56 overflow-y-auto">
+                          {[
+                            { id: 'health', icon: '💡', title: 'توليد نصائح صحية', prompt: 'توليد نصائح صحية ونفسية يومية' },
+                            { id: 'article', icon: '📝', title: 'كتابة مقال', prompt: 'كتابة مقال ملهم عن فوائد التدوين والسلام الداخلي' },
+                            { id: 'future', icon: '🚀', title: 'اتجاهات المستقبل', prompt: 'اتجاهات المستقبل والتأقلم المرن مع التكنولوجيا' },
+                            { id: 'marketing', icon: '🎧', title: 'التسويق وخدمة العملاء', prompt: 'التسويق الحديث وخدمة العملاء القائمة على التعاطف' },
+                            { id: 'projects', icon: '🎯', title: 'إدارة المشاريع', prompt: 'دليل عملي لإدارة المشاريع وتفكيك الأهداف' },
+                          ].map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => handleAiGenerateNote(item.prompt)}
+                              disabled={aiWriterLoading}
+                              className="w-full flex items-center justify-between p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-2xl transition-all cursor-pointer group text-right"
+                            >
+                              <div className="flex items-center space-x-3 space-x-reverse">
+                                <span className="text-base p-1.5 bg-amber-50 rounded-xl">{item.icon}</span>
+                                <span className="text-xs font-bold text-[#3A3A3A] group-hover:text-[#8B9D83] transition-colors">{item.title}</span>
+                              </div>
+                              <span className="text-xs text-gray-400">←</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3969,60 +4862,7 @@ export default function App() {
             ) : (
               <div className="space-y-6">
                 
-                 {/* Replicated Quick Action Badges matching the requested screenshot EXACTLY */}
-                 <div className="flex flex-wrap items-center gap-2.5 w-full justify-start sm:justify-end border-b border-[#E2DCC8]/60 pb-5">
-                   
-                   {/* 1. Habits and Tasks Button (المهام اليومية) with red circular badge containing incomplete count on the left */}
-                   <button
-                     onClick={() => {
-                       setActiveDiariesSubTab('tasks');
-                     }}
-                     className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#EEF1EB] text-[#556E4F] border border-[#DCE4D8] rounded-xl text-xs font-black shadow-3xs hover:bg-[#E2E9DF] active:scale-95 transition-all cursor-pointer shrink-0"
-                   >
-                     <span className="flex items-center justify-center bg-[#C5221F] text-white text-[10px] font-black w-4.5 h-4.5 rounded-full border border-white shrink-0">
-                       {incompleteTasksCount}
-                     </span>
-                     <span>المهام اليومية</span>
-                   </button>
- 
-                   {/* 2. My Diary Thoughts Button (خواطري ✍️) with light orange/yellow background and border */}
-                   <button
-                     onClick={() => {
-                       setActiveDiariesSubTab('journal');
-                       setDiaryTypeFilter('thought');
-                     }}
-                     className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4] rounded-xl text-xs font-black shadow-3xs hover:bg-[#F9ECC4] active:scale-95 transition-all cursor-pointer shrink-0"
-                   >
-                     <span>خواطري</span>
-                     <span className="text-sm">✍️</span>
-                   </button>
- 
-                   {/* 3. Therapist Session Button (جلسة العلاج 🎓) with dark slate/green background and white text */}
-                   <button
-                     onClick={() => {
-                       setActiveTab('analytics');
-                       setAnalyticsSubTab('report');
-                     }}
-                     className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#446A5E] hover:bg-[#3B5A50] text-white rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0"
-                   >
-                     <span>جلسة العلاج</span>
-                     <span className="flex items-center justify-center w-5 h-5 bg-[#FCF5DE] border border-[#E9E1C4] rounded-full shrink-0 shadow-3xs animate-pulse">
-                       <svg className="w-3 h-3 text-[#A67E2E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-                       </svg>
-                     </span>
-                   </button>
 
-                  {/* 4. Lock Button (🔒) with grey-brown background and border */}
-                  <button
-                    onClick={() => setSettings(prev => ({ ...prev, isAppLocked: true }))}
-                    className="p-2.5 bg-[#EEECDF] border border-[#D1CCBA] text-[#5A5A40] rounded-xl hover:bg-[#DDD8C3] active:scale-95 transition-all cursor-pointer shadow-3xs shrink-0 flex items-center justify-center"
-                    title="قفل التطبيق لحماية الخصوصية"
-                  >
-                    <Lock className="w-4 h-4 text-[#4A4A30]" />
-                  </button>
-
-                </div>
 
                  {/* Diaries & Gratitude Sub-Tab Swapper */}
                  <div className="flex bg-[#F0EDE4] p-1.5 rounded-2xl border border-[#E2DCC8]/60 max-w-xl mx-auto sm:mx-0 shadow-3xs overflow-x-auto scrollbar-none" id="diaries-subtab-selector">
@@ -4512,6 +5352,7 @@ export default function App() {
                     habits={habits}
                     toggleHabitCompletion={toggleHabitCompletion}
                     isDarkMode={settings.isDarkMode}
+                    diaries={diaries}
                   />
                 )}
 
@@ -4572,6 +5413,9 @@ export default function App() {
                     يتم استخلاص هذه البيانات تلقائياً من المذكرات وعدادات النوم والرياضة لرصد الترابط السلوكي لمساعدتك في معالجة القلق والتوتر.
                   </p>
                 </div>
+
+                {/* Chart 3: Weekly Habit Completion vs Mood Stability Chart */}
+                <WeeklyHabitsMoodChart habits={habits} diaries={diaries} />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   
@@ -5043,6 +5887,33 @@ export default function App() {
                 </button>
               </div>
 
+              {/* CARD FOR SMART REMINDERS */}
+              <div 
+                onClick={() => setShowSmartRemindersModal(true)}
+                className="bg-[#EEF1EB] border border-[#DCE4D8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#E2E9DF] transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-[#4E685B] text-white rounded-2xl group-hover:scale-105 transition-all shadow-xs">
+                    <Bell className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2B3E50] text-sm flex items-center gap-2">
+                      <span>نظام التذكيرات الذكية والتنبيهات</span>
+                      <span className="text-[10px] bg-[#D4A373] text-white px-2 py-0.5 rounded-full font-bold">تكرار وملاحظات</span>
+                    </h4>
+                    <p className="text-[10px] text-[#556E4F] mt-1 font-bold leading-normal">
+                      إدارة التذكيرات (يومي، أسبوعي، أيام محددة) مع إضافة عبارات تحفيزية ملهمة
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-[#4E685B] bg-white/80 border border-[#DCE4D8] px-2.5 py-1 rounded-xl">
+                    {(settings.reminders || []).length} تذكير
+                  </span>
+                  <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+                </div>
+              </div>
+
               {/* CARD 10: NOTIFICATIONS */}
               <div className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between transition-all hover:border-[#8B9D83]/30">
                 <div className="flex items-center gap-4">
@@ -5309,6 +6180,68 @@ export default function App() {
         onChangeLanguage={(lang) => setSettings(prev => ({ ...prev, appLanguage: lang }))}
         isEn={isEn}
       />
+
+      {/* 🔔 Smart Reminders Management Modal */}
+      <SmartRemindersModal
+        isOpen={showSmartRemindersModal}
+        onClose={() => setShowSmartRemindersModal(false)}
+        reminders={settings.reminders || []}
+        onSaveReminders={(updatedReminders) => {
+          setSettings(prev => ({ ...prev, reminders: updatedReminders }));
+        }}
+      />
+
+      {/* ⚡ Triggered Reminder Notification Popup */}
+      {triggeredReminder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn" dir="rtl">
+          <div className="bg-[#FAF8F5] border-2 border-[#D4A373] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <span className="text-3xl bg-[#FCF5DE] p-3 rounded-2xl border border-[#E9E1C4] shadow-xs">
+                {triggeredReminder.categoryIcon || '🔔'}
+              </span>
+              <div>
+                <span className="text-[10px] font-black bg-[#D4A373] text-white px-2.5 py-0.5 rounded-full">
+                  تنبيه ذكي الآن ({triggeredReminder.time})
+                </span>
+                <h3 className="text-base font-extrabold text-[#2C3E35] mt-1">
+                  {triggeredReminder.title}
+                </h3>
+              </div>
+            </div>
+
+            {triggeredReminder.motivationalNote && (
+              <div className="bg-[#FCF5DE] border border-[#E9E1C4] p-3.5 rounded-2xl text-xs text-[#8C661D] font-bold space-y-1">
+                <div className="flex items-center gap-1 text-[#A67E2E]">
+                  <Sparkles className="w-4 h-4" />
+                  <span>رسالة تحفيزية لك:</span>
+                </div>
+                <p className="leading-relaxed italic text-sm">
+                  "{triggeredReminder.motivationalNote}"
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setTriggeredReminder(null);
+                  setActiveTab('diaries');
+                  setActiveDiariesSubTab('journal');
+                }}
+                className="flex-1 py-2.5 bg-[#4E685B] text-white font-bold text-xs rounded-xl hover:bg-[#3F5449] transition-all cursor-pointer shadow-xs text-center"
+              >
+                انتقل للخواطر واليوميات ✍️
+              </button>
+              <button
+                onClick={() => setTriggeredReminder(null)}
+                className="px-4 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-300 transition-all cursor-pointer"
+              >
+                حسناً، شكراً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden PDF template for export - beautifully styled like a real physical A4 page */}
       {editingDiary && (

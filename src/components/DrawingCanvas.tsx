@@ -13,6 +13,7 @@ export default function DrawingCanvas({ initialDataUrl, onSave, onCancel }: Draw
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState('#4f46e5'); // default purple-indigo
   const [brushSize, setBrushSize] = useState(5);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const colors = [
     '#000000', // Black
@@ -203,7 +204,7 @@ export default function DrawingCanvas({ initialDataUrl, onSave, onCancel }: Draw
 
         <div className="flex items-center space-x-2 space-x-reverse">
           <button
-            onClick={onCancel}
+            onClick={() => setShowExitConfirm(true)}
             className="flex items-center space-x-1 space-x-reverse px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-[#E2DCC8] rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
@@ -219,6 +220,31 @@ export default function DrawingCanvas({ initialDataUrl, onSave, onCancel }: Draw
           </button>
         </div>
       </div>
+
+      {/* Confirmation Dialog matching video 0:15 */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 text-center shadow-xl border border-[#E2DCC8]">
+            <h3 className="text-sm font-bold text-[#3A3A3A]">هل ترغب في حفظ الرسم والخروج؟</h3>
+            <div className="flex items-center justify-center space-x-4 space-x-reverse pt-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 px-4 py-2 rounded-lg bg-blue-50 cursor-pointer"
+              >
+                تجاهل
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 px-4 py-2 rounded-lg bg-emerald-50 cursor-pointer"
+              >
+                حفظ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
