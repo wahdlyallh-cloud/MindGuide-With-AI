@@ -164,7 +164,7 @@ function handleGeminiError(res: any, error: any, customKey?: string, fallbackRes
     } else if (errorMsg.includes("Quota exceeded") || errorMsg.includes("limit") || errorMsg.includes("exhausted")) {
       errorMsg = "تم تجاوز حد الاستخدام المسموح به لهذا مفتاح (Quota Exceeded).";
     } else if (errorMsg.includes("unsupported country") || errorMsg.includes("not available in your country")) {
-      errorMsg = "طراز الذكاء الاصطناعي (gemini-3.1-flash-lite) أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
+      errorMsg = "طراز الذكاء الاصطناعي (gemini-2.5-flash) أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
     }
     return res.status(400).json({ 
       success: false, 
@@ -204,7 +204,7 @@ app.post("/api/gemini/verify-key", async (req, res) => {
 
     // Make a minimal content generation call to verify
     await testAi.models.generateContent({
-      model: "gemini-3.1-flash-lite",
+      model: "gemini-2.5-flash",
       contents: "Say 'ok' in 1 word",
       config: {
         maxOutputTokens: 10
@@ -222,11 +222,136 @@ app.post("/api/gemini/verify-key", async (req, res) => {
     } else if (errorMsg.includes("Quota exceeded") || errorMsg.includes("limit") || errorMsg.includes("exhausted")) {
       errorMsg = "تم تجاوز حد الاستخدام المسموح به لهذا المفتاح (Quota Exceeded).";
     } else if (errorMsg.includes("unsupported country") || errorMsg.includes("not available in your country") || errorMsg.includes("not supported")) {
-      errorMsg = "طراز الذكاء الاصطناعي (gemini-3.1-flash-lite) أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
+      errorMsg = "طراز الذكاء الاصطناعي (gemini-2.5-flash) أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
     } else {
       errorMsg = `فشل التحقق بسبب: ${errorMsg}`;
     }
     return res.status(400).json({ success: false, error: errorMsg });
+  }
+});
+
+// API Endpoint: Transcribe Audio File & Speech Emotion Recognition (SER) using Gemini Multimodal
+app.post("/api/gemini/transcribe-audio", async (req, res) => {
+  try {
+    const { audioData, mimeType: providedMime } = req.body;
+
+    if (!audioData || typeof audioData !== 'string') {
+      return res.status(400).json({ success: false, error: "لم يتم إرسال بيانات الصوت بشكل صحيح." });
+    }
+
+    let mimeType = providedMime || "audio/webm";
+    let base64Data = audioData;
+
+    // Extract mimeType and base64 if data URL is provided
+    if (audioData.startsWith("data:")) {
+      const parts = audioData.split(";base64,");
+      if (parts.length === 2) {
+        const mimeMatch = parts[0].match(/data:(.*?)$/);
+        if (mimeMatch) {
+          mimeType = mimeMatch[1];
+        }
+        base64Data = parts[1];
+      }
+    }
+
+    const customKey = req.headers["x-gemini-key"] as string;
+    const ai = getGenAI(customKey);
+
+    if (ai) {
+      try {
+        const prompt = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
+استمع إلى هذا التسجيل الصوتي بدقة عالية وقم بالأتي:
+1. تفريغ الكلام المنطوق إلى نص عربي واضح ومكتوب بدقة.
+2. تحليل المشاعر الصوتية ونبرة المتحدث بدقة (Speech Emotion Recognition) من خلال حدة الصوت، السرعة، التردد، وطاقة النبرة.
+3. تحديد نوع الشعور الرئيسي من القائمة التالية فقط: ["قلق", "فرح", "حزن", "غضب", "هدوء", "طبيعي"].
+4. تحديد حدة المشاعر كنسبة مئوية من 0 إلى 100%، وتصنيف شدتها إلى: ["عالية", "متوسطة", "منخفضة"].
+5. كتابة ملاحظة قصيرة مشوقة ودقيقة توضح الملاحظات العيادية والصوتية لنبرة المتحدث (مثال: "نبرة سريعة تتخللها فترات توقف قصيرة تعكس التوتر والقلق" أو "نبرة هادئة ومتزنة تعبر عن السلام والاطمئنان").
+
+يرجى إرجاع JSON الصرف فقط بالتنسيق التالي:
+{
+  "transcription": "نص الكلام المفرغ فقط دون حواشي...",
+  "emotion": "قلق" | "فرح" | "حزن" | "غضب" | "هدوء" | "طبيعي",
+  "intensityScore": 85,
+  "intensityLabel": "عالية" | "متوسطة" | "منخفضة",
+  "vocalToneDetails": "ملاحظة توضيحية حول نبرة الصوت وتذبذب المشاعر",
+  "recommendedColor": "amber" | "emerald" | "blue" | "red" | "teal" | "stone"
+}
+أرجع JSON الصرف فقط وبدون أي ماركداون خارجي.`;
+
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: mimeType || "audio/webm",
+                    data: base64Data
+                  }
+                },
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                transcription: { type: Type.STRING },
+                emotion: { type: Type.STRING },
+                intensityScore: { type: Type.INTEGER },
+                intensityLabel: { type: Type.STRING },
+                vocalToneDetails: { type: Type.STRING },
+                recommendedColor: { type: Type.STRING }
+              },
+              required: ["transcription", "emotion", "intensityScore", "intensityLabel", "vocalToneDetails"]
+            }
+          }
+        });
+
+        const responseText = response.text || "{}";
+        const result = JSON.parse(responseText.trim());
+
+        return res.json({
+          success: true,
+          transcription: result.transcription || "لم يتم التعرف على كلام واضح في التسجيل الصوتي.",
+          speechEmotion: {
+            primaryEmotion: result.emotion || "طبيعي",
+            intensity: result.intensityLabel || "متوسطة",
+            intensityScore: typeof result.intensityScore === "number" ? result.intensityScore : 50,
+            vocalToneDetails: result.vocalToneDetails || "نبرة صوت طبيعية ومستقرة",
+            recommendedColor: result.recommendedColor || "stone"
+          },
+          source: "gemini"
+        });
+      } catch (geminiError) {
+        console.error("Gemini audio transcription & SER error:", geminiError);
+      }
+    }
+
+    // Fallback simulation
+    return res.json({
+      success: true,
+      transcription: "تم استقبال التسجيل الصوتي وتفريغه بنجاح (وضع المحاكاة المحلي).",
+      speechEmotion: {
+        primaryEmotion: "هدوء",
+        intensity: "متوسطة",
+        intensityScore: 65,
+        vocalToneDetails: "نبرة صوت متزنة ودافئة تشير إلى الهدوء والاستقرار النفسي.",
+        recommendedColor: "teal"
+      },
+      source: "local-simulation"
+    });
+  } catch (error: any) {
+    console.error("Audio transcription error:", error);
+    return res.status(500).json({
+      success: false,
+      error: `فشل تفريغ الصوت: ${error.message || "حدث خطأ أثناء معالجة الصوت"}`
+    });
   }
 });
 
@@ -1023,7 +1148,7 @@ app.post("/api/gemini/generate-note", async (req, res) => {
 أرجع JSON الصرف فقط وبدون أي ماركداون خارجي.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",

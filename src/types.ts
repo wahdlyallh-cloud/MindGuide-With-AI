@@ -10,6 +10,13 @@ export interface AudioRecording {
   dataUrl: string;
   duration: number; // in seconds
   transcription?: string;
+  speechEmotion?: {
+    primaryEmotion: 'فرح' | 'قلق' | 'حزن' | 'غضب' | 'هدوء' | 'طبيعي' | string;
+    intensity: 'عالية' | 'متوسطة' | 'منخفضة' | string;
+    intensityScore: number; // 0 - 100%
+    vocalToneDetails?: string;
+    recommendedColor?: 'amber' | 'emerald' | 'blue' | 'red' | 'teal' | 'stone' | string;
+  };
 }
 
 export interface FileAttachment {

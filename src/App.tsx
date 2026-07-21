@@ -1046,7 +1046,9 @@ export default function App() {
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
   const audioChunksRef = React.useRef<Blob[]>([]);
   const speechRecognitionRef = React.useRef<any>(null);
+  const speechTranscriptRef = React.useRef<string>('');
   const [speechTranscript, setSpeechTranscript] = useState('');
+  const [transcribingAudioId, setTranscribingAudioId] = useState<string | null>(null);
 
   // --- Rich Editor & Features Sheet States ---
   const [showFontToolbar, setShowFontToolbar] = useState(false);
@@ -1059,10 +1061,13 @@ export default function App() {
   const [showAiWriterSheet, setShowAiWriterSheet] = useState(false);
   const [aiWriterTopicInput, setAiWriterTopicInput] = useState('');
   const [aiWriterLoading, setAiWriterLoading] = useState(false);
+  const [aiWriterResult, setAiWriterResult] = useState<{ title: string; content: string } | null>(null);
+  const [copiedAiText, setCopiedAiText] = useState(false);
 
   const handleAiGenerateNote = async (selectedTopic?: string) => {
     const topic = selectedTopic || aiWriterTopicInput || 'نصائح صحية ونفسية';
     setAiWriterLoading(true);
+    setAiWriterResult(null);
     try {
       const res = await fetch('/api/gemini/generate-note', {
         method: 'POST',
@@ -1073,20 +1078,95 @@ export default function App() {
         body: JSON.stringify({ promptTopic: topic })
       });
       const data = await res.json();
-      if (data.success && editingDiary) {
-        setEditingDiary(prev => prev ? {
-          ...prev,
-          title: data.title || prev.title,
-          content: prev.content ? `${prev.content}\n\n${data.content}` : data.content
-        } : null);
-        setShowAiWriterSheet(false);
-        setAiWriterTopicInput('');
+      if (data.success) {
+        setAiWriterResult({
+          title: data.title || 'ملاحظة ذكية',
+          content: data.content || ''
+        });
+      } else {
+        alert(data.error || 'عذراً، تعذر توليد الملاحظة بالذكاء الاصطناعي.');
       }
     } catch (err) {
       console.error(err);
+      alert('حدث خطأ أثناء الاتصال بالذكاء الاصطناعي.');
     } finally {
       setAiWriterLoading(false);
     }
+  };
+
+  const handleApplyAiGeneratedNoteToCurrentEntry = () => {
+    if (!aiWriterResult) return;
+    if (editingDiary) {
+      setEditingDiary(prev => prev ? {
+        ...prev,
+        title: (prev.title && prev.title !== 'يومية جديدة') ? prev.title : aiWriterResult.title,
+        content: prev.content ? `${prev.content}\n\n${aiWriterResult.content}` : aiWriterResult.content
+      } : null);
+    } else {
+      const newDiary: DiaryEntry = {
+        id: `diary-${Date.now()}`,
+        title: aiWriterResult.title || `ملاحظة ذكية - ${selectedDate}`,
+        content: aiWriterResult.content || '',
+        createdAt: `${selectedDate}T20:00:00.000Z`,
+        updatedAt: `${selectedDate}T20:00:00.000Z`,
+        moods: ['مرتاح'],
+        importance: 3,
+        color: 'bg-white border-[#E2DCC8]',
+        images: [],
+        videos: [],
+        audioRecordings: [],
+        files: [],
+        tasks: [],
+        tags: ['ذكاء_اصطناعي'],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 8,
+        sportsDuration: 0,
+        medications: []
+      };
+      setDiaries(prev => [newDiary, ...prev]);
+      setEditingDiary(newDiary);
+    }
+    setShowAiWriterSheet(false);
+    setAiWriterResult(null);
+    setAiWriterTopicInput('');
+  };
+
+  const handleCreateNewDiaryFromAiResult = () => {
+    if (!aiWriterResult) return;
+    const newDiary: DiaryEntry = {
+      id: `diary-${Date.now()}`,
+      title: aiWriterResult.title || `ملاحظة ذكية - ${selectedDate}`,
+      content: aiWriterResult.content || '',
+      createdAt: `${selectedDate}T20:00:00.000Z`,
+      updatedAt: `${selectedDate}T20:00:00.000Z`,
+      moods: ['مرتاح'],
+      importance: 3,
+      color: 'bg-white border-[#E2DCC8]',
+      images: [],
+      videos: [],
+      audioRecordings: [],
+      files: [],
+      tasks: [],
+      tags: ['ذكاء_اصطناعي'],
+      chatLogs: [],
+      isLocked: false,
+      sleepHours: 8,
+      sportsDuration: 0,
+      medications: []
+    };
+    setDiaries(prev => [newDiary, ...prev]);
+    setEditingDiary(newDiary);
+    setShowAiWriterSheet(false);
+    setAiWriterResult(null);
+    setAiWriterTopicInput('');
+  };
+
+  const handleCopyAiNote = () => {
+    if (!aiWriterResult) return;
+    navigator.clipboard.writeText(`${aiWriterResult.title}\n\n${aiWriterResult.content}`);
+    setCopiedAiText(true);
+    setTimeout(() => setCopiedAiText(false), 2000);
   };
 
   const insertFormatting = (prefix: string, suffix: string = '') => {
@@ -1544,15 +1624,16 @@ export default function App() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         if (typeof reader.result === 'string') {
           const diary = getOrCreateDiaryForUpload();
+          const newRecId = `rec-${Date.now()}`;
           const newRec: AudioRecording = {
-            id: `rec-${Date.now()}`,
-            name: file.name,
+            id: newRecId,
+            name: file.name || 'تسجيل صوتي مرفق.mp3',
             dataUrl: reader.result,
-            duration: 10,
-            transcription: 'تم تحميل ملف تسجيل صوتي بنجاح 🎙️'
+            duration: Math.round(file.size / 16000) || 10,
+            transcription: 'جاري تفريغ الصوت بالذكاء الاصطناعي... ⏳'
           };
           const updatedDiary = {
             ...diary,
@@ -1562,9 +1643,45 @@ export default function App() {
           setEditingDiary(updatedDiary);
           setIsNewEntry(false);
           setActiveTab('diaries');
+
+          setTranscribingAudioId(newRecId);
+          try {
+            const res = await fetch('/api/gemini/transcribe-audio', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-gemini-key': settings.userApiKey || ''
+              },
+              body: JSON.stringify({ audioData: reader.result, mimeType: file.type || 'audio/mp3' })
+            });
+            const data = await res.json();
+            if (data.success && data.transcription) {
+              setDiaries(prev => prev.map(d => d.id === diary.id ? {
+                ...d,
+                audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? {
+                  ...r,
+                  transcription: data.transcription,
+                  speechEmotion: data.speechEmotion
+                } : r)
+              } : d));
+              setEditingDiary(prev => prev && prev.id === diary.id ? {
+                ...prev,
+                audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? {
+                  ...r,
+                  transcription: data.transcription,
+                  speechEmotion: data.speechEmotion
+                } : r)
+              } : prev);
+            }
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setTranscribingAudioId(null);
+          }
         }
       };
       reader.readAsDataURL(file);
+      e.target.value = '';
     }
   };
 
@@ -1632,31 +1749,231 @@ export default function App() {
     setActiveInputSection('none');
   };
 
+  // --- Speech Emotion Recognition (SER) Helper Styles & Toggles ---
+  const getSpeechEmotionStyles = (speechEmotion?: AudioRecording['speechEmotion']) => {
+    if (!speechEmotion) {
+      return {
+        containerBg: 'bg-white/95 border-[#E2DCC8]',
+        textColor: 'text-[#2B3E50]',
+        badgeBg: 'bg-stone-100/90 text-stone-800 border-stone-200',
+        emoji: '🎙️',
+        emotionText: 'تحليل نبرة طبيعية',
+        headerText: 'التفريغ النصي التلقائي للصوت'
+      };
+    }
+
+    const emotion = speechEmotion.primaryEmotion || 'طبيعي';
+    const colorKey = speechEmotion.recommendedColor || '';
+
+    if (emotion.includes('قلق') || emotion.includes('توتر') || colorKey === 'amber') {
+      return {
+        containerBg: 'bg-gradient-to-br from-amber-100/90 via-orange-50/90 to-amber-50 border-amber-300 text-amber-950 shadow-xs',
+        textColor: 'text-amber-950 font-medium',
+        badgeBg: 'bg-amber-200 text-amber-900 border-amber-400 font-black',
+        emoji: '😰',
+        emotionText: `نبرة قلق وتوتر (${speechEmotion.intensityScore || 75}%)`,
+        headerText: 'تفريغ صوتي بصبغة نبرة القلق'
+      };
+    }
+
+    if (emotion.includes('فرح') || emotion.includes('سعادة') || emotion.includes('حماس') || colorKey === 'emerald') {
+      return {
+        containerBg: 'bg-gradient-to-br from-emerald-100/90 via-teal-50/90 to-emerald-50 border-emerald-300 text-emerald-950 shadow-xs',
+        textColor: 'text-emerald-950 font-medium',
+        badgeBg: 'bg-emerald-200 text-emerald-900 border-emerald-400 font-black',
+        emoji: '🎉',
+        emotionText: `نبرة فرح وسعادة (${speechEmotion.intensityScore || 85}%)`,
+        headerText: 'تفريغ صوتي بصبغة نبرة الفرح'
+      };
+    }
+
+    if (emotion.includes('حزن') || emotion.includes('إحباط') || emotion.includes('ضيق') || colorKey === 'blue') {
+      return {
+        containerBg: 'bg-gradient-to-br from-blue-100/90 via-sky-50/90 to-blue-50 border-blue-300 text-blue-950 shadow-xs',
+        textColor: 'text-blue-950 font-medium',
+        badgeBg: 'bg-blue-200 text-blue-900 border-blue-400 font-black',
+        emoji: '😔',
+        emotionText: `نبرة حزن وهدوء (${speechEmotion.intensityScore || 70}%)`,
+        headerText: 'تفريغ صوتي بصبغة نبرة الحزن'
+      };
+    }
+
+    if (emotion.includes('غضب') || emotion.includes('انفعال') || colorKey === 'red') {
+      return {
+        containerBg: 'bg-gradient-to-br from-red-100/90 via-rose-50/90 to-red-50 border-red-300 text-red-950 shadow-xs',
+        textColor: 'text-red-950 font-medium',
+        badgeBg: 'bg-red-200 text-red-900 border-red-400 font-black',
+        emoji: '😡',
+        emotionText: `نبرة غضب وانفعال (${speechEmotion.intensityScore || 80}%)`,
+        headerText: 'تفريغ صوتي بصبغة نبرة الغضب'
+      };
+    }
+
+    if (emotion.includes('هدوء') || emotion.includes('سكينة') || emotion.includes('اطمئنان') || colorKey === 'teal') {
+      return {
+        containerBg: 'bg-gradient-to-br from-teal-100/90 via-emerald-50/90 to-teal-50 border-teal-300 text-teal-950 shadow-xs',
+        textColor: 'text-teal-950 font-medium',
+        badgeBg: 'bg-teal-200 text-teal-900 border-teal-400 font-black',
+        emoji: '🧘',
+        emotionText: `نبرة هدوء واطمئنان (${speechEmotion.intensityScore || 60}%)`,
+        headerText: 'تفريغ صوتي بصبغة نبرة الهدوء'
+      };
+    }
+
+    return {
+      containerBg: 'bg-gradient-to-br from-stone-100/90 to-neutral-50 border-stone-300 text-stone-900 shadow-xs',
+      textColor: 'text-stone-900 font-medium',
+      badgeBg: 'bg-stone-200 text-stone-800 border-stone-300 font-black',
+      emoji: '🎙️',
+      emotionText: `نبرة ${emotion} (${speechEmotion.intensityScore || 50}%)`,
+      headerText: 'تفريغ صوتي متوازن'
+    };
+  };
+
+  const handleSetSpeechEmotion = (recId: string, primaryEmotion: string, colorKey: string) => {
+    const scores: Record<string, number> = {
+      'قلق': 80,
+      'فرح': 88,
+      'حزن': 72,
+      'غضب': 85,
+      'هدوء': 65,
+      'طبيعي': 50
+    };
+    const newEmotion = {
+      primaryEmotion,
+      intensity: 'عالية',
+      intensityScore: scores[primaryEmotion] || 70,
+      vocalToneDetails: `تم تحديد صبغة خلفية المشاعر (${primaryEmotion}) يدويّاً للتعبير عن حالة النص.`,
+      recommendedColor: colorKey
+    };
+    setEditingDiary(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        audioRecordings: (prev.audioRecordings || []).map(r => r.id === recId ? { ...r, speechEmotion: newEmotion } : r)
+      };
+    });
+  };
+
   // --- Audio File Uploader (من جهاز المستخدم) ---
+  // --- Transcribe Audio Item manually or automatically with Gemini AI ---
+  const handleTranscribeAudioItem = async (rec: AudioRecording) => {
+    if (!rec.dataUrl || rec.dataUrl === '#') {
+      alert('لا يوجد تسجيل صوتي صالح للتفريغ النصي.');
+      return;
+    }
+
+    setTranscribingAudioId(rec.id);
+    try {
+      const res = await fetch('/api/gemini/transcribe-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({ audioData: rec.dataUrl })
+      });
+      const data = await res.json();
+      if (data.success && data.transcription) {
+        setEditingDiary(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            audioRecordings: (prev.audioRecordings || []).map(r => r.id === rec.id ? {
+              ...r,
+              transcription: data.transcription,
+              speechEmotion: data.speechEmotion
+            } : r)
+          };
+        });
+      } else {
+        alert(data.error || 'عذراً، تعذر تفريغ الصوت نصياً.');
+      }
+    } catch (err: any) {
+      alert('حدث خطأ أثناء الاتصال بـ Gemini للتفريغ النصي.');
+    } finally {
+      setTranscribingAudioId(null);
+    }
+  };
+
+  const handleAppendTranscriptToContent = (transcriptText: string) => {
+    if (!transcriptText || !editingDiary) return;
+    const addition = `\n\n🎙️ [تفويض/تفريغ صوتي]:\n${transcriptText}`;
+    setEditingDiary(prev => prev ? { ...prev, content: (prev.content || '') + addition } : null);
+  };
+
   const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && editingDiary) {
+    if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         if (typeof reader.result === 'string') {
+          const dataUrl = reader.result;
+          const targetDiary = editingDiary || getOrCreateDiaryForUpload();
+          const newRecId = `rec-${Date.now()}`;
           const newRec: AudioRecording = {
-            id: `rec-${Date.now()}`,
+            id: newRecId,
             name: file.name || 'ملف صوتي مرفق.mp3',
-            dataUrl: reader.result,
+            dataUrl: dataUrl,
             duration: Math.round(file.size / 16000) || 12,
-            transcription: 'ملف صوتي مرفق بنجاح من جهازك 🎵'
+            transcription: 'جاري تفريغ الصوت بالذكاء الاصطناعي... ⏳'
           };
-          setEditingDiary(prev => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              audioRecordings: [...(prev.audioRecordings || []), newRec]
-            };
-          });
+          const updatedDiary = {
+            ...targetDiary,
+            audioRecordings: [...(targetDiary.audioRecordings || []), newRec]
+          };
+          setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
+          setEditingDiary(updatedDiary);
           setActiveInputSection('none');
+
+          setTranscribingAudioId(newRecId);
+          try {
+            const res = await fetch('/api/gemini/transcribe-audio', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-gemini-key': settings.userApiKey || ''
+              },
+              body: JSON.stringify({ audioData: dataUrl, mimeType: file.type || 'audio/mp3' })
+            });
+            const data = await res.json();
+            if (data.success && data.transcription) {
+              setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
+                ...d,
+                audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? {
+                  ...r,
+                  transcription: data.transcription,
+                  speechEmotion: data.speechEmotion
+                } : r)
+              } : d));
+              setEditingDiary(prev => prev && prev.id === targetDiary.id ? {
+                ...prev,
+                audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? {
+                  ...r,
+                  transcription: data.transcription,
+                  speechEmotion: data.speechEmotion
+                } : r)
+              } : prev);
+            } else {
+              const fallbackMsg = 'تم رفع الصوت بنجاح. اضغط زر (تفريغ بالذكاء الاصطناعي) لتحويله إلى نص.';
+              setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
+                ...d,
+                audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: fallbackMsg } : r)
+              } : d));
+              setEditingDiary(prev => prev && prev.id === targetDiary.id ? {
+                ...prev,
+                audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: fallbackMsg } : r)
+              } : prev);
+            }
+          } catch {
+            // Keep fallback
+          } finally {
+            setTranscribingAudioId(null);
+          }
         }
       };
       reader.readAsDataURL(file);
+      e.target.value = '';
     }
   };
 
@@ -1678,7 +1995,8 @@ export default function App() {
         mediaRecorderRef.current.stop();
       } else {
         // Fallback recorded audio object if MediaRecorder stream wasn't supported
-        const transcriptText = speechTranscript.trim() || 'فضفضة صوتية سريعة - يتحدث فيها المستخدم عن أفكاره ومشاعره اليومية.';
+        const capturedSpeech = speechTranscriptRef.current.trim();
+        const transcriptText = capturedSpeech || 'فضفضة صوتية سريعة - تم التسجيل بنجاح.';
         const newRec: AudioRecording = {
           id: `rec-${Date.now()}`,
           name: `تسجيل صوتي ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.mp3`,
@@ -1696,6 +2014,7 @@ export default function App() {
       setIsRecording(true);
       setRecordingSeconds(0);
       setSpeechTranscript('');
+      speechTranscriptRef.current = '';
       audioChunksRef.current = [];
 
       // Start Browser Speech Recognition in Arabic
@@ -1711,6 +2030,7 @@ export default function App() {
             for (let i = 0; i < event.results.length; i++) {
               current += event.results[i][0].transcript;
             }
+            speechTranscriptRef.current = current;
             setSpeechTranscript(current);
           };
           rec.start();
@@ -1736,18 +2056,55 @@ export default function App() {
           mediaRecorder.onstop = () => {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const reader = new FileReader();
-            reader.onloadend = () => {
+            reader.onloadend = async () => {
               const dataUrl = reader.result as string;
-              const transcriptText = speechTranscript.trim() || 'تفريغ صوتي تلقائي للفضفضة المسجلة 🎙️';
+              const liveText = speechTranscriptRef.current.trim();
+              const newRecId = `rec-${Date.now()}`;
+              const initialTranscription = liveText || 'جاري تفريغ الصوت بالذكاء الاصطناعي... 🎙️';
+
               const newRec: AudioRecording = {
-                id: `rec-${Date.now()}`,
+                id: newRecId,
                 name: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.webm`,
                 dataUrl: dataUrl,
                 duration: recordingSeconds || 10,
-                transcription: transcriptText
+                transcription: initialTranscription
               };
+
               if (editingDiary) {
                 setEditingDiary(prev => prev ? { ...prev, audioRecordings: [...(prev.audioRecordings || []), newRec] } : null);
+              }
+
+              // Run Gemini Audio Transcription asynchronously
+              setTranscribingAudioId(newRecId);
+              try {
+                const res = await fetch('/api/gemini/transcribe-audio', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-gemini-key': settings.userApiKey || ''
+                  },
+                  body: JSON.stringify({ audioData: dataUrl, mimeType: 'audio/webm' })
+                });
+                const data = await res.json();
+                if (data.success && data.transcription) {
+                  setEditingDiary(prev => prev ? {
+                    ...prev,
+                    audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? {
+                      ...r,
+                      transcription: data.transcription,
+                      speechEmotion: data.speechEmotion
+                    } : r)
+                  } : null);
+                } else if (!liveText) {
+                  setEditingDiary(prev => prev ? {
+                    ...prev,
+                    audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: 'تم حفظ الفضفضة الصوتية بنجاح. اضغط (تفريغ بالذكاء الاصطناعي) للتوليد.' } : r)
+                  } : null);
+                }
+              } catch {
+                // Keep liveText or fallback
+              } finally {
+                setTranscribingAudioId(null);
               }
             };
             reader.readAsDataURL(audioBlob);
@@ -4077,12 +4434,12 @@ export default function App() {
                   <div className="flex flex-wrap gap-2">
                     
                     {/* Audio File Upload button */}
-                    <label className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs">
+                    <label className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl text-xs font-semibold text-[#5A5A40] cursor-pointer transition-colors shadow-xs" title="اختر من (الملفات / Files) لرفع الملاحظة الصوتية">
                       <span>🎵</span>
                       <span>أضف ملف صوتي</span>
                       <input
                         type="file"
-                        accept="audio/*"
+                        accept=".mp3,.m4a,.wav,.aac,.ogg,.opus,.flac,.webm,.amr,.3gp,audio/mp3,audio/mpeg,audio/wav,audio/m4a,audio/x-m4a,audio/aac,audio/ogg,audio/webm,audio/amr"
                         onChange={handleAudioFileUpload}
                         className="hidden"
                       />
@@ -4124,6 +4481,34 @@ export default function App() {
                       <Mic className="w-3.5 h-3.5 text-red-500" />
                       <span>{isRecording ? `جاري التسجيل (${recordingSeconds}ث)` : '🎤 فضفضة صوتية سريعة'}</span>
                     </button>
+
+                    {isRecording && (
+                      <div className="w-full mt-2 p-3 bg-red-50 border border-red-200 rounded-2xl flex flex-col space-y-1.5 animate-fadeIn text-xs col-span-full">
+                        <div className="flex items-center justify-between text-red-700 font-bold">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping shrink-0" />
+                            <span>جاري تسجيل الفضفضة والتقاط الصوت المباشر... ({recordingSeconds} ثانية)</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleToggleRecording}
+                            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold text-[11px] cursor-pointer shadow-xs"
+                          >
+                            إيقاف وحفظ التسجيل ⏹️
+                          </button>
+                        </div>
+                        {speechTranscript ? (
+                          <div className="bg-white/90 p-2 rounded-xl border border-red-100 text-[#2B3E50] text-[11px] font-medium leading-relaxed">
+                            <span className="font-bold text-red-600 block mb-0.5">النص المكتوب لحظياً:</span>
+                            <p className="italic">"{speechTranscript}"</p>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-red-500 italic">
+                            تحدث الآن بوضوح وسيتم تحويل كلماتك لنص مكتوب بالذكاء الاصطناعي عند إنهاء التسجيل...
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Web Link button */}
                     <button
@@ -4302,53 +4687,168 @@ export default function App() {
                   </div>
                 )}
 
+                {/* 🎙️ Attached Audio Recordings & Speech Emotion Recognition (SER) Panel */}
                 {editingDiary.audioRecordings.length > 0 && (
                   <div className="space-y-3">
-                    <span className="block text-xs font-bold text-[#5A5A40]">التسجيلات والملفات الصوتية المرفقة:</span>
-                    <div className="space-y-2">
-                      {editingDiary.audioRecordings.map((rec) => (
-                        <div key={rec.id} className="p-3.5 bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl space-y-2 text-xs">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2 space-x-reverse">
-                              <div className="p-2 bg-[#8B9D83]/15 text-[#8B9D83] rounded-xl">
-                                <Mic className="w-4 h-4" />
+                    <span className="block text-xs font-bold text-[#5A5A40]">
+                      🎙️ التسجيلات الصوتية المرفقة (مع تحليل نبرة المشاعر SER):
+                    </span>
+                    <div className="space-y-3">
+                      {editingDiary.audioRecordings.map((rec) => {
+                        const emoStyle = getSpeechEmotionStyles(rec.speechEmotion);
+                        return (
+                          <div key={rec.id} className="p-3.5 bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl space-y-2.5 text-xs">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center space-x-2 space-x-reverse">
+                                <div className="p-2 bg-[#8B9D83]/15 text-[#8B9D83] rounded-xl">
+                                  <Mic className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <span className="font-bold block text-[#3A3A3A]">{rec.name}</span>
+                                  <span className="text-[10px] text-gray-500">المدة: {rec.duration} ثانية</span>
+                                </div>
                               </div>
-                              <div>
-                                <span className="font-bold block text-[#3A3A3A]">{rec.name}</span>
-                                <span className="text-[10px] text-gray-500">المدة: {rec.duration} ثانية</span>
-                              </div>
+                              
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingDiary(prev => prev ? { ...prev, audioRecordings: prev.audioRecordings.filter(x => x.id !== rec.id) } : null);
+                                }}
+                                className="text-red-600 hover:text-red-700 font-bold px-2.5 py-1 bg-white border border-red-100 rounded-lg cursor-pointer text-xs transition-colors"
+                              >
+                                حذف
+                              </button>
                             </div>
-                            
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingDiary(prev => prev ? { ...prev, audioRecordings: prev.audioRecordings.filter(x => x.id !== rec.id) } : null);
-                              }}
-                              className="text-red-600 hover:text-red-700 font-bold px-2.5 py-1 bg-white border border-red-100 rounded-lg cursor-pointer text-xs transition-colors"
-                            >
-                              حذف
-                            </button>
+
+                            {/* Audio player if dataUrl exists */}
+                            {rec.dataUrl && rec.dataUrl !== '#' && (
+                              <div className="pt-0.5">
+                                <audio controls src={rec.dataUrl} className="w-full h-8 rounded-lg" />
+                              </div>
+                            )}
+
+                            {/* Transcription & Dynamic Colored Background Container for SER */}
+                            <div className={`p-3.5 rounded-2xl border transition-all duration-300 space-y-2.5 ${emoStyle.containerBg}`}>
+                              <div className="flex items-center justify-between border-b border-black/10 pb-2 flex-wrap gap-1.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-black flex items-center gap-1 text-[11px]">
+                                    <Sparkles className="w-3.5 h-3.5 text-[#D4A373]" />
+                                    <span>{emoStyle.headerText}:</span>
+                                  </span>
+
+                                  {/* Speech Emotion Badge */}
+                                  <span className={`px-2 py-0.5 rounded-full border text-[10px] flex items-center gap-1 shadow-3xs ${emoStyle.badgeBg}`}>
+                                    <span>{emoStyle.emoji}</span>
+                                    <span>{emoStyle.emotionText}</span>
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <button
+                                    type="button"
+                                    disabled={transcribingAudioId === rec.id}
+                                    onClick={() => handleTranscribeAudioItem(rec)}
+                                    className="px-2.5 py-1 bg-white/90 hover:bg-white text-[#4E685B] border border-black/10 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50 shadow-3xs"
+                                  >
+                                    {transcribingAudioId === rec.id ? (
+                                      <>
+                                        <RefreshCw className="w-3 h-3 animate-spin text-[#4E685B]" />
+                                        <span>جاري التحليل...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Sparkles className="w-3 h-3 text-[#D4A373]" />
+                                        <span>تحليل النبرة والتفريغ</span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                  {rec.transcription && rec.transcription.trim() && !rec.transcription.includes('جاري') && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAppendTranscriptToContent(rec.transcription!)}
+                                      className="px-2.5 py-1 bg-white/90 hover:bg-white text-[#8C661D] border border-black/10 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 shadow-3xs"
+                                      title="نسخ النص المفرغ وإضافته مباشرة لمضمون اليومية"
+                                    >
+                                      <span>✍️</span>
+                                      <span>إضافة للنص</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Transcription text body */}
+                              {transcribingAudioId === rec.id ? (
+                                <div className="py-2.5 text-center text-xs text-amber-900 font-bold animate-pulse flex items-center justify-center gap-2">
+                                  <RefreshCw className="w-4 h-4 animate-spin text-amber-700" />
+                                  <span>جاري تحليل المشاعر من نبرة الصوت وتفريغ الكلام بالذكاء الاصطناعي...</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <p className={`whitespace-pre-wrap leading-relaxed text-xs ${emoStyle.textColor}`}>
+                                    {rec.transcription || 'انقر على زر (تحليل النبرة والتفريغ) أعلاه لتحويل الكلام الصوتي إلى نص وتلوين خلفيته حسب نبرة المشاعر.'}
+                                  </p>
+
+                                  {/* SER Vocal Tone Details */}
+                                  {rec.speechEmotion?.vocalToneDetails && (
+                                    <div className="text-[10px] pt-1.5 border-t border-black/10 flex items-start gap-1.5 font-bold opacity-90">
+                                      <span className="shrink-0">🎧 ملاحظة نبرة الصوت (SER):</span>
+                                      <span className="leading-normal">{rec.speechEmotion.vocalToneDetails}</span>
+                                    </div>
+                                  )}
+
+                                  {/* Quick Mood Color Palette Override Selector */}
+                                  <div className="pt-2 border-t border-black/5 flex items-center justify-between flex-wrap gap-1 text-[10px] font-bold">
+                                    <span className="opacity-75">تعديل لون خلفية النص حسب نبرة المشاعر:</span>
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSetSpeechEmotion(rec.id, 'قلق', 'amber')}
+                                        className="px-1.5 py-0.5 bg-amber-200/90 hover:bg-amber-300 text-amber-950 border border-amber-400 rounded-md transition-all cursor-pointer"
+                                        title="تلوين خلفية النص بصبغة القلق والتوتر (Amber)"
+                                      >
+                                        😰 قلق
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSetSpeechEmotion(rec.id, 'فرح', 'emerald')}
+                                        className="px-1.5 py-0.5 bg-emerald-200/90 hover:bg-emerald-300 text-emerald-950 border border-emerald-400 rounded-md transition-all cursor-pointer"
+                                        title="تلوين خلفية النص بصبغة الفرح والسعادة (Emerald)"
+                                      >
+                                        🎉 فرح
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSetSpeechEmotion(rec.id, 'حزن', 'blue')}
+                                        className="px-1.5 py-0.5 bg-blue-200/90 hover:bg-blue-300 text-blue-950 border border-blue-400 rounded-md transition-all cursor-pointer"
+                                        title="تلوين خلفية النص بصبغة الحزن والهدوء (Blue)"
+                                      >
+                                        😔 حزن
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSetSpeechEmotion(rec.id, 'غضب', 'red')}
+                                        className="px-1.5 py-0.5 bg-red-200/90 hover:bg-red-300 text-red-950 border border-red-400 rounded-md transition-all cursor-pointer"
+                                        title="تلوين خلفية النص بصبغة الغضب والانفعال (Red)"
+                                      >
+                                        😡 غضب
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSetSpeechEmotion(rec.id, 'هدوء', 'teal')}
+                                        className="px-1.5 py-0.5 bg-teal-200/90 hover:bg-teal-300 text-teal-950 border border-teal-400 rounded-md transition-all cursor-pointer"
+                                        title="تلوين خلفية النص بصبغة الهدوء والاطمئنان (Teal)"
+                                      >
+                                        🧘 هدوء
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
-
-                          {/* Audio player if dataUrl exists */}
-                          {rec.dataUrl && rec.dataUrl !== '#' && (
-                            <div className="pt-1">
-                              <audio controls src={rec.dataUrl} className="w-full h-8 rounded-lg" />
-                            </div>
-                          )}
-
-                          {/* Transcription text below recording */}
-                          {rec.transcription && (
-                            <div className="bg-white/90 p-2.5 rounded-xl border border-[#E2DCC8]/80 text-[11px] text-[#5A5A40] leading-relaxed">
-                              <span className="font-extrabold text-[#8B9D83] block mb-1 flex items-center space-x-1 space-x-reverse">
-                                <span>📝</span>
-                                <span>التفريغ النصي التلقائي للصوت:</span>
-                              </span>
-                              <p className="whitespace-pre-wrap font-medium">{rec.transcription}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -4619,16 +5119,19 @@ export default function App() {
                 {/* AI Assistant Note Writer Bottom Sheet matching video 0:56 */}
                 {showAiWriterSheet && (
                   <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 animate-fadeIn">
-                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl border border-[#E2DCC8]" dir="rtl">
+                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl border border-[#E2DCC8] max-h-[90vh] flex flex-col" dir="rtl">
                       {/* Header */}
-                      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-3 shrink-0">
                         <h3 className="text-sm font-extrabold text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
                           <span className="text-amber-500">✨</span>
-                          <span>اطلب من الذكاء الاصطناعي أن يكتب ملاحظة أو أي...</span>
+                          <span>اطلب من الذكاء الاصطناعي أن يكتب ملاحظة...</span>
                         </h3>
                         <button
                           type="button"
-                          onClick={() => setShowAiWriterSheet(false)}
+                          onClick={() => {
+                            setShowAiWriterSheet(false);
+                            setAiWriterResult(null);
+                          }}
                           className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-sm cursor-pointer"
                         >
                           ✕
@@ -4636,7 +5139,7 @@ export default function App() {
                       </div>
 
                       {/* Input Prompt Box with Search Icon */}
-                      <div className="relative">
+                      <div className="relative shrink-0">
                         <input
                           type="text"
                           value={aiWriterTopicInput}
@@ -4646,7 +5149,7 @@ export default function App() {
                               handleAiGenerateNote();
                             }
                           }}
-                          placeholder="اطلب شيئاً من الذكاء الاصطناعي..."
+                          placeholder="اطلب أي موضوع من الذكاء الاصطناعي..."
                           className="w-full bg-[#F9F7F2] border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:outline-none rounded-2xl py-3 pr-10 pl-24 text-xs text-[#3A3A3A]"
                         />
                         <div className="absolute right-3 top-3.5 text-gray-400 text-xs">
@@ -4656,38 +5159,104 @@ export default function App() {
                           type="button"
                           onClick={() => handleAiGenerateNote()}
                           disabled={aiWriterLoading}
-                          className="absolute left-1.5 top-1.5 bottom-1.5 px-3 bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs font-bold rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                          className="absolute left-1.5 top-1.5 bottom-1.5 px-3 bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs font-bold rounded-xl flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
                         >
                           {aiWriterLoading ? 'جاري التوليد...' : 'إرسال ✨'}
                         </button>
                       </div>
 
-                      {/* Quick Prompt Badges List (Video 0:56) */}
-                      <div className="space-y-2 pt-1">
-                        <span className="text-[11px] font-extrabold text-gray-400 block">اقترحات سريعة لكتابة الملاحظة:</span>
-                        <div className="space-y-2 max-h-56 overflow-y-auto">
-                          {[
-                            { id: 'health', icon: '💡', title: 'توليد نصائح صحية', prompt: 'توليد نصائح صحية ونفسية يومية' },
-                            { id: 'article', icon: '📝', title: 'كتابة مقال', prompt: 'كتابة مقال ملهم عن فوائد التدوين والسلام الداخلي' },
-                            { id: 'future', icon: '🚀', title: 'اتجاهات المستقبل', prompt: 'اتجاهات المستقبل والتأقلم المرن مع التكنولوجيا' },
-                            { id: 'marketing', icon: '🎧', title: 'التسويق وخدمة العملاء', prompt: 'التسويق الحديث وخدمة العملاء القائمة على التعاطف' },
-                            { id: 'projects', icon: '🎯', title: 'إدارة المشاريع', prompt: 'دليل عملي لإدارة المشاريع وتفكيك الأهداف' },
-                          ].map((item) => (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => handleAiGenerateNote(item.prompt)}
-                              disabled={aiWriterLoading}
-                              className="w-full flex items-center justify-between p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-2xl transition-all cursor-pointer group text-right"
-                            >
-                              <div className="flex items-center space-x-3 space-x-reverse">
-                                <span className="text-base p-1.5 bg-amber-50 rounded-xl">{item.icon}</span>
-                                <span className="text-xs font-bold text-[#3A3A3A] group-hover:text-[#8B9D83] transition-colors">{item.title}</span>
+                      {/* Content Body: Loading OR Result OR Suggestions */}
+                      <div className="overflow-y-auto space-y-3 flex-1 pr-0.5">
+                        {aiWriterLoading ? (
+                          <div className="py-8 px-4 text-center space-y-3 bg-[#FDF8EC] rounded-2xl border border-[#E9E1C4] animate-pulse">
+                            <div className="w-10 h-10 mx-auto bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-xl animate-spin">
+                              ✨
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-extrabold text-xs text-[#4E685B]">جاري التوليد بواسطة الذكاء الاصطناعي...</p>
+                              <p className="text-[10px] text-gray-500">يقوم النموذج الذكي بصياغة وتنظيم الأفكار بشكل إحترافي الآن</p>
+                            </div>
+                          </div>
+                        ) : aiWriterResult ? (
+                          <div className="space-y-3 animate-fadeIn">
+                            <div className="bg-[#F9F7F2] p-3.5 rounded-2xl border border-[#E2DCC8] space-y-2">
+                              <div className="flex items-center justify-between border-b border-[#E2DCC8]/60 pb-2">
+                                <span className="font-extrabold text-xs text-[#2B3E50] flex items-center gap-1.5">
+                                  <span>💡</span>
+                                  <span>{aiWriterResult.title}</span>
+                                </span>
+                                <span className="text-[9px] bg-[#8B9D83]/20 text-[#4E685B] px-2 py-0.5 rounded-md font-bold">جاهز للإدراج</span>
                               </div>
-                              <span className="text-xs text-gray-400">←</span>
-                            </button>
-                          ))}
-                        </div>
+                              <div className="max-h-48 overflow-y-auto text-xs text-[#3A3A3A] leading-relaxed whitespace-pre-wrap font-medium p-1">
+                                {aiWriterResult.content}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={handleApplyAiGeneratedNoteToCurrentEntry}
+                                className="w-full py-2.5 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs transition-all flex items-center justify-center gap-2"
+                              >
+                                <span>✍️</span>
+                                <span>إدراج في اليومية الحالية</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleCreateNewDiaryFromAiResult}
+                                className="w-full py-2 bg-[#F9F7F2] hover:bg-[#F0EDE4] text-[#4E685B] border border-[#DCE4D8] rounded-xl font-bold text-xs cursor-pointer transition-all flex items-center justify-center gap-2"
+                              >
+                                <span>📝</span>
+                                <span>إنشاء يومية جديدة بهذا النص</span>
+                              </button>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={handleCopyAiNote}
+                                  className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-[11px] cursor-pointer transition-all text-center"
+                                >
+                                  {copiedAiText ? '✓ تم نسخ النص' : '📋 نسخ النص'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setAiWriterResult(null)}
+                                  className="py-1.5 px-3 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl font-medium text-[11px] cursor-pointer transition-all"
+                                >
+                                  اقتراح موضوع آخر
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <span className="text-[11px] font-extrabold text-gray-400 block">اقترحات سريعة لكتابة الملاحظة:</span>
+                            <div className="space-y-2">
+                              {[
+                                { id: 'health', icon: '💡', title: 'توليد نصائح صحية', prompt: 'توليد نصائح صحية ونفسية يومية' },
+                                { id: 'article', icon: '📝', title: 'كتابة مقال', prompt: 'كتابة مقال ملهم عن فوائد التدوين والسلام الداخلي' },
+                                { id: 'future', icon: '🚀', title: 'اتجاهات المستقبل', prompt: 'اتجاهات المستقبل والتأقلم المرن مع التكنولوجيا' },
+                                { id: 'marketing', icon: '🎧', title: 'التسويق وخدمة العملاء', prompt: 'التسويق الحديث وخدمة العملاء القائمة على التعاطف' },
+                                { id: 'projects', icon: '🎯', title: 'إدارة المشاريع', prompt: 'دليل عملي لإدارة المشاريع وتفكيك الأهداف' },
+                              ].map((item) => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => handleAiGenerateNote(item.prompt)}
+                                  disabled={aiWriterLoading}
+                                  className="w-full flex items-center justify-between p-3 bg-[#F9F7F2] hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-2xl transition-all cursor-pointer group text-right"
+                                >
+                                  <div className="flex items-center space-x-3 space-x-reverse">
+                                    <span className="text-base p-1.5 bg-amber-50 rounded-xl">{item.icon}</span>
+                                    <span className="text-xs font-bold text-[#3A3A3A] group-hover:text-[#8B9D83] transition-colors">{item.title}</span>
+                                  </div>
+                                  <span className="text-xs text-[#8B9D83] font-bold group-hover:translate-x-1 transition-transform">توليد ←</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -7702,7 +8271,7 @@ export default function App() {
       <input 
         type="file" 
         id="global-audio-uploader" 
-        accept="audio/*" 
+        accept=".mp3,.m4a,.wav,.aac,.ogg,.opus,.flac,.webm,.amr,.3gp,audio/mp3,audio/mpeg,audio/wav,audio/m4a,audio/x-m4a,audio/aac,audio/ogg,audio/webm,audio/amr" 
         className="hidden" 
         onChange={handleGlobalAudioUpload} 
       />
