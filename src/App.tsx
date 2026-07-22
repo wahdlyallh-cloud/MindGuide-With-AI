@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { 
@@ -26,6 +26,7 @@ import GratitudeJournal from './components/GratitudeJournal';
 import LifeMap from './components/LifeMap';
 import PINLock from './components/PINLock';
 import { TasksChecklistSection } from './components/TasksChecklistSection';
+import { CBTExercisesSection } from './components/CBTExercisesSection';
 import IntegratedTherapyReport from './components/IntegratedTherapyReport';
 import WeeklyHabitsMoodChart from './components/WeeklyHabitsMoodChart';
 import SmartRemindersModal from './components/SmartRemindersModal';
@@ -490,32 +491,71 @@ export default function App() {
     return new Date().toISOString().split('T')[0];
   });
 
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving'>('saved');
+  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<string>('');
+
+  // Auto-save notification helper
+  const triggerAutoSaveFeedback = () => {
+    setAutoSaveStatus('saving');
+    const nowStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    setTimeout(() => {
+      setAutoSaveStatus('saved');
+      setLastAutoSaveTime(nowStr);
+    }, 300);
+  };
+
   // Save activeTab to localStorage immediately on change
   useEffect(() => {
     localStorage.setItem('yawmiyati_active_tab', activeTab);
   }, [activeTab]);
 
-  // Save to localStorage whenever diaries, settings or habits change
+  // Comprehensive Auto-Save to localStorage whenever any state changes
   useEffect(() => {
     localStorage.setItem('yawmiyati_diaries', JSON.stringify(diaries));
+    triggerAutoSaveFeedback();
   }, [diaries]);
 
   useEffect(() => {
     localStorage.setItem('yawmiyati_settings', JSON.stringify(settings));
+    triggerAutoSaveFeedback();
   }, [settings]);
 
   useEffect(() => {
     localStorage.setItem('yawmiyati_habits', JSON.stringify(habits));
+    triggerAutoSaveFeedback();
   }, [habits]);
 
   useEffect(() => {
     localStorage.setItem('yawmiyati_gratitude_cards', JSON.stringify(gratitudeCards));
+    triggerAutoSaveFeedback();
   }, [gratitudeCards]);
 
-  // Save daily quote to local storage
   useEffect(() => {
     localStorage.setItem('yawmiyati_daily_quote', JSON.stringify(dailyQuote));
   }, [dailyQuote]);
+
+  // Window beforeunload & periodic 10-second fail-safe auto-saver
+  useEffect(() => {
+    const performFullSave = () => {
+      try {
+        localStorage.setItem('yawmiyati_diaries', JSON.stringify(diaries));
+        localStorage.setItem('yawmiyati_settings', JSON.stringify(settings));
+        localStorage.setItem('yawmiyati_habits', JSON.stringify(habits));
+        localStorage.setItem('yawmiyati_gratitude_cards', JSON.stringify(gratitudeCards));
+        localStorage.setItem('yawmiyati_daily_quote', JSON.stringify(dailyQuote));
+      } catch (e) {
+        console.error('Fail-safe auto save error:', e);
+      }
+    };
+
+    const interval = setInterval(performFullSave, 10000);
+    window.addEventListener('beforeunload', performFullSave);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', performFullSave);
+    };
+  }, [diaries, settings, habits, gratitudeCards, dailyQuote]);
 
   // Breathing Box Session Timer Effect
   useEffect(() => {
@@ -770,15 +810,29 @@ export default function App() {
   const [habitEvaluationReport, setHabitEvaluationReport] = useState('');
   const [habitEvaluationLoading, setHabitEvaluationLoading] = useState(false);
 
-  const toggleHabitCompletion = (habitId: string, dateStr: string) => {
+  const toggleHabitCompletion = (habitId: string, dateStr: string, customVal?: any) => {
     setHabits(prev => prev.map(h => {
       if (h.id === habitId) {
-        const currentVal = !!h.history[dateStr];
+        let newVal: any;
+        if (customVal !== undefined) {
+          if (customVal === 'skip') {
+            newVal = { completed: false, skipped: true };
+          } else {
+            newVal = customVal;
+          }
+        } else {
+          const currentVal = h.history[dateStr];
+          let isComp = false;
+          if (typeof currentVal === 'boolean') isComp = currentVal;
+          else if (typeof currentVal === 'number') isComp = currentVal > 0;
+          else if (typeof currentVal === 'object' && currentVal) isComp = currentVal.completed;
+          newVal = !isComp;
+        }
         return {
           ...h,
           history: {
             ...h.history,
-            [dateStr]: !currentVal
+            [dateStr]: newVal
           }
         };
       }
@@ -1169,15 +1223,69 @@ export default function App() {
     setTimeout(() => setCopiedAiText(false), 2000);
   };
 
+  // --- Rich Text Editor Textarea Ref & History Management ---
+  const diaryTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [undoStack, setUndoStack] = useState<string[]>([]);
+  const [redoStack, setRedoStack] = useState<string[]>([]);
+
+  const pushContentHistory = (currentContent: string) => {
+    setUndoStack(prev => [...prev, currentContent]);
+    setRedoStack([]);
+  };
+
+  const handleUndo = () => {
+    if (undoStack.length === 0 || !editingDiary) return;
+    const previous = undoStack[undoStack.length - 1];
+    const newUndo = undoStack.slice(0, -1);
+    setRedoStack(prev => [...prev, editingDiary.content || '']);
+    setUndoStack(newUndo);
+    setEditingDiary(prev => prev ? { ...prev, content: previous } : null);
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0 || !editingDiary) return;
+    const next = redoStack[redoStack.length - 1];
+    const newRedo = redoStack.slice(0, -1);
+    setUndoStack(prev => [...prev, editingDiary.content || '']);
+    setRedoStack(newRedo);
+    setEditingDiary(prev => prev ? { ...prev, content: next } : null);
+  };
+
   const insertFormatting = (prefix: string, suffix: string = '') => {
     if (!editingDiary) return;
-    setEditingDiary(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        content: (prev.content || '') + `${prefix}نص منسق${suffix}`
-      };
-    });
+    const currentContent = editingDiary.content || '';
+    pushContentHistory(currentContent);
+
+    const textarea = diaryTextareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = currentContent.substring(start, end);
+
+      let textToInsert = '';
+      if (selectedText) {
+        textToInsert = `${prefix}${selectedText}${suffix}`;
+      } else {
+        textToInsert = `${prefix}${suffix || ''}`;
+      }
+
+      const newContent = currentContent.substring(0, start) + textToInsert + currentContent.substring(end);
+      setEditingDiary(prev => prev ? { ...prev, content: newContent } : null);
+
+      setTimeout(() => {
+        if (diaryTextareaRef.current) {
+          diaryTextareaRef.current.focus();
+          if (selectedText) {
+            diaryTextareaRef.current.setSelectionRange(start, start + textToInsert.length);
+          } else {
+            const cursorPos = start + prefix.length;
+            diaryTextareaRef.current.setSelectionRange(cursorPos, cursorPos);
+          }
+        }
+      }, 50);
+    } else {
+      setEditingDiary(prev => prev ? { ...prev, content: currentContent + `${prefix}${suffix}` } : null);
+    }
   };
 
   const handleAddTaskItem = () => {
@@ -1871,7 +1979,7 @@ export default function App() {
           'Content-Type': 'application/json',
           'x-gemini-key': settings.userApiKey || ''
         },
-        body: JSON.stringify({ audioData: rec.dataUrl })
+        body: JSON.stringify({ audioData: rec.dataUrl, fileName: rec.name })
       });
       const data = await res.json();
       if (data.success && data.transcription) {
@@ -1886,6 +1994,16 @@ export default function App() {
             } : r)
           };
         });
+        if (editingDiary) {
+          setDiaries(prev => prev.map(d => d.id === editingDiary.id ? {
+            ...d,
+            audioRecordings: (d.audioRecordings || []).map(r => r.id === rec.id ? {
+              ...r,
+              transcription: data.transcription,
+              speechEmotion: data.speechEmotion
+            } : r)
+          } : d));
+        }
       } else {
         alert(data.error || 'عذراً، تعذر تفريغ الصوت نصياً.');
       }
@@ -1934,7 +2052,7 @@ export default function App() {
                 'Content-Type': 'application/json',
                 'x-gemini-key': settings.userApiKey || ''
               },
-              body: JSON.stringify({ audioData: dataUrl, mimeType: file.type || 'audio/mp3' })
+              body: JSON.stringify({ audioData: dataUrl, mimeType: file.type || 'audio/mp3', fileName: file.name })
             });
             const data = await res.json();
             if (data.success && data.transcription) {
@@ -1955,7 +2073,7 @@ export default function App() {
                 } : r)
               } : prev);
             } else {
-              const fallbackMsg = 'تم رفع الصوت بنجاح. اضغط زر (تفريغ بالذكاء الاصطناعي) لتحويله إلى نص.';
+              const fallbackMsg = data.transcription || 'تم رفع الصوت بنجاح. اضغط زر (تحليل النبرة والتفريغ) أعلاه لتحويله إلى نص.';
               setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
                 ...d,
                 audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: fallbackMsg } : r)
@@ -1965,8 +2083,16 @@ export default function App() {
                 audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: fallbackMsg } : r)
               } : prev);
             }
-          } catch {
-            // Keep fallback
+          } catch (err) {
+            const errorMsg = 'تم رفع الصوت بنجاح. اضغط زر (تحليل النبرة والتفريغ) أعلاه لإعادة المحاولة.';
+            setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
+              ...d,
+              audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: errorMsg } : r)
+            } : d));
+            setEditingDiary(prev => prev && prev.id === targetDiary.id ? {
+              ...prev,
+              audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: errorMsg } : r)
+            } : prev);
           } finally {
             setTranscribingAudioId(null);
           }
@@ -2070,9 +2196,15 @@ export default function App() {
                 transcription: initialTranscription
               };
 
-              if (editingDiary) {
-                setEditingDiary(prev => prev ? { ...prev, audioRecordings: [...(prev.audioRecordings || []), newRec] } : null);
-              }
+              const targetDiary = editingDiary || getOrCreateDiaryForUpload();
+              const updatedDiary = {
+                ...targetDiary,
+                audioRecordings: [...(targetDiary.audioRecordings || []), newRec]
+              };
+
+              setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
+              setEditingDiary(updatedDiary);
+              setActiveTab('diaries');
 
               // Run Gemini Audio Transcription asynchronously
               setTranscribingAudioId(newRecId);
@@ -2083,26 +2215,31 @@ export default function App() {
                     'Content-Type': 'application/json',
                     'x-gemini-key': settings.userApiKey || ''
                   },
-                  body: JSON.stringify({ audioData: dataUrl, mimeType: 'audio/webm' })
+                  body: JSON.stringify({ audioData: dataUrl, mimeType: 'audio/webm', fileName: newRec.name })
                 });
                 const data = await res.json();
-                if (data.success && data.transcription) {
-                  setEditingDiary(prev => prev ? {
-                    ...prev,
-                    audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? {
-                      ...r,
-                      transcription: data.transcription,
-                      speechEmotion: data.speechEmotion
-                    } : r)
-                  } : null);
-                } else if (!liveText) {
-                  setEditingDiary(prev => prev ? {
-                    ...prev,
-                    audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: 'تم حفظ الفضفضة الصوتية بنجاح. اضغط (تفريغ بالذكاء الاصطناعي) للتوليد.' } : r)
-                  } : null);
-                }
-              } catch {
-                // Keep liveText or fallback
+                const finalTranscript = (data.success && data.transcription) ? data.transcription : (liveText || data.transcription || 'تم حفظ الفضفضة الصوتية بنجاح.');
+                const finalEmotion = data.speechEmotion;
+
+                setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
+                  ...d,
+                  audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? {
+                    ...r,
+                    transcription: finalTranscript,
+                    speechEmotion: finalEmotion
+                  } : r)
+                } : d));
+
+                setEditingDiary(prev => prev && prev.id === targetDiary.id ? {
+                  ...prev,
+                  audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? {
+                    ...r,
+                    transcription: finalTranscript,
+                    speechEmotion: finalEmotion
+                  } : r)
+                } : prev);
+              } catch (err) {
+                console.error("Audio transcription fetch error:", err);
               } finally {
                 setTranscribingAudioId(null);
               }
@@ -2191,6 +2328,10 @@ export default function App() {
       if (editingDiary.files && editingDiary.files.length > 0) attachments.push(`${editingDiary.files.length} ملفات`);
       if (editingDiary.drawing) attachments.push(`تخطيط رسومي`);
 
+      const audioTranscriptions = (editingDiary.audioRecordings || []).map(a => 
+        `🎙️ [تسجيل ${a.name}]: ${a.transcription || 'لا يوجد تفريغ'}`
+      );
+
       const res = await fetch('/api/gemini/diary-chat', {
         method: 'POST',
         headers: {
@@ -2204,7 +2345,10 @@ export default function App() {
           newMessage: textToSend.trim(),
           diaryType: editingDiary.diaryType || 'diary',
           moods: editingDiary.moods || [],
-          attachments
+          attachments,
+          audioTranscriptions,
+          aiMoodAnalysis: editingDiary.aiMoodAnalysis || [],
+          tags: editingDiary.tags || []
         })
       });
 
@@ -2729,7 +2873,18 @@ export default function App() {
                   <h1 className="text-base font-extrabold tracking-tight text-[#3A3A3A]">يومياتي</h1>
                   <span className="text-xs font-black bg-[#8B9D83] text-white px-1.5 py-0.5 rounded-md leading-none">AI</span>
                 </div>
-                <p className="text-[9px] text-gray-500 font-bold mt-0.5">مساعد الصحة النفسية المتكامل</p>
+                <p className="text-[9px] text-gray-500 font-bold mt-0.5 flex items-center space-x-1.5 space-x-reverse">
+                  <span>مساعد الصحة النفسية المتكامل</span>
+                  <span className="text-gray-300">•</span>
+                  <span className={`inline-flex items-center space-x-1 space-x-reverse text-[9px] font-extrabold px-2 py-0.5 rounded-full border transition-all ${
+                    autoSaveStatus === 'saving'
+                      ? 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${autoSaveStatus === 'saving' ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`}></span>
+                    <span>{autoSaveStatus === 'saving' ? 'جارِ الحفظ التلقائي...' : `تم الحفظ تلقائياً ${lastAutoSaveTime ? `(${lastAutoSaveTime})` : '💾'}`}</span>
+                  </span>
+                </p>
               </div>
             </div>
           </div>
@@ -3862,16 +4017,26 @@ export default function App() {
                     <button
                       type="button"
                       title="تراجع"
-                      onClick={() => insertFormatting('')}
-                      className="p-1.5 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-bold text-[#5A5A40] cursor-pointer"
+                      onClick={handleUndo}
+                      disabled={undoStack.length === 0}
+                      className={`p-1.5 rounded-lg border font-bold cursor-pointer transition-all ${
+                        undoStack.length > 0 
+                          ? 'bg-white hover:bg-[#EAE5D9] border-[#E2DCC8] text-[#5A5A40]' 
+                          : 'bg-gray-100 border-gray-200 text-gray-300 opacity-50 cursor-not-allowed'
+                      }`}
                     >
                       ↩️
                     </button>
                     <button
                       type="button"
                       title="إعادة"
-                      onClick={() => insertFormatting('')}
-                      className="p-1.5 bg-white hover:bg-[#EAE5D9] rounded-lg border border-[#E2DCC8] font-bold text-[#5A5A40] cursor-pointer"
+                      onClick={handleRedo}
+                      disabled={redoStack.length === 0}
+                      className={`p-1.5 rounded-lg border font-bold cursor-pointer transition-all ${
+                        redoStack.length > 0 
+                          ? 'bg-white hover:bg-[#EAE5D9] border-[#E2DCC8] text-[#5A5A40]' 
+                          : 'bg-gray-100 border-gray-200 text-gray-300 opacity-50 cursor-not-allowed'
+                      }`}
                     >
                       ↪️
                     </button>
@@ -3991,6 +4156,7 @@ export default function App() {
                   </div>
 
                   <textarea
+                    ref={diaryTextareaRef}
                     rows={8}
                     value={editingDiary.content}
                     onChange={(e) => setEditingDiary(prev => prev ? { ...prev, content: e.target.value } : null)}
@@ -5808,110 +5974,13 @@ export default function App() {
                     triggerGratitudeNotificationNow={() => setActiveGratitudeReminderNotification(true)}
                   />
                 ) : activeDiariesSubTab === 'cbt' ? (
-                  /* Rendering CBT Worksheets List and Wizard Trigger Button */
-                  <div className="space-y-6">
-                    <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <h4 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
-                          <span>🧠</span>
-                          <span>سجل تمارين إعادة الهيكلة المعرفية (CBT Worksheets)</span>
-                        </h4>
-                        <p className="text-[10px] text-gray-500 font-medium">
-                          استخدم أداة العلاج المعرفي السلوكي المعتمدة لتفكيك الأفكار السلبية والوساوس وإيجاد بدائل عقلانية متزنة بدعم من الذكاء الاصطناعي.
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          setCbtTriggerEvent('');
-                          setCbtNegativeThoughts('');
-                          setCbtCognitiveDistortion('');
-                          setCbtRationalAlternative('');
-                          setCbtEmotionBefore(7);
-                          setCbtEmotionAfter(4);
-                          setShowAddCbtModal(true);
-                        }}
-                        className="flex items-center justify-center space-x-1.5 space-x-reverse py-2.5 px-4 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs self-start sm:self-auto"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>بدء تمرين تفكير جديد (CBT)</span>
-                      </button>
-                    </div>
-
-                    {/* Worksheets Grid of current diaries */}
-                    {(() => {
-                      // Extract all CBT worksheets from diaries
-                      const allWorksheets = diaries.flatMap(d => (d.cbtWorksheets || []).map(w => ({ ...w, diaryDate: d.createdAt.split('T')[0] })));
-                      
-                      if (allWorksheets.length === 0) {
-                        return (
-                          <div className="bg-white border border-[#E2DCC8] rounded-3xl p-12 text-center text-gray-400 text-sm">
-                            <Brain className="w-12 h-12 mx-auto mb-3 opacity-30 text-[#8B9D83]" />
-                            <p className="font-bold text-[#3A3A3A]">لم تقم بأي تمارين تفكير (CBT) حتى الآن.</p>
-                            <p className="text-xs mt-1 text-gray-400">انقر على زر "بدء تمرين تفكير جديد" لإخضاع أفكارك المعيقة والمقلقة لإعادة بناء عقلانية سريعة.</p>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                          {allWorksheets.map((sheet, idx) => (
-                            <div key={sheet.id || idx} className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs hover:shadow-md transition-all space-y-4">
-                              <div className="flex items-center justify-between border-b border-[#E2DCC8]/50 pb-2.5">
-                                <span className="text-xs font-bold text-[#8B9D83] flex items-center space-x-1.5 space-x-reverse">
-                                  <span>🧠</span>
-                                  <span>تمرين إعادة هيكلة الأفكار</span>
-                                </span>
-                                <span className="text-[10px] font-mono text-gray-400 font-bold bg-[#F9F7F2] px-2.5 py-1 rounded-lg border border-[#E2DCC8]/50">
-                                  📅 {sheet.diaryDate}
-                                </span>
-                              </div>
-
-                              <div className="space-y-3 text-xs leading-relaxed font-sans font-normal">
-                                <div>
-                                  <span className="font-extrabold text-[#5A5A40] block mb-0.5">🚩 الموقف أو المحفز السلوكي:</span>
-                                  <p className="text-[#3A3A3A] bg-[#F9F7F2]/50 p-2.5 rounded-xl border border-[#E2DCC8]/40 font-normal">{sheet.triggerEvent}</p>
-                                </div>
-
-                                <div>
-                                  <span className="font-extrabold text-[#5A5A40] block mb-0.5">💭 الفكرة التلقائية السلبية:</span>
-                                  <p className="text-[#3A3A3A] bg-red-50/20 p-2.5 rounded-xl border border-red-100 font-normal">{sheet.negativeThoughts}</p>
-                                </div>
-
-                                {sheet.cognitiveDistortion && (
-                                  <div>
-                                    <span className="font-extrabold text-[#5A5A40] block mb-0.5">🔍 نوع التشوه المعرفي:</span>
-                                    <span className="inline-block bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                                      {sheet.cognitiveDistortion}
-                                    </span>
-                                  </div>
-                                )}
-
-                                <div>
-                                  <span className="font-extrabold text-emerald-700 block mb-0.5">✨ البديل الفكري العقلاني المستنتج:</span>
-                                  <p className="text-[#3A3A3A] bg-emerald-50/20 p-2.5 rounded-xl border border-emerald-100 font-medium whitespace-pre-wrap">{sheet.rationalAlternative}</p>
-                                </div>
-
-                                <div className="flex items-center justify-between pt-2 border-t border-[#E2DCC8]/40 text-[10px] font-bold">
-                                  <span className="text-gray-400">شدة القلق والتوتر قبل التمرين:</span>
-                                  <span className="text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-lg font-mono font-extrabold">{sheet.emotionBefore} / 10</span>
-                                </div>
-
-                                <div className="flex items-center justify-between text-[10px] font-bold">
-                                  <span className="text-gray-400">الشدة بعد إعادة الهيكلة:</span>
-                                  <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg font-mono font-extrabold">{sheet.emotionAfter} / 10</span>
-                                </div>
-
-                                <div className="text-[10px] text-emerald-600 bg-emerald-50/30 text-center p-1.5 rounded-xl border border-emerald-100/50 font-bold">
-                                  📉 نسبة تحسن وتراجع القلق: <span className="font-mono text-xs font-black">{Math.round(((sheet.emotionBefore - sheet.emotionAfter) / sheet.emotionBefore) * 100)}%</span> في هذه الجلسة!
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
+                  /* Comprehensive CBT & Psychological Therapy Suite */
+                  <CBTExercisesSection
+                    diaries={diaries}
+                    selectedDate={selectedDate}
+                    handleUpdateHabit={handleUpdateHabit}
+                    isDarkMode={settings.isDarkMode}
+                  />
                 ) : (
                   <TasksChecklistSection
                     activeDiaryForSelectedDate={activeDiaryForSelectedDate}
@@ -5920,6 +5989,18 @@ export default function App() {
                     handleUpdateTasks={handleUpdateTasks}
                     habits={habits}
                     toggleHabitCompletion={toggleHabitCompletion}
+                    setHabits={setHabits}
+                    habitSettings={settings.habitSettings}
+                    onUpdateHabitSettings={(newSettings) => 
+                      setSettings(prev => ({ 
+                        ...prev, 
+                        habitSettings: { ...(prev.habitSettings || {}), ...newSettings } as any 
+                      }))
+                    }
+                    onImportData={(importedHabits, importedDiaries) => {
+                      if (importedHabits.length > 0) setHabits(importedHabits);
+                      if (importedDiaries && importedDiaries.length > 0) setDiaries(importedDiaries);
+                    }}
                     isDarkMode={settings.isDarkMode}
                     diaries={diaries}
                   />

@@ -100,6 +100,15 @@ export interface CBTWorksheet {
   rationalAlternative: string; // البديل الأكثر عقلانية
   emotionBefore: number; // 1-10
   emotionAfter: number; // 1-10
+  exerciseType?: 'thought_record' | 'downward_arrow' | 'worry_box' | 'exposure_ladder' | 'coping_card' | 'grounding';
+  evidenceFor?: string; // الأدلة المؤيدة للفكرة
+  evidenceAgainst?: string; // الأدلة المعارضة للفكرة
+  coreBelief?: string; // المعتقد الأساسي المكتشف
+  healthierBelief?: string; // المعتقد البديل الصحي
+  worryCategory?: 'actionable' | 'uncontrollable'; // نوع القلق
+  actionSteps?: string[]; // خطوات العمل للمخاوف القابلة للحل
+  exposureSteps?: { id: string; stepNumber: number; situation: string; expectedAnxiety: number; actualAnxiety?: number; completed?: boolean }[];
+  copingCardCategory?: 'anxiety' | 'panic' | 'depression' | 'ocd' | 'general';
 }
 
 export interface LifeMapEvent {
@@ -130,6 +139,19 @@ export interface AppReminder {
   createdAt?: string;
 }
 
+export interface HabitSettings {
+  singleTapToggle: boolean; // تبديل وضعية العادة بضغطة قصيرة
+  extendDayPastMidnight: boolean; // تمديد اليوم بضع ساعات بعد منتصف الليل (3:00 ص)
+  enableSkipDays: boolean; // تمكين أيام التخطي
+  showMissingDataMark: boolean; // إظهار علامات الاستفهام للبيانات المفقودة
+  reverseDayOrder: boolean; // ترتيب عكسي للأيام
+  pureBlackDarkMode: boolean; // استخدام أسود نقي في الوضع الليلي
+  disableAnimations: boolean; // Disable confetti/animations
+  widgetOpacity: number; // شفافية اختصار الشاشة الرئيسية (0.1 - 1.0)
+  firstDayOfWeek: 'saturday' | 'sunday' | 'monday'; // اليوم الأول من الأسبوع
+  persistentNotifications: boolean; // جعل الإشعارات ثابتة
+}
+
 export interface AppSettings {
   isDarkMode: boolean;
   notificationsEnabled: boolean;
@@ -140,17 +162,36 @@ export interface AppSettings {
   backupSettings: BackupSettings;
   userApiKey?: string; // Custom client API Key for standalone / APK usage
   reminders?: AppReminder[]; // Added scheduled reminders
+  habitSettings?: HabitSettings;
+}
+
+export interface HabitHistoryEntry {
+  completed: boolean;
+  value?: number;
+  skipped?: boolean;
 }
 
 export interface Habit {
   id: string;
   name: string;
   category: 'health' | 'mind' | 'sport' | 'culture' | 'custom';
-  frequency: 'daily' | 'weekly';
+  habitType?: 'boolean' | 'measurable'; // 'boolean' (نعم/لا) or 'measurable' (قابل للقياس)
+  question?: string; // e.g. "هل استيقظت باكراً اليوم؟" / "كم ميلاً ركضت اليوم؟"
+  color?: string; // e.g. "#3b82f6", "#10b981", "#ef4444", "#f59e0b", etc.
+  unit?: string; // e.g. "كيلومترات", "صفحة", "أكواب"
+  targetValue?: number; // e.g. 15
+  targetType?: 'at_least' | 'at_most' | 'exactly'; // 'على الأقل', 'على الأكثر', 'بالضبط'
+  frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'semi_annually' | 'annually' | 'custom';
+  customStartDate?: string; // "YYYY-MM-DD"
+  customEndDate?: string; // "YYYY-MM-DD"
   reminderTime?: string; // "HH:MM" format
   reminderEnabled: boolean;
+  notes?: string;
+  isArchived?: boolean;
+  isCompleted?: boolean;
+  order?: number;
   createdAt: string; // ISO string
-  history: { [dateStr: string]: boolean }; // YYYY-MM-DD -> boolean
+  history: { [dateStr: string]: boolean | number | HabitHistoryEntry }; // YYYY-MM-DD -> completion / value
 }
 
 export interface GratitudeCard {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Heart, Sparkles, Plus, Trash2, Bell, Calendar, Award, 
   Lightbulb, Smile, Check, RefreshCw, Search, Filter, 
-  Brain, HelpCircle, ArrowRight, Zap, Play
+  Brain, HelpCircle, ArrowRight, Zap, Play, Volume2, Copy, Printer, Shuffle
 } from 'lucide-react';
 import { GratitudeCard, AppSettings, DiaryEntry } from '../types';
 
@@ -72,6 +72,43 @@ export default function GratitudeJournal({
 
   // Generated Card Proposal
   const [proposedCard, setProposedCard] = useState<{ text: string; colorClass: string } | null>(null);
+
+  // New interactive states: TTS, Copy, Random Memory
+  const [randomCard, setRandomCard] = useState<GratitudeCard | null>(null);
+  const [copiedCardId, setCopiedCardId] = useState<string | null>(null);
+  const [speakingCardId, setSpeakingCardId] = useState<string | null>(null);
+
+  const handleSpeakCard = (cardId: string, text: string) => {
+    if (!('speechSynthesis' in window)) {
+      alert(isEn ? 'Speech synthesis not supported on this browser.' : 'خاصية القراءة الصوتية غير مدعومة على هذا المتصفح.');
+      return;
+    }
+    if (speakingCardId === cardId) {
+      window.speechSynthesis.cancel();
+      setSpeakingCardId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = isEn ? 'en-US' : 'ar-SA';
+    utterance.rate = 0.9;
+    utterance.onend = () => setSpeakingCardId(null);
+    utterance.onerror = () => setSpeakingCardId(null);
+    setSpeakingCardId(cardId);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleCopyCard = (cardId: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCardId(cardId);
+    setTimeout(() => setCopiedCardId(null), 2000);
+  };
+
+  const handleShowRandomMemory = () => {
+    if (gratitudeCards.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * gratitudeCards.length);
+    setRandomCard(gratitudeCards[randomIndex]);
+  };
 
   // Reminder states
   const [reminderEnabled, setReminderEnabled] = useState(() => {
@@ -266,6 +303,28 @@ export default function GratitudeJournal({
                 <p className="text-[10px] text-gray-400 font-bold">{isEn ? "Total Moments" : "مجموع لحظات الرضا"}</p>
                 <p className="text-sm font-extrabold text-[#3A3A3A]">{gratitudeCards.length} {isEn ? "cards" : "بطاقة ملونة"}</p>
               </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleShowRandomMemory}
+                disabled={gratitudeCards.length === 0}
+                className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-extrabold flex items-center space-x-1 space-x-reverse shadow-2xs cursor-pointer"
+                title={isEn ? "Show Random Gratitude Memory" : "استرجاع لحظة امتنان عشوائية من الأرشيف"}
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                <span>{isEn ? "Random Memory" : "ذكري عشوائية 🎰"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="p-1.5 bg-white border border-[#E2DCC8] hover:bg-gray-50 text-gray-600 rounded-xl text-xs font-bold cursor-pointer shadow-3xs"
+                title={isEn ? "Print / Export Wall" : "طباعة وتصدير جدار الامتنان"}
+              >
+                <Printer className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>
@@ -657,7 +716,35 @@ export default function GratitudeJournal({
                       className={`relative border rounded-3xl p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between min-h-40 ${card.color}`}
                     >
                       {/* Control panel inside card (top) */}
-                      <div className="absolute top-3 left-3 flex items-center space-x-1.5 space-x-reverse z-10">
+                      <div className="absolute top-3 left-3 flex items-center space-x-1 space-x-reverse z-10">
+                        {/* Audio TTS Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSpeakCard(card.id, card.text)}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer border border-[#E2DCC8]/40 shadow-3xs ${
+                            speakingCardId === card.id
+                              ? 'bg-amber-500 text-white animate-pulse'
+                              : 'bg-white/85 hover:bg-amber-50 text-amber-700'
+                          }`}
+                          title={isEn ? "Listen to Card" : "استماع للبطاقة بصوت واضح"}
+                        >
+                          <Volume2 className="w-3 h-3" />
+                        </button>
+
+                        {/* Copy Card Text Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCard(card.id, card.text)}
+                          className="p-1.5 bg-white/85 hover:bg-emerald-50 text-gray-500 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer border border-[#E2DCC8]/40 shadow-3xs"
+                          title={isEn ? "Copy text" : "نسخ نص البطاقة"}
+                        >
+                          {copiedCardId === card.id ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+
                         {/* Sparkle Neuro-Analysis Button */}
                         <button
                           type="button"
@@ -725,6 +812,80 @@ export default function GratitudeJournal({
           )}
         </div>
       </div>
+
+      {/* RANDOM GRATITUDE MEMORY MODAL */}
+      <AnimatePresence>
+        {randomCard && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className={`w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border ${randomCard.color}`}
+              dir={isEn ? "ltr" : "rtl"}
+            >
+              <div className="flex justify-between items-center border-b border-[#3A3A3A]/10 pb-3">
+                <span className="text-xs font-black text-[#5A5A40] flex items-center gap-1.5">
+                  <Shuffle className="w-4 h-4 text-amber-600" />
+                  <span>{isEn ? "Random Memory Flashcard 🎰" : "ذكرى امتنان استرجاعية من أرشيفك 🎰"}</span>
+                </span>
+                <button
+                  onClick={() => setRandomCard(null)}
+                  className="text-gray-400 hover:text-gray-700 text-lg cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-4 bg-white/60 rounded-2xl border border-white/80 space-y-2">
+                <p className="text-sm font-bold text-[#3A3A3A] leading-relaxed">
+                  "{randomCard.text}"
+                </p>
+                <p className="text-[10px] text-gray-500 font-bold">
+                  🗓️ {new Date(randomCard.createdAt).toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-[11px] text-amber-900 leading-relaxed font-bold">
+                💡 {isEn ? "Remember: Re-visiting past gratitude triggers dopamine and reinforces peaceful emotional pathways!" : "تذكّر: إعادة استحضار لحظات الامتنان السابقة يرفع هرمون الدوبامين ويعزز مرونة دماغك العصبي ضد القلق والتفكير السلبي!"}
+              </div>
+
+              <div className="flex justify-between items-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleSpeakCard(randomCard.id, randomCard.text)}
+                  className="py-2 px-3 bg-white/80 hover:bg-white text-amber-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer border shadow-3xs"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>{isEn ? "Listen 🔊" : "استمع للذكرى 🔊"}</span>
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleShowRandomMemory}
+                    className="py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    {isEn ? "Another Memory 🎰" : "ذكرى أخرى 🎰"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRandomCard(null)}
+                    className="py-2 px-4 bg-gray-200 text-gray-700 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    {isEn ? "Close" : "إغلاق"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

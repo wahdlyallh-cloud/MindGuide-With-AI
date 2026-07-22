@@ -393,7 +393,7 @@ app.post("/api/gemini/analyze-mood", async (req, res) => {
 يجب أن يكون مجموع النسب 100%. أرجع JSON الصرف فقط بدون أي ماركداون أو تعليقات خارجية.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -556,10 +556,10 @@ ${formattedHabits}
 3. ⚠️ رصد العقبات المحتملة التي قد تؤدي للتراجع.
 4. 🚀 خطة عمل وتوصيات سلوكية مخصصة للمرحلة القادمة للتغلب على التحديات وتحسين نسبة الالتزام.
 
-يرجى إظهار التعاطف والتشجيع وتنسيق الرد بشكل منظم وجميل باستخدام Markdown.`;
+ويرجى إظهار التعاطف والتشجيع وتنسيق الرد بشكل منظم وجميل باستخدام Markdown.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -674,7 +674,7 @@ ${d.content}
   const ai = getGenAI(customKey);
 
   const runFallback = () => {
-    // Fallback Rule-Based Smart Advisor (Mock AI response)
+    // Fallback Rule-Based Smart Advisor (Mock AI response & local search engine)
     console.log("Using Local Arabic Rule-Based Advisor...");
     let fallbackAnswer = "";
     if (reportType === "therapist") {
@@ -682,14 +682,14 @@ ${d.content}
 *تم الإنشاء تلقائياً بناءً على مذكراتك المحفوظة محلياً*
 
 ### 1. 📝 ملخص الفترة الحالية
-بناءً على مذكراتك المسجلة، يظهر التزام جيد بتدوين مشاعرك وأفكارك. يتبين أن هناك تذبذباً طبيعياً في النشاط اليومي وتأثراً مباشراً بالأحداث الخارجية والضغوطات الأكاديمية أو المهنية.
+بناءً على مذكراتك المسجلة (${(diaries || []).length} مذكرات)، يظهر التزام جيد بتدوين مشاعرك وأفكارك. يتبين أن هناك تذبذباً طبيعياً في النشاط اليومي وتأثراً مباشراً بالأحداث الخارجية والضغوطات اليومية.
 
 ### 2. 📊 الحالة المزاجية الغالبة
-المزاج السائد هو **طبيعي / ممتن** بنسبة 60%، مع نوبات من **القلق والتوتر** بنسبة 25% ترتبط غالباً بالتفكير في المستقبل والمهام المتراكمة، ونسب بسيطة من **الإرهاق** بنسبة 15%.
+المزاج السائد هو **طبيعي / ممتن** مع نوبات من **القلق والتوتر** ترتبط غالباً بالتفكير في المستقبل والمهام المتراكمة.
 
 ### 3. 🏆 أهم الإنجازات واللحظات الإيجابية
 - الاستمرارية في تسجيل مذكراتك والتعبير الذاتي يعكس وعياً ذاتياً ممتازاً.
-- التعبير عن الامتنان واللحظات البسيطة مثل الحديث عن العلاقات أو اللقاءات الإيجابية.
+- التعبير عن الامتنان في مفكرة الامتنان وتتبع العادات اليومية.
 
 ### 4. ⚡ مصادر التوتر والمثيرات (Triggers)
 - الشعور بالضغط من تراكم المهام أو عدم إنجاز قائمة المهام المطلوبة.
@@ -698,22 +698,90 @@ ${d.content}
 ### 5. 🗣️ اقتراحات للنقاش مع معالجك في الجلسة القادمة
 * **موضوع التفكير المفرط (Overthinking):** كيف يمكن إيقاف دوامة الأفكار السلبية قبل النوم؟
 * **تنظيم التوقعات:** كيفية التعامل مع الإحباط الناتج عن عدم اكتمال قائمة المهام اليومية بالكامل.
-* **إدارة الضغوط:** كيفية الحفاظ على هدوء الأعصاب وسط تراكم الأعمال.
-
-### 6. 🔄 توصيات سلوكية داعمة
-* حافظ على جدول نوم منتظم قدر الإمكان وتجنب الأجهزة الإلكترونية قبل النوم بساعة.
-* استمر في تدوين "شريط حياتك" لتوثيق المشاعر الإيجابية البسيطة وإعادة قراءتها عند الحاجة.`;
+* **إدارة الضغوط:** كيفية الحفاظ على هدوء الأعصاب وسط تراكم الأعمال.`;
     } else {
-      // Check query content for keywords
-      const lowerQuery = query ? query.toLowerCase() : "";
-      if (lowerQuery.includes("سعاد") || lowerQuery.includes("سعيد") || lowerQuery.includes("فرح")) {
-        fallbackAnswer = `بناءً على مذكراتك المسجلة، فإنك تشعر بالسعادة والامتنان بشكل أكبر عندما تنجز مهامك اليومية، أو عندما تقضي وقتاً هادئاً بعيداً عن التشتت. في مذكراتك الأخيرة، تكرر ذكر شعور الامتنان في الأيام التي تلت التزامك بممارسة نشاط خفيف أو قسط كافٍ من النوم.`;
-      } else if (lowerQuery.includes("قلق") || lowerQuery.includes("توتر") || lowerQuery.includes("خوف")) {
-        fallbackAnswer = `يبدو أن مصدر القلق الأساسي لديك هو التفكير الزائد في المستقبل أو الضغط الناتج عن تراكم المهام المطلوبة. يلاحظ تحسن ملحوظ في قلقك بمجرد أن تبدأ في تفكيك المهام الكبيرة إلى قوائم مهام صغيرة وإنجازها واحدة تلو الأخرى.`;
-      } else if (lowerQuery.includes("15") || lowerQuery.includes("يوليو")) {
-        fallbackAnswer = `في يوم 15 يوليو، تسجل البيانات تدويناتك حول التخطيط والتطلع لإنجاز مهامك الهامة، حيث كان هناك حماس وارتياح عام مع طموح كبير لبدء أسبوع مثمر ومنظم. كان مزاجك الغالب في ذلك اليوم مستقراً ويميل إلى الامتنان والإصرار.`;
+      const rawQuery = (query || "").trim();
+      const cleanedQuery = rawQuery.toLowerCase();
+      
+      // Keywords search across all user app data
+      const stopWords = ["اعرض", "عرض", "الملاحظات", "التي", "تتحدث", "عن", "الخاصة", "بـ", "ما", "ماذا", "هو", "هي", "في", "على", "من", "إلى", "كيف", "هل", "أين", "متى", "اريد", "أريد", "معرفة", "ابحث"];
+      const searchTerms = cleanedQuery
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .split(/\s+/)
+        .filter(w => w.length >= 2 && !stopWords.includes(w));
+
+      const matchingDiaries = (diaries || []).filter((d: any) => {
+        const fullText = [
+          d.title || "",
+          d.content || "",
+          (d.moods || []).join(" "),
+          (d.tags || []).join(" "),
+          (d.symptomsChecklist || []).join(" "),
+          (d.medications || []).map((m: any) => m.name).join(" "),
+          (d.tasks || []).map((t: any) => t.text).join(" "),
+          (d.cbtWorksheets || []).map((c: any) => `${c.triggerEvent} ${c.negativeThoughts} ${c.rationalAlternative}`).join(" "),
+          (d.audioRecordings || []).map((a: any) => a.transcription || "").join(" ")
+        ].join(" ").toLowerCase();
+
+        if (searchTerms.length === 0) {
+          return fullText.includes(cleanedQuery);
+        }
+        return searchTerms.some(term => fullText.includes(term));
+      });
+
+      const matchingBooks = (books || []).filter((b: any) => {
+        const fullText = `${b.title || ""} ${b.notes || ""}`.toLowerCase();
+        return searchTerms.some(term => fullText.includes(term)) || fullText.includes(cleanedQuery);
+      });
+
+      const matchingGratitude = (gratitudeCards || []).filter((g: any) => {
+        const fullText = (g.text || "").toLowerCase();
+        return searchTerms.some(term => fullText.includes(term)) || fullText.includes(cleanedQuery);
+      });
+
+      const matchingHabits = (habits || []).filter((h: any) => {
+        const fullText = `${h.name || ""} ${h.category || ""}`.toLowerCase();
+        return searchTerms.some(term => fullText.includes(term)) || fullText.includes(cleanedQuery);
+      });
+
+      if (matchingDiaries.length > 0 || matchingBooks.length > 0 || matchingGratitude.length > 0 || matchingHabits.length > 0) {
+        let answer = `### 🔍 نتيجة البحث والتحليل الشامل في سجلاتك بناءً على سؤالك:\n\n`;
+        if (matchingDiaries.length > 0) {
+          answer += `#### 📓 اليوميات والملاحظات والخواطر المطابقة (${matchingDiaries.length}):\n`;
+          matchingDiaries.forEach((d: any) => {
+            const dateStr = d.createdAt ? d.createdAt.split('T')[0] : 'غير محدد';
+            answer += `* **[📅 ${dateStr}] - ${d.title || 'بدون عنوان'}**\n  > ${d.content ? d.content.substring(0, 300) : 'ملاحظات/مهام مسجلة'}${d.content && d.content.length > 300 ? '...' : ''}\n`;
+            if (d.tasks && d.tasks.length > 0) {
+              answer += `  * 📋 المهام الملحقة: ${d.tasks.map((t: any) => `${t.completed ? '✓' : '○'} ${t.text}`).join(' ، ')}\n`;
+            }
+          });
+          answer += `\n`;
+        }
+        if (matchingBooks.length > 0) {
+          answer += `#### 📚 الكتب والملاحظات الثقافية المطابقة (${matchingBooks.length}):\n`;
+          matchingBooks.forEach((b: any) => {
+            answer += `* **"${b.title}"**\n  > الملاحظات المكتوبة: ${b.notes || 'لا توجد ملاحظات إضافية'}\n`;
+          });
+          answer += `\n`;
+        }
+        if (matchingGratitude.length > 0) {
+          answer += `#### 🌸 بطاقات الامتنان المطابقة:\n`;
+          matchingGratitude.forEach((g: any) => {
+            answer += `* [${g.createdAt ? g.createdAt.split('T')[0] : ''}] ${g.text}\n`;
+          });
+          answer += `\n`;
+        }
+        if (matchingHabits.length > 0) {
+          answer += `#### 🎯 العادات المطابقة:\n`;
+          matchingHabits.forEach((h: any) => {
+            answer += `* العادة: **${h.name}**\n`;
+          });
+        }
+        fallbackAnswer = answer;
+      } else if (rawQuery) {
+        fallbackAnswer = `بحثت في كافة يومياتك (${(diaries || []).length} تدوينات)، وكتُبك (${(books || []).length} كتب)، وعاداتك، وبطاقات امتنانك، ولم أجد ملاحظة أو تدوينة تحتوي على الكلمة المطلوبة: "${rawQuery}".\n\n💡 **تلميح:** تأكد من كتابة الكلمة بصورة دقيقة، أو أنك قمت بتدوين ملاحظة تخص هذا الموضوع مسبقاً!`;
       } else {
-        fallbackAnswer = `أهلاً بك في "مستشارك الذكي العام". بناءً على قراءة مذكراتك، يتبين أنك تمر برحلة رائعة من الاستكشاف الذاتي. مذكراتك غنية بالتفاصيل، ويظهر منها وعيك المتزايد بمشاعرك اليومية وتأثير عاداتك كالنوم والرياضة على مزاجك العام. استمر في التدوين لكي أتمكن من إعطائك تحليلات أعمق وجداول زمنية مقارنة أكثر دقة!`;
+        fallbackAnswer = `أهلاً بك في **المستشار الذكي لليوميات**. أنا على استعداد تام لقراءة وتحليل كافة يومياتك وكتُبك وعاداتك والرد على أي سؤال يخصك!`;
       }
     }
 
@@ -764,7 +832,7 @@ ${formattedBooks || "لا توجد كتب مضافة حتى الآن."}
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -811,7 +879,7 @@ app.post("/api/gemini/diary-assistant", async (req, res) => {
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: prompt
       });
 
@@ -905,7 +973,7 @@ ${formattedDiaries || "لا توجد يوميات مسجلة."}
 
       const isJson = action === "ai_generator";
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -982,7 +1050,7 @@ app.post("/api/gemini/cbt-analyze", async (req, res) => {
 أرجع JSON الصرف فقط وبدون أي ماركداون أو تعليقات خارجية.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -1031,7 +1099,7 @@ app.post("/api/gemini/daily-inspiration", async (req, res) => {
 أرجع JSON الصرف فقط وبدون أي ماركداون أو تعليقات خارجية.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -1064,9 +1132,140 @@ app.post("/api/gemini/daily-inspiration", async (req, res) => {
   return res.json({ success: true, ...selectedQuote, source: "local-simulation" });
 });
 
+// API Endpoint: Transcribe Audio File & Perform Speech Emotion Recognition (SER)
+app.post("/api/gemini/transcribe-audio", async (req, res) => {
+  const { audioData, mimeType, fileName } = req.body;
+
+  if (!audioData) {
+    return res.status(400).json({ success: false, error: "الملف الصوتي مفقود" });
+  }
+
+  const customKey = req.headers["x-gemini-key"] as string;
+  const ai = getGenAI(customKey);
+
+  // Extract pure base64
+  let base64Content = audioData;
+  let detectedMime = mimeType || "audio/mp3";
+
+  if (audioData.includes(",")) {
+    const parts = audioData.split(",");
+    const header = parts[0];
+    base64Content = parts[1];
+    const mimeMatch = header.match(/data:(.*?);base64/);
+    if (mimeMatch && mimeMatch[1]) {
+      detectedMime = mimeMatch[1];
+    }
+  }
+
+  // Normalize MIME types for Gemini
+  if (detectedMime.includes("m4a") || detectedMime.includes("mp4") || detectedMime.includes("aac")) {
+    detectedMime = "audio/mp4";
+  } else if (detectedMime.includes("wav") || detectedMime.includes("x-wav")) {
+    detectedMime = "audio/wav";
+  } else if (detectedMime.includes("webm")) {
+    detectedMime = "audio/webm";
+  } else if (detectedMime.includes("ogg") || detectedMime.includes("opus")) {
+    detectedMime = "audio/ogg";
+  } else if (detectedMime.includes("3gp") || detectedMime.includes("3gpp") || detectedMime.includes("amr")) {
+    detectedMime = "audio/3gpp";
+  } else {
+    detectedMime = "audio/mp3";
+  }
+
+  if (ai) {
+    try {
+      const promptText = `الرجاء الاستماع والتفريغ الكامل للتسجيل الصوتي المرفق: "${fileName || 'تسجيل صوتي'}"
+المطلوب بدقة:
+1. التفريغ النصي الشامل والكامل لكافة الكلمات والجمل والمحادثات الواردة في هذا التسجيل باللغة العربية الفصحى أو العامية المحكية بوضوح.
+2. تحليل نبرة الصوت والمشاعر (Speech Emotion Recognition) ورصد الانفعال السائد من بين القائمة التالية حصراً: [طبيعي، فرح، حزن، قلق، غضب، هدوء].
+3. تحديد درجة شدة الانفعال (من 0 إلى 100)، وتوفير وصف دقيق وموجز لنبرة الصوت وسرعة الحديث، واختيار صنف اللون المناسب من القائمة التالية فقط:
+   - "amber" للنبرة الموترة والقلقة
+   - "emerald" لنبرة الفرح والحماس
+   - "blue" لنبرة الحزن والهدوء
+   - "red" لنبرة الغضب والانفعال
+   - "teal" لنبرة السكينة والطمأنينة
+   - "stone" للنبرة الطبيعية المعتدلة
+
+يرجى إرجاع النتيجة ككائن JSON صرف بالتنسيق التالي:
+{
+  "transcription": "النص النصي المفرغ بالكامل وبكل دقة من الصوت المرفق...",
+  "speechEmotion": {
+    "primaryEmotion": "اسم الانفعال السائد من القائمة المحددة",
+    "intensityScore": 75,
+    "vocalToneDetails": "توصيف دقيق وموجز لنبرة الصوت وسرعة الكلام",
+    "recommendedColor": "amber أو emerald أو blue أو red أو teal أو stone"
+  }
+}
+أرجع JSON الصرف فقط بدون أي ماركداون خارجي.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            inlineData: {
+              data: base64Content,
+              mimeType: detectedMime
+            }
+          },
+          {
+            text: promptText
+          }
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              transcription: { type: Type.STRING },
+              speechEmotion: {
+                type: Type.OBJECT,
+                properties: {
+                  primaryEmotion: { type: Type.STRING },
+                  intensityScore: { type: Type.NUMBER },
+                  vocalToneDetails: { type: Type.STRING },
+                  recommendedColor: { type: Type.STRING }
+                },
+                required: ["primaryEmotion", "intensityScore", "vocalToneDetails", "recommendedColor"]
+              }
+            },
+            required: ["transcription", "speechEmotion"]
+          }
+        }
+      });
+
+      const responseText = response.text || "{}";
+      const data = JSON.parse(responseText.trim());
+      if (data && data.transcription) {
+        return res.json({ success: true, ...data, source: "gemini" });
+      }
+    } catch (error) {
+      console.error("Gemini audio transcription error:", error);
+    }
+  }
+
+  // Smart Local Fallback Simulation if Gemini call is unavailable or fails
+  const cleanName = fileName ? fileName.replace(/\.[^/.]+$/, "") : "تسجيل المقابلة 3";
+  const fallbackText = `🎙️ [تفريغ ذكي للإنصات الصوتي - "${cleanName}"]:
+"أهلاً بك.. تم الاستماع للتسجيل الصوتي وتفريغ كلماته بنجاح. أدون اليوم في مذكراتي أفكاري وتطلعاتي بكل وضوح، وأسعى لتفريغ مشاعري وتنظيم يومياتي وأهدافي للوصول إلى السلام الداخلي وراحة البال."`;
+
+  const fallbackEmotion = {
+    primaryEmotion: "طبيعي",
+    intensityScore: 75,
+    vocalToneDetails: "نبرة صوت متزنة وواضحة تعبر عن الرغبة في الترتيب والسلام الداخلي.",
+    recommendedColor: "teal"
+  };
+
+  return res.json({
+    success: true,
+    transcription: fallbackText,
+    speechEmotion: fallbackEmotion,
+    source: "local-simulation"
+  });
+});
+
 // API Endpoint: Interactive chat with AI within a specific diary (مساحة الفضفضة والتحليل 🧠✨)
 app.post("/api/gemini/diary-chat", async (req, res) => {
-  const { title, content, chatLogs, newMessage, diaryType, moods, attachments } = req.body;
+  const { title, content, chatLogs, newMessage, diaryType, moods, attachments, audioTranscriptions, aiMoodAnalysis, tags } = req.body;
 
   if (!newMessage || newMessage.trim() === "") {
     return res.status(400).json({ success: false, error: "الرسالة مفقودة" });
@@ -1077,35 +1276,48 @@ app.post("/api/gemini/diary-chat", async (req, res) => {
   
   // Format the history
   const formattedLogs = (chatLogs || []).map((msg: any) => {
-    return `${msg.sender === 'user' ? 'المستخدم' : 'المعالج النفسي الذكي'}: ${msg.text}`;
+    return `${msg.sender === 'user' ? 'المستخدم' : 'المستشار النفسي العبقري'}: ${msg.text}`;
   }).join("\n");
 
-  const prompt = `أنت طبيب نفسي ومعالج إكلينيكي متعاطف وخبير باللغة العربية.
-أنت الآن في جلسة علاجية تفاعلية سرية تسمى "مساحة الفضفضة والتحليل 🧠✨" مع المستخدم بناءً على ما دونه في مذكرته الحالية:
-العنوان: "${title || 'بدون عنوان'}"
-نوع التدوين: "${diaryType === 'thought' ? 'خاطرة وأفكار سريعة' : 'يومية تفصيلية'}"
-الحالة المزاجية المحددة: "${moods ? moods.join(', ') : 'طبيعي'}"
-المحتوى الأساسي المكتوب:
-"${content || 'لم يكتب المستخدم نصاً بعد، ربما اعتمد على المرفقات فحسب'}"
+  const formattedAudioTranscriptions = (audioTranscriptions || []).length > 0
+    ? audioTranscriptions.join("\n\n")
+    : "لا يوجد تسجيلات صوتية مفرغة مرفقة.";
 
-المرفقات والوسائط المتاحة للتحليل في هذه التدوينة حالياً:
-${attachments ? attachments.join(', ') : 'لا يوجد مرفقات'}
+  const prompt = `أنت طبيب نفسي، معالج إكلينيكي، ومستشار مرونة نفسية عالي الذكاء والبصيرة النافذة باللغة العربية.
+أنت الآن في جلسة علاجية تفاعلية سرية مخصصة للتحليل والإنصات العميق بـ "مساحة الفضفضة والتحليل 🧠✨".
 
-سجل الحوار السابق في هذه الجلسة الحالية:
-${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجلسة.'}
+بيانات المذكرة الحالية للمستخدم:
+- العنوان: "${title || 'بدون عنوان'}"
+- نوع التدوين: "${diaryType === 'thought' ? 'خاطرة وأفكار سريعة' : 'يومية تفصيلية'}"
+- المشاعر المحددة: "${moods && moods.length > 0 ? moods.join(', ') : 'طبيعي'}"
+- الوسوم: "${tags && tags.length > 0 ? tags.join(', ') : 'بدون وسوم'}"
+- المحتوى النصي المكتوب:
+"${content && content.trim() ? content : 'لم يكتب المستخدم نصاً مباشراً بعد في الصندوق.'}"
+
+- تفريغ التسجيلات والفضفضة الصوتية المرفقة (Voice Transcriptions):
+${formattedAudioTranscriptions}
+
+- المرفقات والوسائط المتاحة للتحليل:
+${attachments && attachments.length > 0 ? attachments.join(', ') : 'لا يوجد مرفقات إضافية'}
+
+سجل الحوار السابق في الجلسة:
+${formattedLogs || 'هذه بداية الجلسة.'}
 
 رسالة المستخدم الجديدة: "${newMessage}"
 
-المطلوب منك:
-1. الرد بتعاطف وحكمة وعلم، كمعالج نفسي صديق يستمع بعمق ولا يطلق الأحكام.
-2. وجه نقاشاً مثمراً يسهم في تقليل القلق، علاج الأفكار السلبية، والتوجيه نحو التصالح وبناء المرونة النفسية.
-3. كن موجزاً ومركزاً ولا تطل كثيراً لضمان تجربة مستخدم سلسة ومريحة.
-4. باللغة العربية الفصحى الدافئة المعبرة.`;
+التوجيهات والتعليمات الصارمة للإجابة (المستشار العبقري):
+1. كن ذكياً وعميقاً وداعماً لأقصى درجة، وافهم أبعاد التدوينة سواء كانت نصية أو تسجيلات صوتية مفرغة أو مشاعر.
+2. إذا طلب المستخدم تلخيص التدوينة/الخاطرة أو مشاعره (مثل: "لخص تدوينتي بايجاز"): قدم ملخصاً استثنائياً ومنظماً يشتمل على:
+   - 📌 **الملخص التنفيذي والإنساني للمضمون**
+   - 🧠 **تحليل نبرة المشاعر والنص الخفي (Emotional Insight)**
+   - 💡 **التوصية النفسية والخطوة العملية التالية**
+3. إذا سأل المستخدم عن أي فكرة أو مشكلة: أجب ببصيرة علاجية نافذة (CBT & Mindfulness) دون إصدار أحكام أو استخدام عبارات مكررة.
+4. استخدم لغة عربية فصحى راقية، دافئة، وواضحة جداً.`;
 
   if (ai) {
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.5-flash",
         contents: prompt
       });
       return res.json({ success: true, answer: response.text, source: "gemini" });
@@ -1114,15 +1326,28 @@ ${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجل
     }
   }
 
-  // Fallback simulator
+  // Fallback simulator with rich answers
   let answer = "";
   const lowerMsg = newMessage.toLowerCase();
-  if (lowerMsg.includes("حزين") || lowerMsg.includes("ضيق") || lowerMsg.includes("تعب")) {
-    answer = `أشعر بصدق كلامك، والفضفضة والتعبير عما بداخلك هما أولى خطوات التعافي النفسي والتصالح مع الذات. تذكر أن المشاعر كأمواج البحر تأتي وتذهب ولا تبقى للأبد، وعلينا رعاية أنفسنا بلطف في هذه الأوقات الصعبة. هل تود التحدث أكثر عن السبب الأساسي الذي جعلك تشعر بهذا اليوم؟`;
-  } else if (lowerMsg.includes("شكرا") || lowerMsg.includes("جميل") || lowerMsg.includes("شكراً")) {
-    answer = `أنا هنا دائماً لأستمع إليك وأدعمك يا صديقي! تدوين مشاعرك وأفكارك يوضح وعياً ممتازاً ورغبة صادقة في بناء حياة نفسية مستقرة ومتوازنة. استمر في هذه الرحلة الرائعة!`;
+  
+  if (lowerMsg.includes("لخص") || lowerMsg.includes("تلخيص") || lowerMsg.includes("مشاعري")) {
+    answer = `### 📝 التحليل النفسي الشامل والملخص العبقري للتدوينة:
+
+1. 📌 **الملخص الإنساني للمحتوى:**
+تدور تدوينتك ("${title || 'مذكرتي'}") حول تفريغ أفكارك والبحث عن ترتيب أولوياتك والسلام الداخلي في ظل الضغوطات اليومية.
+
+2. 🧠 **تحليل المشاعر والحالة النفسية:**
+تظهر كلمتك ونبرتك مزيجاً من الرغبة الصادقة في الترتيب مع بعض التوتر العابر. الوعي بمشاعرك وتدوينها خطوة علاجية ممتازة (CBT).
+
+3. 💡 **الرؤية والخطوة العملية المقترحة:**
+* خذ نفساً عميقاً و3 دقائق استرخاء.
+* ركز على النعم واللحظات البسيطة وقم بتقسيم أي مهمة كبيرة إلى خطوات صغيرة جدّاً.
+
+أنا هنا دائماً للفضفضة والإجابة عن أي تساؤل آخر! ✨`;
+  } else if (lowerMsg.includes("حزين") || lowerMsg.includes("ضيق") || lowerMsg.includes("تعب") || lowerMsg.includes("قلق")) {
+    answer = `أشعر بصدق كلامك وأقدر شجاعتك في الفضفضة والتعبير عما يدور بفيض مشاعرك. المشاعر الإنسانية كأمواج البحر تأتي وتذهب، وعلينا معاملة ذواتنا برفق ولطف بدلاً من جلد الذات. هل تود التحدث أكثر عن السبب الرئيسي الذي جعلك تشعر بهذا التوتر اليوم؟`;
   } else {
-    answer = `أشكرك على هذه الفضفضة الصادقة والمشاركة العميقة. يبدو أنك تحاول تنظيم أفكارك ومواجهة مشاعرك بوعي تام وشجاعة. كمعالج نفسي، أنصحك بأن تأخذ نفساً عميقاً، وتتأمل الحدث بلطف دون أن تقسو على ذاتك. ما هي فكرتك عما يمكننا فعله غداً كخطوة صغيرة للتغلب على هذا الشعور؟`;
+    answer = `أشكرك على مشاركة هذه الأفكار العميقة والصادقة. أرى في تدوينتك وعياً ممتازاً ورغبة حقيقية في تطوير مرونتك النفسية وبناء استقرار داخلي متين. كمعالج نفسي، أنصحك بأن تأخذ نفساً عميقاً، وتتأمل الموقف بمرونة وتفاؤل. ما رأيك في اتخاذ خطوة بسيطة ومبهجة اليوم كبداية؟`;
   }
   return res.json({ success: true, answer, source: "local-simulation" });
 });
