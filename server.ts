@@ -23,6 +23,29 @@ if (!fs.existsSync(path.join(process.cwd(), "data"))) {
   fs.mkdirSync(path.join(process.cwd(), "data"), { recursive: true });
 }
 
+// Helper to safely format dates
+function safeFormatDate(d: any): string {
+  if (!d) return 'غير مؤرخ';
+  if (typeof d === 'string') {
+    return d.includes('T') ? d.split('T')[0] : d;
+  }
+  if (typeof d === 'number') {
+    try {
+      return new Date(d).toISOString().split('T')[0];
+    } catch {
+      return 'غير مؤرخ';
+    }
+  }
+  if (d instanceof Date) {
+    try {
+      return d.toISOString().split('T')[0];
+    } catch {
+      return 'غير مؤرخ';
+    }
+  }
+  return String(d);
+}
+
 // API Cloud Sync endpoints
 app.get("/api/cloud-sync/fetch", (req, res) => {
   try {
@@ -162,9 +185,9 @@ function handleGeminiError(res: any, error: any, customKey?: string, fallbackRes
     if (errorMsg.includes("API key not valid") || errorMsg.includes("API_KEY_INVALID")) {
       errorMsg = "مفتاح الـ API الخاص بك غير صالح. يرجى الانتقال إلى الإعدادات وتحديث المفتاح.";
     } else if (errorMsg.includes("Quota exceeded") || errorMsg.includes("limit") || errorMsg.includes("exhausted")) {
-      errorMsg = "تم تجاوز حد الاستخدام المسموح به لهذا مفتاح (Quota Exceeded).";
+      errorMsg = "تم تجاوز حد الاستخدام المسموح به لهذا المفتاح (Quota Exceeded).";
     } else if (errorMsg.includes("unsupported country") || errorMsg.includes("not available in your country")) {
-      errorMsg = "طراز الذكاء الاصطناعي (gemini-2.5-flash) أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
+      errorMsg = "طراز الذكاء الاصطناعي أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
     }
     return res.status(400).json({ 
       success: false, 
@@ -176,6 +199,27 @@ function handleGeminiError(res: any, error: any, customKey?: string, fallbackRes
   } else {
     res.status(500).json({ success: false, error: "حدث خطأ غير متوقع أثناء معالجة الطلب." });
   }
+}
+
+// Helper function to generate content with fallback models
+async function generateWithGenAI(aiInstance: GoogleGenAI, config: any) {
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+  let lastErr: any = null;
+  for (const modelName of modelsToTry) {
+    try {
+      const response = await aiInstance.models.generateContent({
+        ...config,
+        model: modelName
+      });
+      return response;
+    } catch (err: any) {
+      lastErr = err;
+      if (err.message?.includes("API key not valid") || err.message?.includes("API_KEY_INVALID")) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
 }
 
 // Check if Gemini is enabled
@@ -203,8 +247,7 @@ app.post("/api/gemini/verify-key", async (req, res) => {
     });
 
     // Make a minimal content generation call to verify
-    await testAi.models.generateContent({
-      model: "gemini-2.5-flash",
+    await generateWithGenAI(testAi, {
       contents: "Say 'ok' in 1 word",
       config: {
         maxOutputTokens: 10
@@ -278,8 +321,7 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
 }
 أرجع JSON الصرف فقط وبدون أي ماركداون خارجي.`;
 
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+        const response = await generateWithGenAI(ai, {
           contents: [
             {
               role: "user",
@@ -392,8 +434,7 @@ app.post("/api/gemini/analyze-mood", async (req, res) => {
 [{"mood": "اسم الشعور بالعربية", "percentage": الرقم بين 1 و 100}]
 يجب أن يكون مجموع النسب 100%. أرجع JSON الصرف فقط بدون أي ماركداون أو تعليقات خارجية.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -558,8 +599,7 @@ ${formattedHabits}
 
 ويرجى إظهار التعاطف والتشجيع وتنسيق الرد بشكل منظم وجميل باستخدام Markdown.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -615,7 +655,7 @@ app.post("/api/gemini/smart-advisor", async (req, res) => {
       ? d.symptomsChecklist.join(", ")
       : "لا يوجد";
 
-    return `التاريخ: ${d.createdAt.split('T')[0]} ${d.createdAt.split('T')[1]?.substring(0, 5) || ''}
+    return `التاريخ: ${safeFormatDate(d.createdAt)}
 نوع المذكرة: ${d.diaryType === 'thought' ? 'خواطر وفضفضة' : 'يوميات عادية'}
 العنوان: ${d.title || 'بدون عنوان'}
 الأهمية: ${'⭐'.repeat(d.importance || 1)}
@@ -656,9 +696,9 @@ ${d.content}
 
   // Format books for AI context
   const formattedBooks = (books || []).map((b: any) => {
-    return `- عنوان الكتاب/المصدر المقروء: "${b.title}"
+    return `- عنوان الكتاب/المصدر المقروء: "${b.title || ''}"
   * تقييم المستخدم له: ${'★'.repeat(b.rating || 0)} نجوم
-  * تاريخ إضافته للرف والمكتبة: ${b.createdAt ? b.createdAt.split('T')[0] : 'غير حدد'}
+  * تاريخ إضافته للرف والمكتبة: ${safeFormatDate(b.createdAt)}
   * هل تم رسم خريطة ذهنية له: ${b.hasMindMap ? 'نعم' : 'لا'}
   * ملخص الكتاب وملاحظات القراءة المكتوبة:
     ${b.notes || 'لا توجد ملاحظات مكتوبة بعد.'}
@@ -667,7 +707,7 @@ ${d.content}
 
   // Format gratitude cards for AI context
   const formattedGratitude = (gratitudeCards || []).map((g: any) => {
-    return `- [${g.createdAt.split('T')[0]}] ${g.text}`;
+    return `- [${safeFormatDate(g.createdAt)}] ${g.text || ''}`;
   }).join("\n");
 
   const customKey = req.headers["x-gemini-key"] as string;
@@ -703,6 +743,19 @@ ${d.content}
       const rawQuery = (query || "").trim();
       const cleanedQuery = rawQuery.toLowerCase();
       
+      if (cleanedQuery.includes("من أنا") || cleanedQuery.includes("أنا مين") || cleanedQuery.includes("من اكون") || cleanedQuery.includes("مين أنا") || cleanedQuery.includes("عرفني بنفسي")) {
+        const topHabitNames = (habits || []).slice(0, 3).map((h: any) => `"${h.name}"`).join("، ");
+        fallbackAnswer = `أهلاً بك يا صديقي! بناءً على قراءة ملفك ومحتويات تطبيقك:
+
+• **المذكرات واليوميات:** لديك **${(diaries || []).length} مذكرات وخواطر** مسجلة وثقت فيها مشاعرك وأفكارك.
+• **العادات السلوكية:** تتابع **${(habits || []).length} عادات**${topHabitNames ? ` (أبرزها: ${topHabitNames})` : ''}.
+• **المكتبة والكتب:** تحتوي مكتبتك على **${(books || []).length} كتب ومراجع** مقروءة.
+• **بطاقات الامتنان:** سجلت **${(gratitudeCards || []).length} بطاقة امتنان** تعبر عن تقديرك للنعم واللحظات الإيجابية.
+
+أنا "مستشارك الذكي"، متواجد دائماً لتحليل يومياتك وإجابتك عن أي جانب من حياتك أفكارك أو عاداتك!`;
+        return res.json({ success: true, answer: fallbackAnswer, source: "local-simulation" });
+      }
+
       // Keywords search across all user app data
       const stopWords = ["اعرض", "عرض", "الملاحظات", "التي", "تتحدث", "عن", "الخاصة", "بـ", "ما", "ماذا", "هو", "هي", "في", "على", "من", "إلى", "كيف", "هل", "أين", "متى", "اريد", "أريد", "معرفة", "ابحث"];
       const searchTerms = cleanedQuery
@@ -831,8 +884,7 @@ ${formattedBooks || "لا توجد كتب مضافة حتى الآن."}
 - إذا لم تتوفر مذكرات أو بيانات كافية للإجابة، وضّح ذلك بلطف واقترح عليه ما يسجله أو يضيفه مستقبلاً لتمكينك من إجابته بدقة أعلى.`;
       }
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -878,8 +930,7 @@ app.post("/api/gemini/diary-assistant", async (req, res) => {
 الطلب: قم بتحليل هذه اليومية واستخرج أهم النقاط والمحاور الواردة فيها.`;
       }
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: prompt
       });
 
@@ -972,8 +1023,7 @@ ${formattedDiaries || "لا توجد يوميات مسجلة."}
       }
 
       const isJson = action === "ai_generator";
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -1049,8 +1099,7 @@ app.post("/api/gemini/cbt-analyze", async (req, res) => {
 }
 أرجع JSON الصرف فقط وبدون أي ماركداون أو تعليقات خارجية.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -1098,8 +1147,7 @@ app.post("/api/gemini/daily-inspiration", async (req, res) => {
 }
 أرجع JSON الصرف فقط وبدون أي ماركداون أو تعليقات خارجية.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -1198,8 +1246,7 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
 }
 أرجع JSON الصرف فقط بدون أي ماركداون خارجي.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: [
           {
             inlineData: {
@@ -1316,8 +1363,7 @@ ${formattedLogs || 'هذه بداية الجلسة.'}
 
   if (ai) {
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: prompt
       });
       return res.json({ success: true, answer: response.text, source: "gemini" });
@@ -1372,8 +1418,7 @@ app.post("/api/gemini/generate-note", async (req, res) => {
 }
 أرجع JSON الصرف فقط وبدون أي ماركداون خارجي.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateWithGenAI(ai, {
         contents: prompt,
         config: {
           responseMimeType: "application/json",

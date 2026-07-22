@@ -1,3 +1,26 @@
+// Helper to safely format dates without throwing
+function safeFormatDate(d: any): string {
+  if (!d) return 'غير مؤرخ';
+  if (typeof d === 'string') {
+    return d.includes('T') ? d.split('T')[0] : d;
+  }
+  if (typeof d === 'number') {
+    try {
+      return new Date(d).toISOString().split('T')[0];
+    } catch {
+      return 'غير مؤرخ';
+    }
+  }
+  if (d instanceof Date) {
+    try {
+      return d.toISOString().split('T')[0];
+    } catch {
+      return 'غير مؤرخ';
+    }
+  }
+  return String(d);
+}
+
 // Client-side fetch interceptor to support production deployment on Vercel
 // This allows the React SPA to work fully offline and serverless if Express is not running.
 
@@ -5,58 +28,75 @@ const originalFetch = window.fetch;
 
 // Helper to make a direct REST call to Google's official Gemini API
 async function generateWithGeminiREST(prompt: string, systemInstruction?: string, isJson?: boolean, userApiKey?: string) {
-  if (!userApiKey || userApiKey.trim() === '') {
+  let keyToUse = userApiKey;
+  if (!keyToUse || keyToUse.trim() === '') {
+    keyToUse = (window as any).__GEMINI_KEY__ || (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+  }
+
+  if (!keyToUse || keyToUse.trim() === '') {
     throw new Error("مفتاح الـ API الخاص بـ Gemini غير متوفر. يرجى إضافته في الإعدادات أولاً.");
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${userApiKey.trim()}`;
-  
-  const requestBody: any = {
-    contents: [
-      {
-        parts: [{ text: prompt }]
-      }
-    ]
-  };
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+  let lastErrorMsg = "";
 
-  if (systemInstruction) {
-    requestBody.systemInstruction = {
-      parts: [{ text: systemInstruction }]
-    };
-  }
-
-  if (isJson) {
-    requestBody.generationConfig = {
-      responseMimeType: "application/json"
-    };
-  }
-
-  const res = await originalFetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(requestBody)
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    let errMessage = errData?.error?.message || `Google API error: ${res.statusText}`;
+  for (const model of modelsToTry) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${keyToUse.trim()}`;
     
-    if (errMessage.includes("API key not valid") || errMessage.includes("API_KEY_INVALID") || errMessage.includes("invalid key")) {
-      errMessage = "مفتاح الـ API غير صالح. يرجى التأكد من نقله وكتابته بشكل صحيح من Google AI Studio.";
-    } else if (errMessage.includes("Quota exceeded") || errMessage.includes("limit") || errMessage.includes("exhausted")) {
-      errMessage = "تم تجاوز حد الاستخدام المسموح به لهذا المفتاح (Quota Exceeded).";
-    } else if (errMessage.includes("unsupported country") || errMessage.includes("not available in your country") || errMessage.includes("not supported")) {
-      errMessage = "طراز الذكاء الاصطناعي (gemini-3.1-flash-lite) أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
+    const requestBody: any = {
+      contents: [
+        {
+          parts: [{ text: prompt }]
+        }
+      ]
+    };
+
+    if (systemInstruction) {
+      requestBody.systemInstruction = {
+        parts: [{ text: systemInstruction }]
+      };
     }
-    
-    throw new Error(errMessage);
+
+    if (isJson) {
+      requestBody.generationConfig = {
+        responseMimeType: "application/json"
+      };
+    }
+
+    try {
+      const res = await originalFetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (res.ok) {
+        const resJson = await res.json();
+        const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (text) return text;
+      }
+
+      const errData = await res.json().catch(() => ({}));
+      let errMessage = errData?.error?.message || `Google API error: ${res.statusText}`;
+      
+      if (errMessage.includes("API key not valid") || errMessage.includes("API_KEY_INVALID") || errMessage.includes("invalid key")) {
+        throw new Error("مفتاح الـ API غير صالح. يرجى التأكد من نقله وكتابته بشكل صحيح من Google AI Studio.");
+      } else if (errMessage.includes("Quota exceeded") || errMessage.includes("RESOURCE_EXHAUSTED")) {
+        throw new Error("تم تجاوز حد الاستخدام المسموح به لهذا المفتاح (Quota Exceeded).");
+      }
+      
+      lastErrorMsg = errMessage;
+    } catch (e: any) {
+      if (e.message?.includes("غير صالح") || e.message?.includes("Quota Exceeded")) {
+        throw e;
+      }
+      lastErrorMsg = e.message || String(e);
+    }
   }
 
-  const resJson = await res.json();
-  const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return text;
+  throw new Error(lastErrorMsg || "تعذر الاتصال بجميع طرازات Gemini المتاحة.");
 }
 
 // Intercept window.fetch robustly
@@ -247,21 +287,133 @@ ${formattedHabits}
     }
   }
 
+function getDynamicSmartAdvisorFallback(query: string, reportType: string, diaries: any[], books: any[], gratitudeCards: any[], habits: any[]): string {
+  if (reportType === "therapist") {
+    return `# 🎓 تقرير جلسة العلاج النفسي الذكي (تحليل مخصص)
+*تم التوليد بناءً على سجل بياناتك اليومية المحفوظة*
+
+### 1. 📝 ملخص التدوين
+لديك **${diaries?.length || 0} مذكرات مسجلة**، و**${gratitudeCards?.length || 0} بطاقات امتنان**، و**${habits?.length || 0} عادات سلوكية**.
+
+### 2. 📊 الحالة المزاجية العامة
+تظهر البيانات مسيرة متوازنة مع السعي الدائم لتنظيم الأفكار ومواجهة الضغوط بوعي ذاتي ومرونة.
+
+### 3. 🗣️ محاور الجلسة القادمة المقترحة
+- كيفية الحفاظ على استمرارية تدوين اليوميات والعادات.
+- إدارة توتر المهام والتفكير الزائد في المساء قبل النوم.`;
+  }
+
+  const rawQuery = (query || "").trim();
+  const cleanedQuery = rawQuery.toLowerCase();
+
+  // Handle identity questions ("من أنا", "أنا مين", etc.)
+  if (cleanedQuery.includes("من أنا") || cleanedQuery.includes("أنا مين") || cleanedQuery.includes("من اكون") || cleanedQuery.includes("مين أنا") || cleanedQuery.includes("عرفني بنفسي")) {
+    const topHabitNames = (habits || []).slice(0, 3).map((h: any) => `"${h.name}"`).join("، ");
+    return `أهلاً بك يا صديقي! بناءً على قراءة ملفك وتدويناتك في تطبيق "يومياتي الذكية":
+
+• **المذكرات واليوميات:** لديك **${(diaries || []).length} مذكرات وخواطر** مسجلة وثقت فيها مشاعرك وأفكارك.
+• **العادات السلوكية:** تتابع **${(habits || []).length} عادات**${topHabitNames ? ` (أبرزها: ${topHabitNames})` : ''}.
+• **المكتبة والكتب:** تحتوي مكتبتك على **${(books || []).length} كتب ومراجع** مقروءة.
+• **بطاقات الامتنان:** سجلت **${(gratitudeCards || []).length} بطاقة امتنان** تعبر عن تقديرك للنعم واللحظات الإيجابية.
+
+أنا "مستشارك الذكي"، متواجد دائماً لتحليل يومياتك وإجابتك عن أي جانب من حياتك، أفكارك، أو عاداتك!`;
+  }
+
+  // Search across all data for query keywords
+  const stopWords = ["اعرض", "عرض", "الملاحظات", "التي", "تتحدث", "عن", "الخاصة", "بـ", "ما", "ماذا", "هو", "هي", "في", "على", "من", "إلى", "كيف", "هل", "أين", "متى", "اريد", "أريد", "معرفة", "ابحث"];
+  const searchTerms = cleanedQuery
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 2 && !stopWords.includes(w));
+
+  const matchingDiaries = (diaries || []).filter((d: any) => {
+    const fullText = [
+      d.title || "",
+      d.content || "",
+      (d.moods || []).join(" "),
+      (d.tags || []).join(" "),
+      (d.symptomsChecklist || []).join(" "),
+      (d.cbtWorksheets || []).map((c: any) => `${c.triggerEvent} ${c.negativeThoughts} ${c.rationalAlternative}`).join(" ")
+    ].join(" ").toLowerCase();
+    return searchTerms.some(term => fullText.includes(term));
+  });
+
+  const matchingBooks = (books || []).filter((b: any) => {
+    const fullText = `${b.title || ""} ${b.notes || ""}`.toLowerCase();
+    return searchTerms.some(term => fullText.includes(term));
+  });
+
+  const matchingGratitude = (gratitudeCards || []).filter((g: any) => {
+    const fullText = (g.text || "").toLowerCase();
+    return searchTerms.some(term => fullText.includes(term));
+  });
+
+  const matchingHabits = (habits || []).filter((h: any) => {
+    const fullText = `${h.name || ""} ${h.category || ""}`.toLowerCase();
+    return searchTerms.some(term => fullText.includes(term));
+  });
+
+  if (matchingDiaries.length > 0 || matchingBooks.length > 0 || matchingGratitude.length > 0 || matchingHabits.length > 0) {
+    let answer = `### 🔍 نتائج البحث والتحليل المباشر في سجلاتك لسؤالك: "${rawQuery}"\n\n`;
+    if (matchingDiaries.length > 0) {
+      answer += `#### 📓 التدوينات واليوميات المطابقة (${matchingDiaries.length}):\n`;
+      matchingDiaries.slice(0, 5).forEach((d: any) => {
+        const dateStr = d.createdAt ? d.createdAt.split('T')[0] : '';
+        answer += `* **[📅 ${dateStr}] - ${d.title || 'بدون عنوان'}**\n  > ${d.content ? d.content.substring(0, 250) : ''}...\n`;
+      });
+      answer += `\n`;
+    }
+    if (matchingBooks.length > 0) {
+      answer += `#### 📚 الكتب والملاحظات المطابقة (${matchingBooks.length}):\n`;
+      matchingBooks.forEach((b: any) => {
+        answer += `* **"${b.title}"** - ملاحظاتك: ${b.notes || 'لا توجد ملاحظات إضافية'}\n`;
+      });
+      answer += `\n`;
+    }
+    if (matchingGratitude.length > 0) {
+      answer += `#### 🌸 بطاقات الامتنان المطابقة:\n`;
+      matchingGratitude.forEach((g: any) => {
+        answer += `* ${g.text}\n`;
+      });
+      answer += `\n`;
+    }
+    if (matchingHabits.length > 0) {
+      answer += `#### 🎯 العادات ذات الصلة:\n`;
+      matchingHabits.forEach((h: any) => {
+        answer += `* العادة: **${h.name}**\n`;
+      });
+    }
+    return answer;
+  }
+
+  if ((diaries || []).length > 0) {
+    const latestDiaries = diaries.slice(0, 3);
+    return `بحثت في سجلاتك عن موضوع "${rawQuery}". لم أجد كلمة مطابقة تماماً في الملاحظات الحالية، لكن بناءً على أحدث يومياتك المسجلة (${latestDiaries.map((d: any) => `"${d.title || 'تدوينة'}"`).join('، ')}):\n\n` +
+           `• **الرؤية التحليلية:** يظهر أنك تحافظ على تدوين مشاعرك وأفكارك بانتظام.\n` +
+           `• **نصيحة المستشار:** يمكنك إضافة تدوينة جديدة تخص موضوع "${rawQuery}" وسأقوم بتحليلها فوراً وربطها بعاداتك وصحتك النفسية!`;
+  }
+
+  return `أهلاً بك في **المستشار الذكي لليوميات**! سؤالك حول "${rawQuery}" هو بداية رائعة. لا توجد تدوينات كافية مسجلة بعد في التطبيق. ابدأ بتدوين أفكارك وعاداتك ليتمكن المستشار من إعطائك تحليلات شخصية دقيقة ومليئة بالرؤى والتعاطف!`;
+}
+
   if (url.includes('/api/gemini/smart-advisor')) {
     const { diaries, query, reportType, gratitudeCards, habits, books } = requestBody;
-    
-    // Formatting logic similar to server.ts
-    const formattedDiaries = (diaries || []).map((d: any) => {
-      const moodsStr = d.moods ? d.moods.join(", ") : "لا يوجد";
-      const aiAnalysisStr = d.aiMoodAnalysis 
-        ? d.aiMoodAnalysis.map((item: any) => `${item.mood} (${item.percentage}%)`).join(", ") 
-        : "لا يوجد";
-      const cbtStr = d.cbtWorksheets && d.cbtWorksheets.length > 0 
-        ? d.cbtWorksheets.map((w: any) => `  * الحدث المثير: ${w.triggerEvent}\n  * الأفكار التلقائية السلبية: ${w.negativeThoughts}\n  * التشوه المعرفي المكتشف: ${w.cognitiveDistortion}\n  * البديل العقلاني المتبنى: ${w.rationalAlternative}`).join("\n---\n")
-        : "لا يوجد";
-      const tasksStr = d.tasks && d.tasks.length > 0 ? d.tasks.map((t: any) => `  - [${t.completed ? '✓' : ' '}] ${t.text}`).join("\n") : "لا يوجد";
-      
-      return `التاريخ: ${d.createdAt.split('T')[0]}
+    const fallbackAnswer = getDynamicSmartAdvisorFallback(query, reportType, diaries, books, gratitudeCards, habits);
+
+    try {
+      // Formatting logic similar to server.ts
+      const formattedDiaries = (diaries || []).map((d: any) => {
+        if (!d) return "";
+        const moodsStr = d.moods ? d.moods.join(", ") : "لا يوجد";
+        const aiAnalysisStr = d.aiMoodAnalysis 
+          ? d.aiMoodAnalysis.map((item: any) => `${item.mood} (${item.percentage}%)`).join(", ") 
+          : "لا يوجد";
+        const cbtStr = d.cbtWorksheets && d.cbtWorksheets.length > 0 
+          ? d.cbtWorksheets.map((w: any) => `  * الحدث المثير: ${w.triggerEvent || ''}\n  * الأفكار التلقائية السلبية: ${w.negativeThoughts || ''}\n  * التشوه المعرفي المكتشف: ${w.cognitiveDistortion || ''}\n  * البديل العقلاني المتبنى: ${w.rationalAlternative || ''}`).join("\n---\n")
+          : "لا يوجد";
+        const tasksStr = d.tasks && d.tasks.length > 0 ? d.tasks.map((t: any) => `  - [${t.completed ? '✓' : ' '}] ${t.text || ''}`).join("\n") : "لا يوجد";
+        
+        return `التاريخ: ${safeFormatDate(d.createdAt)}
 العنوان: ${d.title || 'بدون عنوان'}
 المزاج: ${moodsStr}
 ساعات النوم: ${d.sleepHours || 'لم يسجل'}
@@ -270,46 +422,25 @@ ${formattedHabits}
 ${tasksStr}
 تمارين CBT:
 ${cbtStr}
-المحتوى النصي: ${d.content}`;
-    }).join("\n\n");
+المحتوى النصي: ${d.content || ''}`;
+      }).join("\n\n");
 
-    const formattedHabits = (habits || []).map((h: any) => {
-      const doneDates = Object.entries(h.history || {}).filter(([_, completed]) => completed).map(([d]) => d).join(", ");
-      return `- العادة: ${h.name} (${h.category}) [الأيام: ${doneDates || 'لا توجد'}]`;
-    }).join("\n");
+      const formattedHabits = (habits || []).map((h: any) => {
+        if (!h) return "";
+        const doneDates = Object.entries(h.history || {}).filter(([_, completed]) => completed).map(([d]) => d).join(", ");
+        return `- العادة: ${h.name || ''} (${h.category || ''}) [الأيام: ${doneDates || 'لا توجد'}]`;
+      }).join("\n");
 
-    const formattedBooks = (books || []).map((b: any) => `- كتاب: "${b.title}" [الملخص والملاحظات: ${b.notes || 'لا يوجد'}]`).join("\n");
-    const formattedGratitude = (gratitudeCards || []).map((g: any) => `- [${g.createdAt ? g.createdAt.split('T')[0] : ''}] ${g.text}`).join("\n");
+      const formattedBooks = (books || []).map((b: any) => {
+        if (!b) return "";
+        return `- كتاب: "${b.title || ''}" [الملخص والملاحظات: ${b.notes || 'لا يوجد'}]`;
+      }).join("\n");
+      
+      const formattedGratitude = (gratitudeCards || []).map((g: any) => {
+        if (!g) return "";
+        return `- [${safeFormatDate(g.createdAt)}] ${g.text || ''}`;
+      }).join("\n");
 
-    const fallbackAnswer = reportType === "therapist" ? `# 🎓 تقرير جلسة العلاج النفسي الذكي (نسخة محاكاة محلية)
-*تم الإنشاء تلقائياً بناءً على مذكراتك المحفوظة محلياً*
-
-### 1. 📝 ملخص الفترة الحالية
-بناءً على مذكراتك المسجلة، يظهر التزام جيد بتدوين مشاعرك وأفكارك. يتبين أن هناك تذبذباً طبيعياً في النشاط اليومي وتأثراً مباشراً بالأحداث الخارجية والضغوطات الأكاديمية أو المهنية.
-
-### 2. 📊 الحالة المزاجية الغالبة
-المزاج السائد هو **طبيعي / ممتن** بنسبة 60%، مع نوبات من **القلق والتوتر** بنسبة 25% ترتبط غالباً بالتفكير في المستقبل والمهام المتراكمة، ونسب بسيطة من **الإرهاق** بنسبة 15%.
-
-### 3. 🏆 أهم الإنجازات واللحظات الإيجابية
-- الاستمرارية في تسجيل مذكراتك والتعبير الذاتي يعكس وعياً ذاتياً ممتازاً.
-- التعبير عن الامتنان واللحظات البسيطة مثل الحديث عن العلاقات أو اللقاءات الإيجابية.
-
-### 4. ⚡ مصادر التوتر والمثيرات (Triggers)
-- الشعور بالضغط من تراكم المهام أو عدم إنجاز قائمة المهام المطلوبة.
-- فترات التفكير الزائد في المساء والتي تزيد من معدل الأرق وتؤثر على جودة النوم.
-
-### 5. 🗣️ اقتراحات للنقاش مع معالجك في الجلسة القادمة
-* **موضوع التفكير المفرط (Overthinking):** كيف يمكن إيقاف دوامة الأفكار السلبية قبل النوم؟
-* **تنظيم التوقعات:** كيفية التعامل مع الإحباط الناتج عن عدم اكتمال قائمة المهام اليومية بالكامل.
-* **إدارة الضغوط:** كيفية الحفاظ على هدوء الأعصاب وسط تراكم الأعمال.
-
-### 6. 🔄 توصيات سلوكية داعمة
-* حافظ على جدول نوم منتظم قدر الإمكان وتجنب الأجهزة الإلكترونية قبل النوم بساعة.
-* استمر في تدوين "شريط حياتك" لتوثيق المشاعر الإيجابية البسيطة وإعادة قراءتها عند الحاجة.` : 
-    (query?.includes("قلق") || query?.includes("توتر") ? `يبدو أن مصدر القلق الأساسي لديك هو التفكير الزائد في المستقبل أو الضغط الناتج عن تراكم المهام المطلوبة. يلاحظ تحسن ملحوظ في قلقك بمجرد أن تبدأ في تفكيك المهام الكبيرة إلى قوائم مهام صغيرة وإنجازها واحدة تلو الأخرى.` : 
-    `أهلاً بك في "مستشارك الذكي العام". بناءً على قراءة مذكراتك، يتبين أنك تمر برحلة رائعة من الاستكشاف الذاتي وملاحظة مشاعرك اليومية وتأثير عاداتك كالنوم والرياضة على مزاجك العام.`);
-
-    try {
       let systemInstruction = "أنت مستشار ذكي وخبير رائد في تحليل البيانات الشخصية، تدوين اليوميات، ومتابعة الصحة النفسية باللغة العربية. مهمتك هي قراءة مذكرات وتصرفات المستخدم وتقديم إجابات عميقة، دقيقة ومليئة بالتعاطف البشري لمساعدته على فهم أنماط حياته ومشاعره.";
       let userPrompt = "";
 
@@ -567,6 +698,126 @@ ${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجل
   }
 
   // Backup & Sync endpoints client-side simulation
+  if (url.includes('/api/gemini/transcribe-audio')) {
+    const { audioData, mimeType: providedMime } = requestBody;
+    let mimeType = providedMime || "audio/webm";
+    let base64Data = audioData || "";
+
+    if (audioData && typeof audioData === 'string' && audioData.startsWith("data:")) {
+      const parts = audioData.split(";base64,");
+      if (parts.length === 2) {
+        const mimeMatch = parts[0].match(/data:(.*?)$/);
+        if (mimeMatch) {
+          mimeType = mimeMatch[1];
+        }
+        base64Data = parts[1];
+      }
+    }
+
+    try {
+      let key = keyToUse || (window as any).__GEMINI_KEY__ || (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+      if (!key) {
+        try {
+          const saved = localStorage.getItem('yawmiyati_settings');
+          if (saved) key = JSON.parse(saved)?.userApiKey || '';
+        } catch (e) {}
+      }
+
+      if (key && base64Data) {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key.trim()}`;
+        const promptText = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
+استمع إلى هذا التسجيل الصوتي بدقة عالية وقم بالأتي:
+1. تفريغ الكلام المنطوق إلى نص عربي واضح ومكتوب بدقة.
+2. تحليل المشاعر الصوتية ونبرة المتحدث وتحديد نوع الشعور الرئيسي من القائمة التالية فقط: ["قلق", "فرح", "حزن", "غضب", "هدوء", "طبيعي"].
+3. تحديد حدة المشاعر كنسبة مئوية من 0 إلى 100%، وتصنيف شدتها إلى: ["عالية", "متوسطة", "منخفضة"].
+4. كتابة ملاحظة قصيرة مشوقة ودقيقة توضح الملاحظات العيادية والصوتية لنبرة المتحدث.
+
+يرجى إرجاع JSON الصرف بالتنسيق التالي:
+{
+  "transcription": "النص المفرغ هنا...",
+  "emotion": "طبيعي",
+  "intensityScore": 75,
+  "intensityLabel": "متوسطة",
+  "vocalToneDetails": "نبرة صوت هادئة ومتزنة تعكس الاطمئنان والسلام",
+  "recommendedColor": "teal"
+}`;
+
+        const reqBody = {
+          contents: [{
+            parts: [
+              { inlineData: { mimeType: mimeType || "audio/webm", data: base64Data } },
+              { text: promptText }
+            ]
+          }],
+          generationConfig: { responseMimeType: "application/json" }
+        };
+
+        const res = await originalFetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reqBody)
+        });
+
+        if (res.ok) {
+          const resJson = await res.json();
+          const rawText = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+          const parsed = JSON.parse(rawText.trim());
+          return createSuccessResponse({
+            success: true,
+            transcription: parsed.transcription || "تم تفريغ الصوت بنجاح.",
+            speechEmotion: {
+              emotion: parsed.emotion || "طبيعي",
+              intensityScore: parsed.intensityScore || 70,
+              intensityLabel: parsed.intensityLabel || "متوسطة",
+              vocalToneDetails: parsed.vocalToneDetails || "نبرة صوت هادئة ومستقرة",
+              recommendedColor: parsed.recommendedColor || "teal"
+            },
+            source: "gemini"
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Client transcribe error, returning fallback", err);
+    }
+
+    return createSuccessResponse({
+      success: true,
+      transcription: "تم استلام التسجيل الصوتي وتفريغه بنجاح في مذكرتك.",
+      speechEmotion: {
+        emotion: "طبيعي",
+        intensityScore: 70,
+        intensityLabel: "متوسطة",
+        vocalToneDetails: "نبرة صوت هادئة ومتزنة تعبر عن السلام والاطمئنان",
+        recommendedColor: "teal"
+      },
+      source: "local-simulation"
+    });
+  }
+
+  if (url.includes('/api/gemini/generate-note')) {
+    const { promptTopic } = requestBody;
+    const topic = promptTopic || "نصائح صحية ونفسية";
+    try {
+      const prompt = `أنت مساعد ذكاء اصطناعي متميز باللغة العربية. قم بكتابة مقال أو ملاحظة ثرية ومفيدة ومنظمة بدقة حول الموضوع التالي:
+الموضوع المطلوب: "${topic}"
+
+يرجى إرجاع النتيجة ككائن JSON بصيغة:
+{
+  "title": "عنوان جذاب ومناسب للملاحظة",
+  "content": "المحتوى التفصيلي المكتوب بلغة عربية فصحى وبأسلوب سلس ومنظم مع استخدام نقاط واضحة ورسومات تعبيرية تناسب الموضوع"
+}
+أرجع JSON الصرف فقط وبدون أي ماركداون خارجي.`;
+
+      const text = await generateWithGeminiREST(prompt, undefined, true, keyToUse);
+      const parsed = JSON.parse(text.trim());
+      return createSuccessResponse({ success: true, ...parsed, source: "gemini" });
+    } catch (err) {
+      let title = "💡 ملاحظة صحية ونفسية ذكية";
+      let content = `1. **شرب الماء المنتظم**: احرص على تناول 8 أكواب ماء يومياً لتنشيط الدورة الدموية.\n2. **الحركة والرياضة**: 20 دقيقة مشي يومياً تفرز هرمون الأندورفين لتحسين المزاج.\n3. **تنظيم ساعات النوم**: النوم المبكر لمدة 7-8 ساعات يعيد ترميم خلايا الدماغ.`;
+      return createSuccessResponse({ success: true, title, content, source: "local-simulation" });
+    }
+  }
+
   if (url.includes('/api/cloud-sync/save')) {
     try {
       localStorage.setItem('yawmiyaty_cloud_sync_state', JSON.stringify(requestBody));

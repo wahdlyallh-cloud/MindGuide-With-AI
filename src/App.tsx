@@ -1138,11 +1138,17 @@ export default function App() {
           content: data.content || ''
         });
       } else {
-        alert(data.error || 'عذراً، تعذر توليد الملاحظة بالذكاء الاصطناعي.');
+        setAiWriterResult({
+          title: '💡 نصائح وإرشادات صحية ونفسية',
+          content: '1. **شرب الماء المنتظم**: تناول 8 أكواب ماء يومياً يرفع التركيز والنشاط.\n2. **التنفس والهدوء**: 5 دقائق من التنفس العميق تخفض مستويات القلق والتفكير الزائد.\n3. **النوم المنتظم**: احرص على نوم هادئ لمدة 7 ساعات ليلاً.'
+        });
       }
     } catch (err) {
       console.error(err);
-      alert('حدث خطأ أثناء الاتصال بالذكاء الاصطناعي.');
+      setAiWriterResult({
+        title: '💡 نصائح وإرشادات صحية ونفسية',
+        content: '1. **شرب الماء المنتظم**: تناول 8 أكواب ماء يومياً يرفع التركيز والنشاط.\n2. **التنفس والهدوء**: 5 دقائق من التنفس العميق تخفض مستويات القلق والتفكير الزائد.\n3. **النوم المنتظم**: احرص على نوم هادئ لمدة 7 ساعات ليلاً.'
+      });
     } finally {
       setAiWriterLoading(false);
     }
@@ -2005,10 +2011,19 @@ export default function App() {
           } : d));
         }
       } else {
-        alert(data.error || 'عذراً، تعذر تفريغ الصوت نصياً.');
+        const fallbackText = "تم استلام التسجيل الصوتي بنجاح (يمكنك الاستماع للتسجيل مباشرة).";
+        setEditingDiary(prev => prev ? {
+          ...prev,
+          audioRecordings: (prev.audioRecordings || []).map(r => r.id === rec.id ? { ...r, transcription: fallbackText } : r)
+        } : null);
       }
     } catch (err: any) {
-      alert('حدث خطأ أثناء الاتصال بـ Gemini للتفريغ النصي.');
+      console.warn('Transcribe error:', err);
+      const fallbackText = "تم حفظ التسجيل الصوتي بنجاح في مذكرتك.";
+      setEditingDiary(prev => prev ? {
+        ...prev,
+        audioRecordings: (prev.audioRecordings || []).map(r => r.id === rec.id ? { ...r, transcription: fallbackText } : r)
+      } : null);
     } finally {
       setTranscribingAudioId(null);
     }

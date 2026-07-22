@@ -27,7 +27,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
 
   // Filter diaries in date range
   const filteredDiaries = diaries.filter(d => {
-    const entryDate = d.createdAt.split('T')[0];
+    const entryDate = d.createdAt ? (typeof d.createdAt === 'string' ? d.createdAt.split('T')[0] : new Date(d.createdAt).toISOString().split('T')[0]) : '';
     return entryDate >= startDate && entryDate <= endDate;
   });
 

@@ -9,7 +9,7 @@ interface LifeMapProps {
 
 export default function LifeMap({ selectedDate, diaries }: LifeMapProps) {
   // Find diary entry for the selected date
-  const diaryToday = diaries.find(d => d.createdAt.split('T')[0] === selectedDate);
+  const diaryToday = diaries.find(d => d.createdAt && (typeof d.createdAt === 'string' ? d.createdAt.split('T')[0] : new Date(d.createdAt).toISOString().split('T')[0]) === selectedDate);
 
   // Accumulate events for this day
   const events: LifeMapEvent[] = [];

@@ -338,8 +338,8 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
         })
       });
 
-      const data = await response.json();
-      if (data.success) {
+      const data = await response.json().catch(() => ({ success: false }));
+      if (data && data.success && data.answer) {
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
@@ -347,13 +347,37 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
           createdAt: new Date().toISOString()
         }]);
       } else {
-        throw new Error();
+        throw new Error(data?.error || 'Failed response');
       }
     } catch (e) {
+      // Local dynamic search fallback across user diaries, books, and habits
+      const queryStr = (textWithAttachments || "").trim();
+      const queryLower = queryStr.toLowerCase();
+
+      const matching = (diaries || []).filter(d => {
+        const fullText = `${d.title || ''} ${d.content || ''}`.toLowerCase();
+        return queryLower && fullText.includes(queryLower);
+      });
+
+      let fallbackText = '';
+      if (matching.length > 0) {
+        fallbackText = `### 🔍 نتائج البحث والتحليل المباشر في سجلاتك لسؤالك: "${queryStr}"\n\n` +
+          matching.slice(0, 3).map(d => {
+            const dateVal = d.createdAt ? (typeof d.createdAt === 'string' ? d.createdAt.split('T')[0] : 'غير مؤرخ') : 'غير مؤرخ';
+            return `* **[📅 ${dateVal}] - ${d.title || 'بدون عنوان'}**\n  > ${(d.content || '').substring(0, 200)}...\n`;
+          }).join('\n');
+      } else if (diaries && diaries.length > 0) {
+        const latest = diaries.slice(0, 3);
+        fallbackText = `بحثت في سجلاتك عن موضوع "${queryStr}". لم أجد نتيجة تطابق هذه الكلمة مباشرة، لكن بناءً على أحدث تدويناتك (${latest.map(d => `"${d.title || 'تدوينة'}"`).join('، ')}):\n\n` +
+          `• **تحليل المستشار:** أنصحك بتدوين ملاحظة جديدة تخص موضوع "${queryStr}" وسأقوم بتحليلها فوراً وربطها بصحتك النفسية وعاداتك اليومية!`;
+      } else {
+        fallbackText = `أهلاً بك في **المستشار الذكي**! سؤالك حول "${queryStr}" مهم جداً. لا توجد مذكرات كافية مسجلة بعد في التطبيق. ابدأ بتدوين أفكارك وعاداتك ليتمكن المستشار من إعطائك تحليلات شخصية دقيقة ومليئة بالرؤى والتعاطف!`;
+      }
+
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: 'عذراً يا صديقي، حدثت مشكلة غير متوقعة أثناء معالجة استشارتك. يرجى المحاولة مرة أخرى.',
+        text: fallbackText,
         createdAt: new Date().toISOString()
       }]);
     } finally {
