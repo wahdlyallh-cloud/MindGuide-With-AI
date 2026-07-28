@@ -45,7 +45,7 @@ async function generateWithGeminiREST(prompt: string, systemInstruction?: string
     throw new Error("يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتفعيل كافة خدمات الذكاء الاصطناعي.");
   }
 
-  const modelsToTry = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+  const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash'];
   let lastErrorMsg = "";
 
   for (const model of modelsToTry) {
@@ -219,14 +219,7 @@ async function handleClientSideFallback(url: string, init?: RequestInit): Promis
       const cleanJson = extractJsonArray(text);
       return createSuccessResponse({ success: true, analysis: cleanJson });
     } catch (err: any) {
-      // Return simulated local analysis on error
-      return createSuccessResponse({
-        success: true,
-        analysis: [
-          { mood: "طبيعي", percentage: 70 },
-          { mood: "قلق", percentage: 30 }
-        ]
-      });
+      return createErrorResponse(err.message || "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتشغيل تحليل المزاج بالذكاء الاصطناعي.");
     }
   }
 
@@ -290,8 +283,8 @@ ${formattedHabits}
       const systemInstruction = "أنت خبير ومستشار متميز في تحليل السلوكيات وبناء العادات الإيجابية والتنمية الشخصية المستندة للبيانات العلمية باللغة العربية الفصحى. مهمتك هي قراءة قائمة عادات المستخدم ومدى الالتزام وصياغة تقييم رصين ومحفز.";
       const answer = await generateWithGeminiREST(userPrompt, systemInstruction, false, keyToUse);
       return createSuccessResponse({ success: true, answer, source: "gemini" });
-    } catch (err) {
-      return createSuccessResponse({ success: true, answer: fallbackAnswer, source: "local-simulation" });
+    } catch (err: any) {
+      return createErrorResponse(err.message || "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتقييم العادات بالذكاء الاصطناعي.");
     }
   }
 
@@ -449,7 +442,21 @@ ${cbtStr}
         return `- [${safeFormatDate(g.createdAt)}] ${g.text || ''}`;
       }).join("\n");
 
-      let systemInstruction = "أنت مستشار ذكي وخبير رائد في تحليل البيانات الشخصية، تدوين اليوميات، ومتابعة الصحة النفسية باللغة العربية. مهمتك هي قراءة مذكرات وتصرفات المستخدم وتقديم إجابات عميقة، دقيقة ومليئة بالتعاطف البشري لمساعدته على فهم أنماط حياته ومشاعره.";
+      let systemInstruction = `أنت المستشار الذكي والمساعد النفسي والفكري الشامل والمتقدم في تطبيق "يومياتي الذكية".
+مهمتك الأساسية هي أن تكون مرشداً، طبيباً نفسياً صديقاً، خبيراً في تحليل البيانات والمشاعر، ومساعداً معنوياً وفكرياً متكاملاً للمستخدم.
+
+تمتلك الوصول الكامل والحيوي والتحليل العميق لجميع بيانات ومعلومات المستخدم المرفقة في التطبيق (المذكرات، الخواطر، تمارين العلاج المعرفي السلوكي CBT، الأدوية، النوم، الرياضة، المياه، الأعراض الجسدية، قائمة العادات وتاريخ الالتزام بها، الكتب المقروءة وملاحظاتها والخرائط الذهنية، بطاقات الامتنان والشكر، وقوائم المهام المنجزة وغير المنجزة).
+
+توجيهات الإجابة الجوهرية:
+1. قدرتك فائقة ومفتوحة للإجابة عن أي سؤال يطرحه المستخدم بدون استثناء، سواء كان السؤال يتعلق ببياناته الخاصة داخل التطبيق أو سؤالاً عاماً خارج التطبيق.
+2. إذا كان السؤال عن بياناته المسجلة داخل التطبيق (مثل: "ماذا حدث لي يوم 15 يوليو؟"، "ما هي كتب القراءة التي أضفتها؟"، "كيف كان مزاجي في الأسبوع الماضي؟"، "ما العادات التي ألتزم بها؟"):
+   - قم بالبحث الدقيق في كل قسم من البيانات المرفقة بالتاريخ واليوم والشهر والمحتوى.
+   - اقرأ المذكرات والبطاقات والعادات والكتب في ذلك التاريخ أو الموضوع، والخصها للمستخدم بلغة عربية فصحى راقية، سلسة، دافئة، متفهمة، ومباشرة.
+   - لا تعطِ قوائم بحث جافة أو أكواد، بل قدم صياغة تحليلية ذكية تظهر فهمك المباشر لما مر به ورؤيتك النفسية الداعمة.
+3. إذا كان السؤال عاماً أو خارجياً (مثل: أسئلة في الصحة النفسية، الاسترخاء، الثقافة، العلوم، التخطيط الشخصي، الحياة، الفلسفة، أو أي موضوع آخر):
+   - أجب باستفاضة، وضوح، وذكاء كمرشد وخبير حكيم دون أي تقييد!
+4. صغ إجاباتك دائماً بتنسيق Markdown جميل مع عناوين فرعية منسقة وتباعد مريح، وبطريقة محفزة ومريحة للأعصاب.`;
+
       let userPrompt = "";
 
       if (reportType === "therapist") {
@@ -466,32 +473,29 @@ ${cbtStr}
 
 أجب بتنسيق Markdown جميل مع تباعد مريح وعناوين بارزة.`;
       } else {
-        userPrompt = `بناءً على كافة التفاصيل والمعلومات المسجلة في التطبيق (اليوميات، الخواطر، التمارين CBT، الأدوية، النوم، الرياضة، قائمة العادات وتاريخها، الكتب والملخصات وبطاقات مفكرة الامتنان)، يرجى الإجابة بدقة وتحليل على سؤالي التالي: "${query}"
+        userPrompt = `إليك سؤال أو طلب المستخدم: "${query}"
 
-التفاصيل والبيانات المتوفرة للتحليل الشامل والكامل:
+بيانات ومعلومات المستخدم المسجلة في التطبيق للتحليل عند الحاجة:
 
-1) مذكرات اليوميات والخواطر وعناصر تتبع الحياة والصحة النفسية:
-${formattedDiaries || "لا توجد يوميات مسجلة حتى الآن."}
+1) مذكرات اليوميات والخواطر والتمارين والمهام والصحة:
+${formattedDiaries || "لا توجد يوميات مسجلة بعد."}
 
 2) بطاقات مفكرة الامتنان والشكر:
-${formattedGratitude || "لا توجد بطاقات امتنان مسجلة حالياً."}
+${formattedGratitude || "لا توجد بطاقات امتنان مسجلة بعد."}
 
 3) العادات السلوكية ومدى الالتزام اليومي والأسبوعي بها:
-${formattedHabits || "لا توجد عادات مسجلة."}
+${formattedHabits || "لا توجد عادات مسجلة بعد."}
 
-4) ركن الكتب والملخصات والملاحظات الثقافية:
-${formattedBooks || "لا توجد كتب مضافة حتى الآن."}
+4) ركن الكتب والملخصات والملاحظات والخرائط الذهنية:
+${formattedBooks || "لا توجد كتب مسجلة بعد."}
 
-يرجى مراعاة ما يلي:
-- لديك الصلاحية المطلقة والوصول الكامل لـ (كل حرف في التطبيق). عندما يسأل المستخدم عن أي شيء يتعلق بيومياته، عاداته، كتبه ومقروءاته، أهدافه، أدويته، أو علاجه السلوكي المعرفي، ابحث في هذه الأقسام وقدم إجابة مفصلة وصادقة وتأملية.
-- كن متعاطفاً وصريحاً وعلمياً في تحليلك للمزاج والصحة النفسية وسلوك القراءة والنشاط البدني.
-- إذا لم تتوفر مذكرات أو بيانات كافية للإجابة، وضّح ذلك بلطف واقترح عليه ما يسجله أو يضيفه مستقبلاً لتمكينك من إجابته بدقة أعلى.`;
+أجب الآن على سؤال المستخدم بأسلوب المستشار الذكي والدافئ والتحليلي المباشر:`;
       }
 
       const answer = await generateWithGeminiREST(userPrompt, systemInstruction, false, keyToUse);
       return createSuccessResponse({ success: true, answer, source: "gemini" });
-    } catch (err) {
-      return createSuccessResponse({ success: true, answer: fallbackAnswer, source: "local-simulation" });
+    } catch (err: any) {
+      return createErrorResponse(err.message || "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتشغيل المستشار الذكي.");
     }
   }
 
@@ -593,21 +597,8 @@ ${formattedDiaries || "لا توجد يوميات مسجلة."}
         return createSuccessResponse({ success: true, answer: JSON.stringify(parsed), source: "gemini" });
       }
       return createSuccessResponse({ success: true, answer: text, source: "gemini" });
-    } catch (err) {
-      let fallbackAnswer = "";
-      if (action === "reflect") {
-        fallbackAnswer = `### ✨ تأمل الامتنان النفسي والتحليل الذاتي (نسخة محاكاة محلية)\nسعداء برؤيتك تواظب على تدوين الأشياء الإيجابية في حياتك! يظهر تحليل بطاقات الامتنان الخاصة بك تركيزك على العلاقات العائلية واللحظات البسيطة.`;
-      } else if (action === "card_analysis") {
-        fallbackAnswer = `هذا الحدث الإيجابي الصغير يساهم مباشرة في تحفيز خلايا الفص الجبهي لإطلاق الدوبامين، مما يخفض حساسية اللوزة الدماغية (Amygdala) تجاه مسببات التوتر والتوتر اليومي.`;
-      } else if (action === "ai_generator") {
-        fallbackAnswer = JSON.stringify({
-          text: "أنا ممتن للسلام الداخلي ومحاولتي الدائمة لتنظيم يومياتي وأفكاري والالتزام بعاداتي الإيجابية برغم كل الضغوط.",
-          suggestedColor: "lavender"
-        });
-      } else {
-        fallbackAnswer = `### 💡 مقترحات تفكرية لدفتر امتنانك اليوم (نسخة محاكاة محلية)\n1. فكر في شخص قام بفعل لطيف من أجلك مؤخراً.\n2. ما هو التحدي البسيط الذي مر بسلام اليوم؟`;
-      }
-      return createSuccessResponse({ success: true, answer: fallbackAnswer, source: "local-simulation" });
+    } catch (err: any) {
+      return createErrorResponse(err.message || "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتفعيل مستشار الامتنان.");
     }
   }
 
@@ -633,13 +624,8 @@ ${formattedDiaries || "لا توجد يوميات مسجلة."}
       const text = await generateWithGeminiREST(prompt, undefined, true, keyToUse);
       const parsed = JSON.parse(text.trim());
       return createSuccessResponse({ success: true, ...parsed, source: "gemini" });
-    } catch (err) {
-      return createSuccessResponse({
-        success: true,
-        cognitiveDistortion: "التهويل وتوقع الكوارث (Catastrophizing): افتراض السيناريو الأسوأ وتكبير حجم المشاكل دون أدلة منطقية كافية.",
-        rationalAlternative: "الفشل في مهمة واحدة لا يعني نهاية المطاف؛ هذه فرصة رائعة للتعلم وتعديل المسار، والأمور ستمر بسلام كما مرت مثيلاتها سابقاً.",
-        source: "local-simulation"
-      });
+    } catch (err: any) {
+      return createErrorResponse(err.message || "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتحليل تمارين CBT.");
     }
   }
 
@@ -660,13 +646,8 @@ ${formattedDiaries || "لا توجد يوميات مسجلة."}
       const text = await generateWithGeminiREST(prompt, undefined, true, keyToUse);
       const parsed = JSON.parse(text.trim());
       return createSuccessResponse({ success: true, ...parsed, source: "gemini" });
-    } catch (err) {
-      const quotesList = [
-        { quote: "تذكر دائماً أن القلق لا يمنع ألم الغد، ولكنه يسرق متعة وسلام اليوم فحسب.", author: "دكتورك النفسي الصديق" },
-        { quote: "السلام الداخلي يبدأ في اللحظة التي تختار فيها ألا تسمح لحدث خارجي أو فكرة عابرة بالتحكم في مشاعرك.", author: "أبحاث علم النفس المعرفي" }
-      ];
-      const selectedQuote = quotesList[Math.floor(Math.random() * quotesList.length)];
-      return createSuccessResponse({ success: true, ...selectedQuote, source: "local-simulation" });
+    } catch (err: any) {
+      return createErrorResponse(err.message || "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتوليد الإلهام اليومي.");
     }
   }
 
@@ -696,12 +677,8 @@ ${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجل
     try {
       const answer = await generateWithGeminiREST(prompt, undefined, false, keyToUse);
       return createSuccessResponse({ success: true, answer, source: "gemini" });
-    } catch (err) {
-      let answer = "أشكرك على هذه الفضفضة الصادقة والمشاركة العميقة. يبدو أنك تحاول تنظيم أفكارك ومواجهة مشاعرك بوعي تام وشجاعة. كمعالج نفسي، أنصحك بأن تأخذ نفساً عميقاً وتتأمل الحدث بلطف. ما هي فكرتك عما يمكننا فعله غداً كخطوة صغيرة للتغلب على هذا الشعور؟";
-      if (newMessage.includes("حزين") || newMessage.includes("ضيق")) {
-        answer = "أشعر بصدق كلامك، والفضفضة والتعبير عما بداخلك هما أولى خطوات التعافي النفسي والتصالح مع الذات. تذكر أن المشاعر كأمواج البحر تأتي وتذهب ولا تبقى للأبد.";
-      }
-      return createSuccessResponse({ success: true, answer, source: "local-simulation" });
+    } catch (err: any) {
+      return createErrorResponse(err.message || "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لمساحة الفضفضة.");
     }
   }
 
@@ -731,9 +708,17 @@ ${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجل
         } catch (e) {}
       }
 
+      if (!key) {
+        return createErrorResponse("يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتفريغ التسجيلات الصوتية بالذكاء الاصطناعي.");
+      }
+
       if (key && base64Data) {
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${key.trim()}`;
-        const promptText = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
+        const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+        let lastError = "";
+
+        for (const modName of modelsToTry) {
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modName}:generateContent?key=${key.trim()}`;
+          const promptText = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
 استمع إلى هذا التسجيل الصوتي بدقة عالية وقم بالأتي:
 1. تفريغ الكلام المنطوق إلى نص عربي واضح ومكتوب بدقة.
 2. تحليل المشاعر الصوتية ونبرة المتحدث وتحديد نوع الشعور الرئيسي من القائمة التالية فقط: ["قلق", "فرح", "حزن", "غضب", "هدوء", "طبيعي"].
@@ -750,56 +735,50 @@ ${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجل
   "recommendedColor": "teal"
 }`;
 
-        const reqBody = {
-          contents: [{
-            parts: [
-              { inlineData: { mimeType: mimeType || "audio/webm", data: base64Data } },
-              { text: promptText }
-            ]
-          }],
-          generationConfig: { responseMimeType: "application/json" }
-        };
+          const reqBody = {
+            contents: [{
+              parts: [
+                { inlineData: { mimeType: mimeType || "audio/webm", data: base64Data } },
+                { text: promptText }
+              ]
+            }],
+            generationConfig: { responseMimeType: "application/json" }
+          };
 
-        const res = await originalFetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(reqBody)
-        });
-
-        if (res.ok) {
-          const resJson = await res.json();
-          const rawText = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-          const parsed = JSON.parse(rawText.trim());
-          return createSuccessResponse({
-            success: true,
-            transcription: parsed.transcription || "تم تفريغ الصوت بنجاح.",
-            speechEmotion: {
-              emotion: parsed.emotion || "طبيعي",
-              intensityScore: parsed.intensityScore || 70,
-              intensityLabel: parsed.intensityLabel || "متوسطة",
-              vocalToneDetails: parsed.vocalToneDetails || "نبرة صوت هادئة ومستقرة",
-              recommendedColor: parsed.recommendedColor || "teal"
-            },
-            source: "gemini"
+          const res = await originalFetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reqBody)
           });
+
+          if (res.ok) {
+            const resJson = await res.json();
+            const rawText = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+            const parsed = JSON.parse(rawText.trim());
+            return createSuccessResponse({
+              success: true,
+              transcription: parsed.transcription || "تم تفريغ الصوت بنجاح.",
+              speechEmotion: {
+                emotion: parsed.emotion || "طبيعي",
+                intensityScore: parsed.intensityScore || 70,
+                intensityLabel: parsed.intensityLabel || "متوسطة",
+                vocalToneDetails: parsed.vocalToneDetails || "نبرة صوت هادئة ومستقرة",
+                recommendedColor: parsed.recommendedColor || "teal"
+              },
+              source: "gemini"
+            });
+          } else {
+            const errJson = await res.json().catch(() => ({}));
+            lastError = errJson?.error?.message || res.statusText;
+          }
         }
+        return createErrorResponse(lastError || "فشل تفريغ الصوت عبر طرازات Gemini.");
       }
-    } catch (err) {
-      console.warn("Client transcribe error, returning fallback", err);
+    } catch (err: any) {
+      return createErrorResponse(err.message || "تعذر معالجة التسجيل الصوتي.");
     }
 
-    return createSuccessResponse({
-      success: true,
-      transcription: "تم استلام التسجيل الصوتي وتفريغه بنجاح في مذكرتك.",
-      speechEmotion: {
-        emotion: "طبيعي",
-        intensityScore: 70,
-        intensityLabel: "متوسطة",
-        vocalToneDetails: "نبرة صوت هادئة ومتزنة تعبر عن السلام والاطمئنان",
-        recommendedColor: "teal"
-      },
-      source: "local-simulation"
-    });
+    return createErrorResponse("يرجى إرفاق ملف صوتي صالح لتفريغه بالذكاء الاصطناعي.");
   }
 
   if (url.includes('/api/gemini/generate-note')) {
@@ -819,10 +798,8 @@ ${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجل
       const text = await generateWithGeminiREST(prompt, undefined, true, keyToUse);
       const parsed = JSON.parse(text.trim());
       return createSuccessResponse({ success: true, ...parsed, source: "gemini" });
-    } catch (err) {
-      let title = "💡 ملاحظة صحية ونفسية ذكية";
-      let content = `1. **شرب الماء المنتظم**: احرص على تناول 8 أكواب ماء يومياً لتنشيط الدورة الدموية.\n2. **الحركة والرياضة**: 20 دقيقة مشي يومياً تفرز هرمون الأندورفين لتحسين المزاج.\n3. **تنظيم ساعات النوم**: النوم المبكر لمدة 7-8 ساعات يعيد ترميم خلايا الدماغ.`;
-      return createSuccessResponse({ success: true, title, content, source: "local-simulation" });
+    } catch (err: any) {
+      return createErrorResponse(err.message || "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتوليد الملاحظات بالذكاء الاصطناعي.");
     }
   }
 
