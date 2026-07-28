@@ -152,7 +152,7 @@ let aiClient: GoogleGenAI | null = null;
 function getGenAI(customKey?: string) {
   if (customKey && customKey.trim() !== "" && customKey !== "null" && customKey !== "undefined") {
     return new GoogleGenAI({
-      apiKey: customKey,
+      apiKey: customKey.trim(),
       httpOptions: {
         headers: {
           "User-Agent": "aistudio-build",
@@ -164,7 +164,7 @@ function getGenAI(customKey?: string) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey.trim() !== "") {
       aiClient = new GoogleGenAI({
-        apiKey,
+        apiKey: apiKey.trim(),
         httpOptions: {
           headers: {
             "User-Agent": "aistudio-build",
@@ -177,33 +177,30 @@ function getGenAI(customKey?: string) {
 }
 
 // Helper to handle Gemini API errors consistently
-function handleGeminiError(res: any, error: any, customKey?: string, fallbackResponse?: () => void) {
+function handleGeminiError(res: any, error: any, customKey?: string) {
   console.error("Gemini API error:", error);
-  const isCustom = !!(customKey && customKey.trim() !== "" && customKey !== "null" && customKey !== "undefined");
-  if (isCustom) {
-    let errorMsg = error.message || error.toString();
-    if (errorMsg.includes("API key not valid") || errorMsg.includes("API_KEY_INVALID")) {
-      errorMsg = "مفتاح الـ API الخاص بك غير صالح. يرجى الانتقال إلى الإعدادات وتحديث المفتاح.";
-    } else if (errorMsg.includes("Quota exceeded") || errorMsg.includes("limit") || errorMsg.includes("exhausted")) {
-      errorMsg = "تم تجاوز حد الاستخدام المسموح به لهذا المفتاح (Quota Exceeded).";
-    } else if (errorMsg.includes("unsupported country") || errorMsg.includes("not available in your country")) {
-      errorMsg = "طراز الذكاء الاصطناعي أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
-    }
-    return res.status(400).json({ 
-      success: false, 
-      error: `خطأ في اتصال الذكاء الاصطناعي: ${errorMsg}` 
-    });
-  }
-  if (fallbackResponse) {
-    fallbackResponse();
+  let errorMsg = error?.message || error?.toString() || '';
+  
+  if (errorMsg.includes("API key not valid") || errorMsg.includes("API_KEY_INVALID") || errorMsg.includes("invalid key") || errorMsg.includes("400")) {
+    errorMsg = "مفتاح الـ API الخاص بك غير صالح. يرجى الذهاب إلى إعدادات التطبيق وتحديث مفتاح Gemini API الخاص بك.";
+  } else if (errorMsg.includes("Quota exceeded") || errorMsg.includes("limit") || errorMsg.includes("RESOURCE_EXHAUSTED") || errorMsg.includes("429")) {
+    errorMsg = "تم تجاوز حد الاستخدام المسموح به لهذا المفتاح (Quota Exceeded). يرجى التوجه للإعدادات واستبداله بمفتاح مجاني جديد من Google AI Studio.";
+  } else if (errorMsg.includes("unsupported country") || errorMsg.includes("not available in your country")) {
+    errorMsg = "طراز الذكاء الاصطناعي أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
   } else {
-    res.status(500).json({ success: false, error: "حدث خطأ غير متوقع أثناء معالجة الطلب." });
+    errorMsg = `تعذر الاتصال بمحرك الذكاء الاصطناعي: ${errorMsg}`;
   }
+
+  return res.status(400).json({ 
+    success: false, 
+    error: errorMsg,
+    requiresKey: true
+  });
 }
 
 // Helper function to generate content with fallback models
 async function generateWithGenAI(aiInstance: GoogleGenAI, config: any) {
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+  const modelsToTry = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash'];
   let lastErr: any = null;
   for (const modelName of modelsToTry) {
     try {
@@ -456,77 +453,14 @@ app.post("/api/gemini/analyze-mood", async (req, res) => {
       const analysis = JSON.parse(responseText.trim());
       return res.json({ success: true, analysis, source: "gemini" });
     } catch (error) {
-      console.error("Gemini mood analysis error:", error);
-      // Fallback to local on error
+      return handleGeminiError(res, error, customKey);
     }
   }
 
-  // Fallback Local NLP Simulator for Arabic (Very smart rule-based simulator)
-  console.log("Using Arabic Rule-Based NLP Mood Analyzer...");
-  const text = (title + " " + content).toLowerCase();
-  const moodScores: Record<string, number> = {
-    "سعيد": 0,
-    "مرتاح": 0,
-    "طبيعي": 5, // base weight
-    "حزين": 0,
-    "مكتئب": 0,
-    "قلق": 0,
-    "غاضب": 0,
-    "مرهق": 0,
-    "ممتن": 0,
-    "سعيد جدًا": 0
-  };
-
-  // Check keywords
-  if (text.includes("سعيد") || text.includes("فرح") || text.includes("مبسوط") || text.includes("رائع") || text.includes("جميل")) {
-    moodScores["سعيد"] += 30;
-    moodScores["سعيد جدًا"] += 15;
-  }
-  if (text.includes("الحمد لله") || text.includes("شكرا") || text.includes("نعمة") || text.includes("ممتن")) {
-    moodScores["ممتن"] += 40;
-    moodScores["مرتاح"] += 10;
-  }
-  if (text.includes("تعب") || text.includes("ارهاق") || text.includes("مرهق") || text.includes("نوم") || text.includes("كسل") || text.includes("ضغط")) {
-    moodScores["مرهق"] += 40;
-    moodScores["قلق"] += 10;
-  }
-  if (text.includes("حزين") || text.includes("بكاء") || text.includes("دموع") || text.includes("ضيق") || text.includes("وحدة")) {
-    moodScores["حزين"] += 40;
-  }
-  if (text.includes("اكتئاب") || text.includes("مكتئب") || text.includes("يأس") || text.includes("مظلم") || text.includes("انتحار") || text.includes("الم")) {
-    moodScores["مكتئب"] += 50;
-    moodScores["حزين"] += 20;
-  }
-  if (text.includes("خوف") || text.includes("قلق") || text.includes("خايف") || text.includes("توتر") || text.includes("امتحان") || text.includes("مستقبل")) {
-    moodScores["قلق"] += 45;
-  }
-  if (text.includes("غضب") || text.includes("غاضب") || text.includes("زعل") || text.includes("عصبية") || text.includes("كره") || text.includes("مشكلة")) {
-    moodScores["غاضب"] += 45;
-  }
-  if (text.includes("سلام") || text.includes("هدوء") || text.includes("طبيعة") || text.includes("استرخاء") || text.includes("مرتاح")) {
-    moodScores["مرتاح"] += 40;
-  }
-
-  // Calculate percentages
-  const total = Object.values(moodScores).reduce((a, b) => a + b, 0);
-  const analysis = Object.entries(moodScores)
-    .map(([mood, score]) => ({
-      mood,
-      percentage: Math.round((score / total) * 100)
-    }))
-    .filter(item => item.percentage > 0)
-    .sort((a, b) => b.percentage - a.percentage);
-
-  // Normalize to 100%
-  let sum = analysis.reduce((a, b) => a + b.percentage, 0);
-  if (sum !== 100 && analysis.length > 0) {
-    analysis[0].percentage += (100 - sum);
-  }
-
-  res.json({
-    success: true,
-    analysis: analysis.length > 0 ? analysis : [{ mood: "طبيعي", percentage: 100 }],
-    source: "local-simulation"
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتفعيل تحليل المزاج بالذكاء الاصطناعي.",
+    requiresKey: true
   });
 });
 
@@ -605,13 +539,17 @@ ${formattedHabits}
           systemInstruction,
         }
       });
-      res.json({ success: true, answer: response.text, source: "gemini" });
+      return res.json({ success: true, answer: response.text, source: "gemini" });
     } catch (error) {
-      handleGeminiError(res, error, customKey, runFallback);
+      return handleGeminiError(res, error, customKey);
     }
-  } else {
-    runFallback();
   }
+
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتقييم العادات بالذكاء الاصطناعي.",
+    requiresKey: true
+  });
 });
 
 // API Endpoint 2: Smart Advisor (🧠 المستشار الذكي العام)
@@ -893,11 +831,15 @@ ${formattedBooks || "لا توجد كتب مضافة حتى الآن."}
 
       return res.json({ success: true, answer: response.text, source: "gemini" });
     } catch (error) {
-      return handleGeminiError(res, error, customKey, runFallback);
+      return handleGeminiError(res, error, customKey);
     }
-  } else {
-    runFallback();
   }
+
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتشغيل المستشار الذكي.",
+    requiresKey: true
+  });
 });
 
 // API Endpoint 3: Assistant inside a specific diary (AI داخل اليومية)
@@ -936,29 +878,15 @@ app.post("/api/gemini/diary-assistant", async (req, res) => {
 
       return res.json({ success: true, answer: response.text, source: "gemini" });
     } catch (error) {
-      console.error("Diary assistant error:", error);
+      return handleGeminiError(res, error, customKey);
     }
   }
 
-  // Fallback Local simulation
-  let answer = "";
-  if (promptType === "summarize") {
-    answer = `📝 **ملخص اليومية:**
-• تسجل التدوينة الحالة الشعورية والذهنية الراهنة بدقة.
-• هناك رغبة واضحة في التوازن والتعافي الذاتي وتنظيم الأفكار.
-• التركيز على استمرارية العادات الإيجابية ومواجهة المشتتات اليومية بوعي.`;
-  } else if (promptType === "mistakes") {
-    answer = `💡 **تحليل الأنماط الفكرية:**
-• يلاحظ وجود ميل خفيف لـ **"التفكير بكل شيء أو لا شيء"** (مثل لوم النفس عند تعطل خطة واحدة).
-• **البديل الفكري الصحي:** تذكر دائماً أن التراجع المؤقت أو عدم إكمال المهام بالكامل جزء طبيعي من التجربة الإنسانية، والخطوة البسيطة نحو الأمام تظل مكسباً حقيقياً!`;
-  } else {
-    answer = `🎯 **خطة مقترحة ليوم الغد:**
-1. **ابدأ بنشاط بسيط:** خصص أول 15 دقيقة في الصباح لنفسك بدون تصفح الهاتف (كوب قهوة، تأمل، أو تمدد).
-2. **قسّم مهامك:** اختر أهم مهمتين فقط وركز عليهما وتجاوز التشتت.
-3. **وقت للراحة:** حدد موعداً ثابتاً للتوقف عن العمل وممارسة تمرين تنفس مهدئ ومريح لمدة 5 دقائق.`;
-  }
-
-  res.json({ success: true, answer, source: "local-simulation" });
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لمساعد اليومية.",
+    requiresKey: true
+  });
 });
 
 // API Endpoint 5: Gratitude Advisor (🌸 مستشار الوعي الإيجابي والامتنان)
@@ -1041,35 +969,15 @@ ${formattedDiaries || "لا توجد يوميات مسجلة."}
 
       return res.json({ success: true, answer: response.text, source: "gemini" });
     } catch (error) {
-      console.error("Gratitude Advisor Gemini error:", error);
+      return handleGeminiError(res, error, customKey);
     }
   }
 
-  // Fallback
-  let fallbackAnswer = "";
-  if (action === "reflect") {
-    fallbackAnswer = `### ✨ تأمل الامتنان النفسي والتحليل الذاتي (نسخة محاكاة محلية)
-سعداء برؤيتك تواظب على تدوين الأشياء الإيجابية في حياتك! يظهر تحليل بطاقات الامتنان الخاصة بك تركيزك على:
-1. **الروابط العائلية والاجتماعية**: الحديث والمشاركة مع أحبائك يمثل ركيزة هامة للاستقرار والسلام النفسي لديك.
-2. **اللحظات البسيطة**: شرب القهوة ومراقبة الطبيعة تعزز وعيك الآني (Mindfulness).
-3. **التقدم والتعلم السلوكي**: تخطي الصعوبات ينمي مرونتك النفسية.
-
-*نصيحة اليوم من علم النفس الإيجابي:* حاول استحضار هذه اللحظات بكل حواسك لمدة 15 ثانية على الأقل عندما تدونها، لتثبيت المسارات الإيجابية في الدماغ!`;
-  } else if (action === "card_analysis") {
-    fallbackAnswer = `هذا الحدث الإيجابي الصغير يساهم مباشرة في تحفيز خلايا الفص الجبهي لإطلاق الدوبامين، مما يخفض حساسية اللوزة الدماغية (Amygdala) تجاه مسببات التوتر والتوتر اليومي. أنت تبني درعاً نفسياً صلباً!`;
-  } else if (action === "ai_generator") {
-    fallbackAnswer = JSON.stringify({
-      text: "أنا ممتن للسلام الداخلي ومحاولتي الدائمة لتنظيم يومياتي وأفكاري والالتزام بعاداتي الإيجابية برغم كل الضغوط.",
-      suggestedColor: "lavender"
-    });
-  } else {
-    fallbackAnswer = `### 💡 مقترحات تفكرية لدفتر امتنانك اليوم (نسخة محاكاة محلية)
-إليك 3 أشياء جميلة يمكنك التفكير فيها لتدوينها اليوم:
-1. **أشخاص ملهمون**: فكر في شخص قام بفعل لطيف أو بسيط من أجلك مؤخراً، أو حتى ابتسم في وجهك. كيف أثر ذلك عليك؟
-2. **تحدٍ تم التغلب عليه**: ما هو الشيء البسيط الذي كان يثير قلقك بالأمس ومر اليوم بسلام دون أي أذى؟
-3. **لحظة هدوء كاملة**: فكر في خمس دقائق جلست فيها بمفردك اليوم مستمتعاً بنسمة هواء، أو كوب ماء بارد، أو غرفتك الهادئة.`;
-  }
-  return res.json({ success: true, answer: fallbackAnswer, source: "fallback" });
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لمستشار الامتنان.",
+    requiresKey: true
+  });
 });
 
 // New API Endpoint: CBT Cognitive Restructuring Assistant
@@ -1118,14 +1026,15 @@ app.post("/api/gemini/cbt-analyze", async (req, res) => {
       const result = JSON.parse(responseText.trim());
       return res.json({ success: true, ...result, source: "gemini" });
     } catch (error) {
-      console.error("Gemini CBT analyze error:", error);
+      return handleGeminiError(res, error, customKey);
     }
   }
 
-  // Fallback simulator
-  const cognitiveDistortion = "التهويل وتوقع الكوارث (Catastrophizing): افتراض السيناريو الأسوأ وتكبير حجم المشاكل دون أدلة منطقية كافية.";
-  const rationalAlternative = "الفشل في مهمة واحدة أو الشعور بالتقصير لمرة لا يعنيان نهاية المطاف أو ضياع المستقبل؛ هذه فرصة رائعة للتعلم وتعديل المسار، والأمور ستمر بسلام كما مرت مثيلاتها سابقاً.";
-  return res.json({ success: true, cognitiveDistortion, rationalAlternative, source: "local-simulation" });
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتشغيل تحليل العلاج المعرفي السلوكي.",
+    requiresKey: true
+  });
 });
 
 // New API Endpoint: Daily Psychological Inspiration Generator
@@ -1166,18 +1075,15 @@ app.post("/api/gemini/daily-inspiration", async (req, res) => {
       const result = JSON.parse(responseText.trim());
       return res.json({ success: true, ...result, source: "gemini" });
     } catch (error) {
-      console.error("Gemini daily-inspiration error:", error);
+      return handleGeminiError(res, error, customKey);
     }
   }
 
-  // Fallback simulator
-  const quotesList = [
-    { quote: "تذكر دائماً أن القلق لا يمنع ألم الغد، ولكنه يسرق متعة وسلام اليوم فحسب.", author: "دكتورك النفسي الصديق" },
-    { quote: "السلام الداخلي يبدأ في اللحظة التي تختار فيها ألا تسمح لحدث خارجي أو فكرة عابرة بالتحكم في مشاعرك.", author: "أبحاث علم النفس المعرفي" },
-    { quote: "النفس كالطفل؛ إن أهملتها بقيت على القلق، وإن رعيها وطمأنتها سكنت واطمأنت.", author: "حكمة نفسية قديمة" }
-  ];
-  const selectedQuote = quotesList[Math.floor(Math.random() * quotesList.length)];
-  return res.json({ success: true, ...selectedQuote, source: "local-simulation" });
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتوليد الإلهام اليومي.",
+    requiresKey: true
+  });
 });
 
 // API Endpoint: Transcribe Audio File & Perform Speech Emotion Recognition (SER)
@@ -1286,27 +1192,14 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
         return res.json({ success: true, ...data, source: "gemini" });
       }
     } catch (error) {
-      console.error("Gemini audio transcription error:", error);
+      return handleGeminiError(res, error, customKey);
     }
   }
 
-  // Smart Local Fallback Simulation if Gemini call is unavailable or fails
-  const cleanName = fileName ? fileName.replace(/\.[^/.]+$/, "") : "تسجيل المقابلة 3";
-  const fallbackText = `🎙️ [تفريغ ذكي للإنصات الصوتي - "${cleanName}"]:
-"أهلاً بك.. تم الاستماع للتسجيل الصوتي وتفريغ كلماته بنجاح. أدون اليوم في مذكراتي أفكاري وتطلعاتي بكل وضوح، وأسعى لتفريغ مشاعري وتنظيم يومياتي وأهدافي للوصول إلى السلام الداخلي وراحة البال."`;
-
-  const fallbackEmotion = {
-    primaryEmotion: "طبيعي",
-    intensityScore: 75,
-    vocalToneDetails: "نبرة صوت متزنة وواضحة تعبر عن الرغبة في الترتيب والسلام الداخلي.",
-    recommendedColor: "teal"
-  };
-
-  return res.json({
-    success: true,
-    transcription: fallbackText,
-    speechEmotion: fallbackEmotion,
-    source: "local-simulation"
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتفريغ وتحليل التسجيلات الصوتية.",
+    requiresKey: true
   });
 });
 
@@ -1368,34 +1261,15 @@ ${formattedLogs || 'هذه بداية الجلسة.'}
       });
       return res.json({ success: true, answer: response.text, source: "gemini" });
     } catch (error) {
-      console.error("Gemini diary chat error:", error);
+      return handleGeminiError(res, error, customKey);
     }
   }
 
-  // Fallback simulator with rich answers
-  let answer = "";
-  const lowerMsg = newMessage.toLowerCase();
-  
-  if (lowerMsg.includes("لخص") || lowerMsg.includes("تلخيص") || lowerMsg.includes("مشاعري")) {
-    answer = `### 📝 التحليل النفسي الشامل والملخص العبقري للتدوينة:
-
-1. 📌 **الملخص الإنساني للمحتوى:**
-تدور تدوينتك ("${title || 'مذكرتي'}") حول تفريغ أفكارك والبحث عن ترتيب أولوياتك والسلام الداخلي في ظل الضغوطات اليومية.
-
-2. 🧠 **تحليل المشاعر والحالة النفسية:**
-تظهر كلمتك ونبرتك مزيجاً من الرغبة الصادقة في الترتيب مع بعض التوتر العابر. الوعي بمشاعرك وتدوينها خطوة علاجية ممتازة (CBT).
-
-3. 💡 **الرؤية والخطوة العملية المقترحة:**
-* خذ نفساً عميقاً و3 دقائق استرخاء.
-* ركز على النعم واللحظات البسيطة وقم بتقسيم أي مهمة كبيرة إلى خطوات صغيرة جدّاً.
-
-أنا هنا دائماً للفضفضة والإجابة عن أي تساؤل آخر! ✨`;
-  } else if (lowerMsg.includes("حزين") || lowerMsg.includes("ضيق") || lowerMsg.includes("تعب") || lowerMsg.includes("قلق")) {
-    answer = `أشعر بصدق كلامك وأقدر شجاعتك في الفضفضة والتعبير عما يدور بفيض مشاعرك. المشاعر الإنسانية كأمواج البحر تأتي وتذهب، وعلينا معاملة ذواتنا برفق ولطف بدلاً من جلد الذات. هل تود التحدث أكثر عن السبب الرئيسي الذي جعلك تشعر بهذا التوتر اليوم؟`;
-  } else {
-    answer = `أشكرك على مشاركة هذه الأفكار العميقة والصادقة. أرى في تدوينتك وعياً ممتازاً ورغبة حقيقية في تطوير مرونتك النفسية وبناء استقرار داخلي متين. كمعالج نفسي، أنصحك بأن تأخذ نفساً عميقاً، وتتأمل الموقف بمرونة وتفاؤل. ما رأيك في اتخاذ خطوة بسيطة ومبهجة اليوم كبداية؟`;
-  }
-  return res.json({ success: true, answer, source: "local-simulation" });
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لمحادثة اليومية والفضفضة.",
+    requiresKey: true
+  });
 });
 
 // API Endpoint: AI Note Writer Generator (as seen in video 0:56)
@@ -1437,35 +1311,15 @@ app.post("/api/gemini/generate-note", async (req, res) => {
       const data = JSON.parse(responseText.trim());
       return res.json({ success: true, ...data, source: "gemini" });
     } catch (error) {
-      console.error("Generate note Gemini error:", error);
+      return handleGeminiError(res, error, customKey);
     }
   }
 
-  // Fallback simulator for AI note generator topics
-  let title = "ملاحظة ذكية جديدة";
-  let content = "هنا تفاصيل الملاحظة المكتوبة...";
-
-  if (topic.includes("صحة") || topic.includes("صحية")) {
-    title = "💡 5 نصائح ذهبية للصحة النفسية والبدنية اليومية";
-    content = `1. **شرب الماء المنتظم**: احرص على تناول 8 أكواب ماء يومياً لتنشيط الدورة الدموية ومساعدة الكليتين.\n2. **الحركة والرياضة الخفيفة**: 20 دقيقة من المشي الهادئ يومياً تفرز هرمون الأندورفين المسؤول عن تحسين المزاج.\n3. **تنظيم ساعات النوم**: النوم المبكر لمدة 7-8 ساعات يعيد ترميم خلايا الدماغ ويقوي الجملة العصبية.\n4. **الامتنان والتأمل**: خصص 5 دقائق يومياً لتدوين ثلاثة أشياء إيجابية حدثت معك.\n5. **تقليل الشاشات**: ابتعد عن الأجهزة الإلكترونية قبل النوم بساعة على الأقل لتحسين جودة النوم.`;
-  } else if (topic.includes("مقال")) {
-    title = "📝 مقال: أهمية التدوين اليومي في تفكيك الضغوط والوصول للسلام الداخلي";
-    content = `يعتبر التدوين والفضفضة المكتوبة من أنجع الأساليب النفسية والعملية التي يستند إليها معالجو علم النفس المعرفي السلوكي (CBT).\n\n**لماذا نكتب؟**\nعندما تظل الأفكار محبوسة في عقولنا، فإنها تتضخم وتتداخل لتخلق حلقة مفرغة من التوتر والتردد. ولكن بمجرد تحويل تلك المشاعر إلى كلمات مكتوبة على الورق أو شاشة الهاتف، يحدث انتقال عصبي تدريجي من المنطقة العاطفية في الدماغ (اللوزة الدماغية) إلى المنطقة العقلانية (القشرة الجبهية).\n\n**كيف تبدأ اليوم؟**\nلا تشغل بالك بالتنسيق أو الأخطاء؛ فقط اكتب ما تشعر به بصدق، وستشعر براحة تدريجية وتدفق في السلام الداخلي.`;
-  } else if (topic.includes("المستقبل") || topic.includes("اتجاهات")) {
-    title = "🚀 اتجاهات المستقبل: كيف تتكيف مع التغيرات وتصنع فرصك بوعي";
-    content = `في عالم سريع التغير والتحول الرقمي والذكاء الاصطناعي، أصبحت القدرة على التعلم المستمر والتكيف المرن هي المهارة الأساسية للنجاح.\n\n* **التعلم المستمر (Continuous Learning)**: تخصيص 30 دقيقة يومياً لقراءة كتاب أو تعلم مهارة جديدة.\n* **الذكاء العاطفي والتواصل**: الأجهزة والآلات تبرع في الأرقام، لكن الإنسان يتميز بالتعاطف والإبداع والتواصل الإنساني الأصيل.\n* **إدارة الطاقة لا الوقت فقط**: الحفاظ على شحنتك النفسية والبدنية هو الوقود الحقيقي لكل طموحاتك المستقبلي.`;
-  } else if (topic.includes("التسويق") || topic.includes("خدمة")) {
-    title = "🎧 التسويق الحديث وخدمة العملاء: بناء علاقة قائمة على الثقة والتعاطف";
-    content = `العميل اليوم لا يبحث عن مجرد منتج أو خدمة، بل يبحث عن تجربة إنسانية صادقة تشعره بالاحترام والتقدير.\n\n1. **الاستماع الفعال**: فهم احتياج العميل الحقيقي قبل التفكير في الرد.\n2. **السرعة مع الجودة**: تقديم حلول عملية ودقيقة في الوقت المناسب.\n3. **الشفافية والصدق**: بناء سمعة طيبة طويلة المدى تعتمد على الأمانة والوضوح.`;
-  } else if (topic.includes("المشاريع") || topic.includes("إدارة")) {
-    title = "🎯 دليل إدارة المشاريع والمهام بكفاءة ومرونة عالية";
-    content = `إليك خطوات عملية لتنظيم أي مشروع بنجاح ودون ارتباك:\n\n1. **تفكيك الهدف الكبير**: تقسيم المشروع الكبير إلى مهام صغيرة قابلة للتنفيذ (Micro-tasks).\n2. **ترتيب الأولويات**: استخدام مصفوفة إيزنهاور (عاجل/مهم).\n3. **المتابعة والتقييم**: مراجعة التقدم بشكل أسبوعي والاحتفال بالإنجازات الصغرى.`;
-  } else {
-    title = `✨ ملاحظة حول: ${topic}`;
-    content = `هذه ملاحظة تم توليدها بالذكاء الاصطناعي لمساعدتك في صياغة أفكارك وحفظ معلوماتك الهامة في موضوع (${topic}) بكل يسر وسهولة.`;
-  }
-
-  return res.json({ success: true, title, content, source: "local-simulation" });
+  return res.status(400).json({
+    success: false,
+    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتوليد الملاحظات بالذكاء الاصطناعي.",
+    requiresKey: true
+  });
 });
 
 // Serve the app using Vite middleware in development or static folder in production

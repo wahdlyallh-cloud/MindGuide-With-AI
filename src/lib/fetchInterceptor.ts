@@ -30,14 +30,22 @@ const originalFetch = window.fetch;
 async function generateWithGeminiREST(prompt: string, systemInstruction?: string, isJson?: boolean, userApiKey?: string) {
   let keyToUse = userApiKey;
   if (!keyToUse || keyToUse.trim() === '') {
-    keyToUse = (window as any).__GEMINI_KEY__ || (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+    keyToUse = (window as any).__GEMINI_KEY__ || '';
+  }
+  if (!keyToUse || keyToUse.trim() === '') {
+    try {
+      const saved = localStorage.getItem('yawmiyati_settings');
+      if (saved) {
+        keyToUse = JSON.parse(saved)?.userApiKey || '';
+      }
+    } catch (e) {}
   }
 
   if (!keyToUse || keyToUse.trim() === '') {
-    throw new Error("مفتاح الـ API الخاص بـ Gemini غير متوفر. يرجى إضافته في الإعدادات أولاً.");
+    throw new Error("يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتفعيل كافة خدمات الذكاء الاصطناعي.");
   }
 
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+  const modelsToTry = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash'];
   let lastErrorMsg = "";
 
   for (const model of modelsToTry) {
@@ -724,7 +732,7 @@ ${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجل
       }
 
       if (key && base64Data) {
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key.trim()}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${key.trim()}`;
         const promptText = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
 استمع إلى هذا التسجيل الصوتي بدقة عالية وقم بالأتي:
 1. تفريغ الكلام المنطوق إلى نص عربي واضح ومكتوب بدقة.
@@ -856,8 +864,8 @@ function createSuccessResponse(data: any): Response {
 }
 
 // Helper to construct error response
-function createErrorResponse(message: string): Response {
-  return new Response(JSON.stringify({ success: false, error: message }), {
+function createErrorResponse(message: string, requiresKey: boolean = true): Response {
+  return new Response(JSON.stringify({ success: false, error: message, requiresKey }), {
     status: 400,
     headers: { 'Content-Type': 'application/json' }
   });
