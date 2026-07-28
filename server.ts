@@ -184,7 +184,7 @@ function handleGeminiError(res: any, error: any, customKey?: string) {
   if (errorMsg.includes("API key not valid") || errorMsg.includes("API_KEY_INVALID") || errorMsg.includes("invalid key") || errorMsg.includes("400")) {
     errorMsg = "مفتاح الـ API الخاص بك غير صالح. يرجى الذهاب إلى إعدادات التطبيق وتحديث مفتاح Gemini API الخاص بك.";
   } else if (errorMsg.includes("Quota exceeded") || errorMsg.includes("limit") || errorMsg.includes("RESOURCE_EXHAUSTED") || errorMsg.includes("429")) {
-    errorMsg = "تم تجاوز حد الاستخدام المسموح به لهذا المفتاح (Quota Exceeded). يرجى التوجه للإعدادات واستبداله بمفتاح مجاني جديد من Google AI Studio.";
+    errorMsg = "تم تجاوز حد الاستخدام المسموح به لـ Google API (Quota Exceeded). تنبيه: إنشاء مفتاح جديد في نفس مشروع Google Cloud يستهلك نفس الرصيد المكتمل. يرجى إنشاء 'مشروع جديد' (Create New Project) في Google AI Studio واستخراج مفتاح منه، أو الانتظار دقيقة وتكرار الطلب.";
   } else if (errorMsg.includes("unsupported country") || errorMsg.includes("not available in your country")) {
     errorMsg = "طراز الذكاء الاصطناعي أو منطقتك غير مدعومة حالياً مع هذا المفتاح.";
   } else {
@@ -200,7 +200,13 @@ function handleGeminiError(res: any, error: any, customKey?: string) {
 
 // Helper function to generate content with fallback models
 async function generateWithGenAI(aiInstance: GoogleGenAI, config: any) {
-  const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+  const modelsToTry = [
+    'gemini-1.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-2.5-flash'
+  ];
   let lastErr: any = null;
   for (const modelName of modelsToTry) {
     try {
@@ -211,9 +217,7 @@ async function generateWithGenAI(aiInstance: GoogleGenAI, config: any) {
       return response;
     } catch (err: any) {
       lastErr = err;
-      if (err.message?.includes("API key not valid") || err.message?.includes("API_KEY_INVALID")) {
-        throw err;
-      }
+      console.warn(`Server Model ${modelName} failed:`, err?.message || err);
     }
   }
   throw lastErr;
@@ -556,16 +560,13 @@ ${formattedHabits}
 app.post("/api/gemini/smart-advisor", async (req, res) => {
   const { diaries, query, reportType, startDate, endDate, gratitudeCards, habits, books } = req.body;
 
-  // Format diaries for AI context
-  const formattedDiaries = (diaries || []).map((d: any) => {
+  // Format diaries for AI context - sliced to 15 most recent items
+  const formattedDiaries = (diaries || []).slice(0, 15).map((d: any) => {
     const moodsStr = d.moods ? d.moods.join(", ") : "لا يوجد";
-    const aiAnalysisStr = d.aiMoodAnalysis 
-      ? d.aiMoodAnalysis.map((item: any) => `${item.mood} (${item.percentage}%)`).join(", ") 
-      : "لا يوجد";
     
     // CBT worksheets details
     const cbtStr = d.cbtWorksheets && d.cbtWorksheets.length > 0 
-      ? d.cbtWorksheets.map((w: any) => `  * الحدث المثير: ${w.triggerEvent}\n  * الأفكار التلقائية السلبية: ${w.negativeThoughts}\n  * التشوه المعرفي المكتشف: ${w.cognitiveDistortion}\n  * البديل العقلاني المتبنى: ${w.rationalAlternative}\n  * مستوى الانفعال قبل: ${w.emotionBefore}/10 ، بعد: ${w.emotionAfter}/10`).join("\n---\n")
+      ? d.cbtWorksheets.map((w: any) => `  * الحدث المثير: ${w.triggerEvent}\n  * الأفكار التلقائية السلبية: ${w.negativeThoughts}\n  * التشوه المعرفي المكتشف: ${w.cognitiveDistortion}\n  * البديل العقلاني المتبنى: ${w.rationalAlternative}`).join("\n---\n")
       : "لا يوجد";
 
     // Tasks checklist details
@@ -573,79 +574,29 @@ app.post("/api/gemini/smart-advisor", async (req, res) => {
       ? d.tasks.map((t: any) => `  - [${t.completed ? '✓' : ' '}] ${t.text}`).join("\n")
       : "لا يوجد";
 
-    // Medication tracking details
-    const medsStr = d.medications && d.medications.length > 0
-      ? d.medications.map((m: any) => `  - ${m.name} في ${m.time} (${m.taken ? 'تم أخذه' : 'لم يؤخذ'})`).join("\n")
-      : "لا يوجد";
-
-    // Audio recordings details
-    const audioStr = d.audioRecordings && d.audioRecordings.length > 0
-      ? d.audioRecordings.map((r: any) => `  - تسجيل: ${r.name} (${r.duration} ثانية) ${r.transcription ? `[تفريغ نصي: ${r.transcription}]` : ''}`).join("\n")
-      : "لا يوجد";
-
-    // Attached files details
-    const filesStr = d.files && d.files.length > 0
-      ? d.files.map((f: any) => `  - ملف: ${f.name} (${f.size})`).join("\n")
-      : "لا يوجد";
-
-    // Symptoms details
-    const symptomsStr = d.symptomsChecklist && d.symptomsChecklist.length > 0
-      ? d.symptomsChecklist.join(", ")
-      : "لا يوجد";
-
-    return `التاريخ: ${safeFormatDate(d.createdAt)}
-نوع المذكرة: ${d.diaryType === 'thought' ? 'خواطر وفضفضة' : 'يوميات عادية'}
+    return `التاريخ: ${d.createdAt}
 العنوان: ${d.title || 'بدون عنوان'}
-الأهمية: ${'⭐'.repeat(d.importance || 1)}
-المزاج اليدوي: ${moodsStr}
-تحليل المزاج الذكي: ${aiAnalysisStr}
-معدل تقييم المزاج السريع: ${d.fastMoodScore ? `${d.fastMoodScore}/10` : 'لم يسجل'}
-ساعات النوم المسجلة: ${d.sleepHours ? `${d.sleepHours} ساعات` : 'لم يسجل'}
-مدة الرياضة والنشاط البدني: ${d.sportsDuration ? `${d.sportsDuration} دقائق` : 'لم يسجل'}
-أكواب الماء المشروبة: ${d.waterCups ? `${d.waterCups} أكواب` : 'لم يسجل'}
-الأعراض الجسدية والنفسية المسجلة: ${symptomsStr}
-الأدوية المسجلة:
-${medsStr}
-المهام المجدولة وقائمتها:
+المزاج: ${moodsStr}
+ساعات النوم: ${d.sleepHours || 'لم يسجل'}
+الرياضة: ${d.sportsDuration || 'لم يسجل'}
+المهام:
 ${tasksStr}
-تمارين العلاج المعرفي السلوكي (CBT) الملحقة:
+تمارين CBT:
 ${cbtStr}
-التفريغ الصوتي للمحادثات والتسجيلات الملحقة:
-${audioStr}
-الملفات والروابط المرفقة:
-${filesStr}
-المحتوى النصي للمذكرة:
-${d.content}
--------------------------`;
+المحتوى النصي: ${d.content || ''}`;
   }).join("\n\n");
 
-  // Format habits for AI context
-  const formattedHabits = (habits || []).map((h: any) => {
-    const historyDates = Object.entries(h.history || {})
-      .filter(([_, completed]) => completed)
-      .map(([date]) => date)
-      .join(", ");
-    return `- اسم العادة السلوكية: ${h.name}
-  * الفئة والتصنيف: ${h.category === 'health' ? 'صحة عامة' : h.category === 'mind' ? 'تأمل وصحة نفسية' : h.category === 'sport' ? 'رياضة وبدن' : h.category === 'culture' ? 'ثقافة وعقل' : 'مخصصة'}
-  * معدل التكرار المطلوب: ${h.frequency === 'daily' ? 'يومي' : 'أسبوعي'}
-  * وقت التذكير بالعادة: ${h.reminderTime || 'غير محدد'}
-  * تواريخ الأيام التي تم فيها إنجاز هذه العادة بنجاح: [${historyDates || 'لم تسجل كإنجاز بعد'}]`;
-  }).join("\n\n");
+  const formattedHabits = (habits || []).slice(0, 10).map((h: any) => {
+    const doneDates = Object.entries(h.history || {}).filter(([_, completed]) => completed).map(([d]) => d).join(", ");
+    return `- العادة: ${h.name} (${h.category}) [الأيام: ${doneDates || 'لا توجد'}]`;
+  }).join("\n");
 
-  // Format books for AI context
-  const formattedBooks = (books || []).map((b: any) => {
-    return `- عنوان الكتاب/المصدر المقروء: "${b.title || ''}"
-  * تقييم المستخدم له: ${'★'.repeat(b.rating || 0)} نجوم
-  * تاريخ إضافته للرف والمكتبة: ${safeFormatDate(b.createdAt)}
-  * هل تم رسم خريطة ذهنية له: ${b.hasMindMap ? 'نعم' : 'لا'}
-  * ملخص الكتاب وملاحظات القراءة المكتوبة:
-    ${b.notes || 'لا توجد ملاحظات مكتوبة بعد.'}
-  * روابط مرجعية وفيديوهات مرفقة: ${b.referenceLink || 'لا يوجد'} ${b.videoAttachment ? `, فيديو: ${b.videoAttachment}` : ''}`;
-  }).join("\n\n");
+  const formattedBooks = (books || []).slice(0, 10).map((b: any) => {
+    return `- كتاب: "${b.title}" [الملخص والملاحظات: ${b.notes || 'لا يوجد'}]`;
+  }).join("\n");
 
-  // Format gratitude cards for AI context
-  const formattedGratitude = (gratitudeCards || []).map((g: any) => {
-    return `- [${safeFormatDate(g.createdAt)}] ${g.text || ''}`;
+  const formattedGratitude = (gratitudeCards || []).slice(0, 15).map((g: any) => {
+    return `- [${g.createdAt}] ${g.text || ''}`;
   }).join("\n");
 
   const customKey = req.headers["x-gemini-key"] as string;
@@ -831,15 +782,12 @@ ${formattedBooks || "لا توجد كتب مضافة حتى الآن."}
 
       return res.json({ success: true, answer: response.text, source: "gemini" });
     } catch (error) {
-      return handleGeminiError(res, error, customKey);
+      console.warn("Server Gemini failed for smart-advisor, running local fallback:", error);
+      return runFallback();
     }
   }
 
-  return res.status(400).json({
-    success: false,
-    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتشغيل المستشار الذكي.",
-    requiresKey: true
-  });
+  return runFallback();
 });
 
 // API Endpoint 3: Assistant inside a specific diary (AI داخل اليومية)
