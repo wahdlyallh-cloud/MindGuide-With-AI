@@ -592,32 +592,56 @@ export default function App() {
   }, [isBreathingActive]);
 
   // --- 👤 User Authentication & Session State ---
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('yawmiyati_user_profile');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('yawmiyati_auth_token'));
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Check existing session token on mount
   useEffect(() => {
     const checkUserSession = async () => {
+      // 1. First restore local user profile immediately if present
+      const savedProfile = localStorage.getItem('yawmiyati_user_profile');
+      if (savedProfile) {
+        try {
+          const parsed = JSON.parse(savedProfile);
+          setCurrentUser(parsed);
+        } catch (e) {
+          console.error('Profile parse error:', e);
+        }
+      }
+
       const token = localStorage.getItem('yawmiyati_auth_token');
       if (token) {
         try {
           const response = await fetch('/api/auth/me', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          const res = await response.json();
-          if (res.success && res.user) {
-            setCurrentUser(res.user);
-            setAuthToken(token);
-            // Fetch account-specific cloud data
-            handleCloudRestoreWithToken(token);
-          } else {
+          if (response.ok) {
+            const res = await response.json();
+            if (res.success && res.user) {
+              setCurrentUser(res.user);
+              localStorage.setItem('yawmiyati_user_profile', JSON.stringify(res.user));
+              setAuthToken(token);
+              // Fetch account-specific cloud data
+              handleCloudRestoreWithToken(token);
+            }
+          } else if (response.status === 401) {
+            // Explicit unauthenticated status from backend
             localStorage.removeItem('yawmiyati_auth_token');
+            localStorage.removeItem('yawmiyati_user_profile');
             setAuthToken(null);
             setCurrentUser(null);
           }
         } catch (e) {
-          console.error('Session validation error:', e);
+          console.error('Session validation server check (kept local session):', e);
+          // Keep local user session intact if server is unreachable or deployed as static site
         }
       }
     };
@@ -716,6 +740,7 @@ export default function App() {
     setCurrentUser(user);
     setAuthToken(token);
     localStorage.setItem('yawmiyati_auth_token', token);
+    localStorage.setItem('yawmiyati_user_profile', JSON.stringify(user));
 
     if (userData) {
       if (userData.diaries) {
@@ -755,6 +780,7 @@ export default function App() {
       }
     }
     localStorage.removeItem('yawmiyati_auth_token');
+    localStorage.removeItem('yawmiyati_user_profile');
     setAuthToken(null);
     setCurrentUser(null);
     setCloudSyncMessage('تم تسجيل الخروج بنجاح.');
