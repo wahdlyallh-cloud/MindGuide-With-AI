@@ -12,7 +12,7 @@ export default function ContactOwnerModal({ isOpen, onClose, isEn }: ContactOwne
 
   if (!isOpen) return null;
 
-  const emailAddress = "wahdlyallh@gmail.com";
+  const emailAddress = "support@yawmiyati.app";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(emailAddress);

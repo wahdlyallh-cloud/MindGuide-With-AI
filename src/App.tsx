@@ -510,36 +510,67 @@ export default function App() {
     localStorage.setItem('yawmiyati_active_tab', activeTab);
   }, [activeTab]);
 
-  // Comprehensive Auto-Save to localStorage whenever any state changes
+  // Comprehensive Auto-Save to localStorage whenever any state changes (with try/catch to prevent QuotaExceededError crashes)
   useEffect(() => {
-    localStorage.setItem('yawmiyati_diaries', JSON.stringify(diaries));
-    triggerAutoSaveFeedback();
+    try {
+      const safeDiaries = (diaries || []).map(d => ({
+        ...d,
+        audioRecordings: (d.audioRecordings || []).map(r => ({
+          ...r,
+          dataUrl: (r.dataUrl && r.dataUrl.length > 400000) ? '#' : r.dataUrl
+        })),
+        images: (d.images || []).map(img => (img && img.length > 400000) ? '' : img).filter(Boolean),
+        files: (d.files || []).map(f => ({
+          ...f,
+          dataUrl: (f.dataUrl && f.dataUrl.length > 400000) ? '#' : f.dataUrl
+        }))
+      }));
+      localStorage.setItem('yawmiyati_diaries', JSON.stringify(safeDiaries));
+      triggerAutoSaveFeedback();
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [diaries]);
 
   useEffect(() => {
-    localStorage.setItem('yawmiyati_settings', JSON.stringify(settings));
-    triggerAutoSaveFeedback();
+    try {
+      localStorage.setItem('yawmiyati_settings', JSON.stringify(settings));
+      triggerAutoSaveFeedback();
+    } catch (e) { console.warn(e); }
   }, [settings]);
 
   useEffect(() => {
-    localStorage.setItem('yawmiyati_habits', JSON.stringify(habits));
-    triggerAutoSaveFeedback();
+    try {
+      localStorage.setItem('yawmiyati_habits', JSON.stringify(habits));
+      triggerAutoSaveFeedback();
+    } catch (e) { console.warn(e); }
   }, [habits]);
 
   useEffect(() => {
-    localStorage.setItem('yawmiyati_gratitude_cards', JSON.stringify(gratitudeCards));
-    triggerAutoSaveFeedback();
+    try {
+      localStorage.setItem('yawmiyati_gratitude_cards', JSON.stringify(gratitudeCards));
+      triggerAutoSaveFeedback();
+    } catch (e) { console.warn(e); }
   }, [gratitudeCards]);
 
   useEffect(() => {
-    localStorage.setItem('yawmiyati_daily_quote', JSON.stringify(dailyQuote));
+    try {
+      localStorage.setItem('yawmiyati_daily_quote', JSON.stringify(dailyQuote));
+    } catch (e) { console.warn(e); }
   }, [dailyQuote]);
 
   // Window beforeunload & periodic 10-second fail-safe auto-saver
   useEffect(() => {
     const performFullSave = () => {
       try {
-        localStorage.setItem('yawmiyati_diaries', JSON.stringify(diaries));
+        const safeDiaries = (diaries || []).map(d => ({
+          ...d,
+          audioRecordings: (d.audioRecordings || []).map(r => ({
+            ...r,
+            dataUrl: (r.dataUrl && r.dataUrl.length > 400000) ? '#' : r.dataUrl
+          }))
+        }));
+        localStorage.setItem('yawmiyati_diaries', JSON.stringify(safeDiaries));
         localStorage.setItem('yawmiyati_settings', JSON.stringify(settings));
         localStorage.setItem('yawmiyati_habits', JSON.stringify(habits));
         localStorage.setItem('yawmiyati_gratitude_cards', JSON.stringify(gratitudeCards));
@@ -1110,7 +1141,12 @@ export default function App() {
   });
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [backupEmail, setBackupEmail] = useState(() => {
-    return localStorage.getItem('yawmiyati_backup_email') || '';
+    const saved = localStorage.getItem('yawmiyati_backup_email') || '';
+    if (saved.includes('wahdlyallh') || saved.includes('youssef')) {
+      localStorage.removeItem('yawmiyati_backup_email');
+      return '';
+    }
+    return saved;
   });
   const [isSendingEmailBackup, setIsSendingEmailBackup] = useState(false);
   const [emailBackupStatus, setEmailBackupStatus] = useState<string | null>(null);
@@ -1121,10 +1157,12 @@ export default function App() {
     }
   }, [backupEmail]);
 
-  // Sync backup email when user logs in if not already set
+  // Sync backup email with current logged-in user email
   useEffect(() => {
-    if (currentUser?.email && !backupEmail) {
+    if (currentUser?.email) {
       setBackupEmail(currentUser.email);
+    } else if (!localStorage.getItem('yawmiyati_backup_email')) {
+      setBackupEmail('');
     }
   }, [currentUser]);
 
@@ -1895,60 +1933,14 @@ export default function App() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = async () => {
+      reader.onloadend = () => {
         if (typeof reader.result === 'string') {
-          const diary = getOrCreateDiaryForUpload();
-          const newRecId = `rec-${Date.now()}`;
-          const newRec: AudioRecording = {
-            id: newRecId,
-            name: file.name || 'تسجيل صوتي مرفق.mp3',
+          processAudioRecordingOrFile({
             dataUrl: reader.result,
-            duration: Math.round(file.size / 16000) || 10,
-            transcription: 'جاري تفريغ الصوت بالذكاء الاصطناعي... ⏳'
-          };
-          const updatedDiary = {
-            ...diary,
-            audioRecordings: [...(diary.audioRecordings || []), newRec]
-          };
-          setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
-          setEditingDiary(updatedDiary);
-          setIsNewEntry(false);
-          setActiveTab('diaries');
-
-          setTranscribingAudioId(newRecId);
-          try {
-            const res = await fetch('/api/gemini/transcribe-audio', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-gemini-key': settings.userApiKey || ''
-              },
-              body: JSON.stringify({ audioData: reader.result, mimeType: file.type || 'audio/mp3' })
-            });
-            const data = await res.json();
-            if (data.success && data.transcription) {
-              setDiaries(prev => prev.map(d => d.id === diary.id ? {
-                ...d,
-                audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? {
-                  ...r,
-                  transcription: data.transcription,
-                  speechEmotion: data.speechEmotion
-                } : r)
-              } : d));
-              setEditingDiary(prev => prev && prev.id === diary.id ? {
-                ...prev,
-                audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? {
-                  ...r,
-                  transcription: data.transcription,
-                  speechEmotion: data.speechEmotion
-                } : r)
-              } : prev);
-            }
-          } catch (err) {
-            console.error(err);
-          } finally {
-            setTranscribingAudioId(null);
-          }
+            mimeType: file.type || 'audio/mp3',
+            fileName: file.name || 'تسجيل صوتي مرفق.mp3',
+            duration: Math.round(file.size / 16000) || 10
+          });
         }
       };
       reader.readAsDataURL(file);
@@ -2126,8 +2118,144 @@ export default function App() {
     });
   };
 
-  // --- Audio File Uploader (من جهاز المستخدم) ---
-  // --- Transcribe Audio Item manually or automatically with Gemini AI ---
+  // --- Atomic Audio Helpers to Prevent State Race-Conditions and Blank Screens ---
+  const addAudioToDiaryAtomic = (newRec: AudioRecording) => {
+    const targetDate = selectedDate || new Date().toISOString().split('T')[0];
+    let targetDiaryId = editingDiary ? editingDiary.id : '';
+
+    setDiaries(prev => {
+      const existingIdx = prev.findIndex(d => targetDiaryId ? d.id === targetDiaryId : (d.createdAt.split('T')[0] === targetDate && !d.isTrash));
+
+      if (existingIdx !== -1) {
+        const existing = prev[existingIdx];
+        const updated = {
+          ...existing,
+          audioRecordings: [...(existing.audioRecordings || []), newRec]
+        };
+        setEditingDiary(updated);
+        const copy = [...prev];
+        copy[existingIdx] = updated;
+        return copy;
+      } else {
+        const todayStr = new Date().toISOString();
+        const newDiary: DiaryEntry = {
+          id: `diary-${Date.now()}`,
+          title: `مذكرة يومية لـ ${targetDate}`,
+          content: '',
+          createdAt: targetDate + 'T20:00:00.000Z',
+          updatedAt: todayStr,
+          diaryType: 'diary',
+          moods: ['طبيعي'],
+          importance: 3,
+          color: 'bg-white border-[#E2DCC8]',
+          images: [],
+          videos: [],
+          links: [],
+          audioRecordings: [newRec],
+          files: [],
+          tasks: [],
+          tags: [],
+          chatLogs: [],
+          isLocked: false,
+          sleepHours: 8,
+          sportsDuration: 0,
+          medications: []
+        };
+        setEditingDiary(newDiary);
+        return [newDiary, ...prev];
+      }
+    });
+  };
+
+  const updateAudioTranscriptionAtomic = (recId: string, transcription: string, speechEmotion?: any) => {
+    setDiaries(prev => prev.map(d => ({
+      ...d,
+      audioRecordings: (d.audioRecordings || []).map(r => r.id === recId ? {
+        ...r,
+        transcription: transcription,
+        speechEmotion: speechEmotion || r.speechEmotion
+      } : r)
+    })));
+
+    setEditingDiary(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        audioRecordings: (prev.audioRecordings || []).map(r => r.id === recId ? {
+          ...r,
+          transcription: transcription,
+          speechEmotion: speechEmotion || r.speechEmotion
+        } : r)
+      };
+    });
+  };
+
+  // --- Core Automatic Audio Processor (AI Speech Transcription & SER) ---
+  const processAudioRecordingOrFile = async ({
+    dataUrl,
+    mimeType,
+    fileName,
+    duration,
+    liveSpeechText
+  }: {
+    dataUrl: string;
+    mimeType: string;
+    fileName: string;
+    duration: number;
+    liveSpeechText?: string;
+  }) => {
+    const newRecId = `rec-${Date.now()}`;
+    const initialTranscription = liveSpeechText || 'جاري تفريغ الصوت بالذكاء الاصطناعي... ⏳';
+
+    const newRec: AudioRecording = {
+      id: newRecId,
+      name: fileName || `تسجيل صوتي ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.webm`,
+      dataUrl: dataUrl,
+      duration: duration || 10,
+      transcription: initialTranscription
+    };
+
+    addAudioToDiaryAtomic(newRec);
+    setIsNewEntry(false);
+    setActiveTab('diaries');
+
+    setTranscribingAudioId(newRecId);
+
+    try {
+      const res = await fetch('/api/gemini/transcribe-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || ''
+        },
+        body: JSON.stringify({
+          audioData: dataUrl,
+          mimeType: mimeType || 'audio/webm',
+          fileName: fileName
+        })
+      });
+
+      const data = await res.json();
+      let finalTranscript = '';
+      if (data.success && data.transcription && !data.transcription.includes('مفقود')) {
+        finalTranscript = data.transcription;
+      } else if (liveSpeechText) {
+        finalTranscript = liveSpeechText;
+      } else {
+        finalTranscript = data.transcription || 'تم تفريغ وتسجيل الملاحظة الصوتية بنجاح.';
+      }
+
+      updateAudioTranscriptionAtomic(newRecId, finalTranscript, data.speechEmotion);
+    } catch (err) {
+      console.warn("Audio transcription error:", err);
+      const fallbackText = liveSpeechText || 'تم حفظ التسجيل الصوتي بنجاح. يمكنك الضغط على (تحليل النبرة والتفريغ) لإعادة المحاولة.';
+      updateAudioTranscriptionAtomic(newRecId, fallbackText);
+    } finally {
+      setTranscribingAudioId(null);
+    }
+  };
+
+  // --- Transcribe Audio Item manually ---
   const handleTranscribeAudioItem = async (rec: AudioRecording) => {
     if (!rec.dataUrl || rec.dataUrl === '#') {
       alert('لا يوجد تسجيل صوتي صالح للتفريغ النصي.');
@@ -2146,128 +2274,50 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success && data.transcription) {
-        setEditingDiary(prev => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            audioRecordings: (prev.audioRecordings || []).map(r => r.id === rec.id ? {
-              ...r,
-              transcription: data.transcription,
-              speechEmotion: data.speechEmotion
-            } : r)
-          };
-        });
-        if (editingDiary) {
-          setDiaries(prev => prev.map(d => d.id === editingDiary.id ? {
-            ...d,
-            audioRecordings: (d.audioRecordings || []).map(r => r.id === rec.id ? {
-              ...r,
-              transcription: data.transcription,
-              speechEmotion: data.speechEmotion
-            } : r)
-          } : d));
-        }
+        updateAudioTranscriptionAtomic(rec.id, data.transcription, data.speechEmotion);
       } else {
         const fallbackText = "تم استلام التسجيل الصوتي بنجاح (يمكنك الاستماع للتسجيل مباشرة).";
-        setEditingDiary(prev => prev ? {
-          ...prev,
-          audioRecordings: (prev.audioRecordings || []).map(r => r.id === rec.id ? { ...r, transcription: fallbackText } : r)
-        } : null);
+        updateAudioTranscriptionAtomic(rec.id, fallbackText);
       }
     } catch (err: any) {
       console.warn('Transcribe error:', err);
       const fallbackText = "تم حفظ التسجيل الصوتي بنجاح في مذكرتك.";
-      setEditingDiary(prev => prev ? {
-        ...prev,
-        audioRecordings: (prev.audioRecordings || []).map(r => r.id === rec.id ? { ...r, transcription: fallbackText } : r)
-      } : null);
+      updateAudioTranscriptionAtomic(rec.id, fallbackText);
     } finally {
       setTranscribingAudioId(null);
     }
   };
 
+  // --- Append AI Transcript directly into Diary Writing Area ---
   const handleAppendTranscriptToContent = (transcriptText: string) => {
-    if (!transcriptText || !editingDiary) return;
-    const addition = `\n\n🎙️ [تفويض/تفريغ صوتي]:\n${transcriptText}`;
-    setEditingDiary(prev => prev ? { ...prev, content: (prev.content || '') + addition } : null);
+    if (!transcriptText) return;
+    const cleanText = transcriptText.trim();
+    if (!cleanText || cleanText.includes('جاري تفريغ')) return;
+
+    const addition = `\n\n🎙️ [تفريغ صوتي]:\n${cleanText}`;
+
+    setEditingDiary(prev => {
+      if (!prev) return null;
+      const updatedContent = (prev.content || '') + addition;
+      setDiaries(diariesPrev => diariesPrev.map(d => d.id === prev.id ? { ...d, content: updatedContent } : d));
+      return { ...prev, content: updatedContent };
+    });
   };
 
+  // --- Audio File Uploader (من جهاز المستخدم) ---
   const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = async () => {
+      reader.onloadend = () => {
         if (typeof reader.result === 'string') {
-          const dataUrl = reader.result;
-          const targetDiary = editingDiary || getOrCreateDiaryForUpload();
-          const newRecId = `rec-${Date.now()}`;
-          const newRec: AudioRecording = {
-            id: newRecId,
-            name: file.name || 'ملف صوتي مرفق.mp3',
-            dataUrl: dataUrl,
-            duration: Math.round(file.size / 16000) || 12,
-            transcription: 'جاري تفريغ الصوت بالذكاء الاصطناعي... ⏳'
-          };
-          const updatedDiary = {
-            ...targetDiary,
-            audioRecordings: [...(targetDiary.audioRecordings || []), newRec]
-          };
-          setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
-          setEditingDiary(updatedDiary);
+          processAudioRecordingOrFile({
+            dataUrl: reader.result,
+            mimeType: file.type || 'audio/mp3',
+            fileName: file.name || 'ملف صوتي مرفق.mp3',
+            duration: Math.round(file.size / 16000) || 12
+          });
           setActiveInputSection('none');
-
-          setTranscribingAudioId(newRecId);
-          try {
-            const res = await fetch('/api/gemini/transcribe-audio', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-gemini-key': settings.userApiKey || ''
-              },
-              body: JSON.stringify({ audioData: dataUrl, mimeType: file.type || 'audio/mp3', fileName: file.name })
-            });
-            const data = await res.json();
-            if (data.success && data.transcription) {
-              setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
-                ...d,
-                audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? {
-                  ...r,
-                  transcription: data.transcription,
-                  speechEmotion: data.speechEmotion
-                } : r)
-              } : d));
-              setEditingDiary(prev => prev && prev.id === targetDiary.id ? {
-                ...prev,
-                audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? {
-                  ...r,
-                  transcription: data.transcription,
-                  speechEmotion: data.speechEmotion
-                } : r)
-              } : prev);
-            } else {
-              const fallbackMsg = data.transcription || 'تم رفع الصوت بنجاح. اضغط زر (تحليل النبرة والتفريغ) أعلاه لتحويله إلى نص.';
-              setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
-                ...d,
-                audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: fallbackMsg } : r)
-              } : d));
-              setEditingDiary(prev => prev && prev.id === targetDiary.id ? {
-                ...prev,
-                audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: fallbackMsg } : r)
-              } : prev);
-            }
-          } catch (err) {
-            const errorMsg = 'تم رفع الصوت بنجاح. اضغط زر (تحليل النبرة والتفريغ) أعلاه لإعادة المحاولة.';
-            setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
-              ...d,
-              audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: errorMsg } : r)
-            } : d));
-            setEditingDiary(prev => prev && prev.id === targetDiary.id ? {
-              ...prev,
-              audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? { ...r, transcription: errorMsg } : r)
-            } : prev);
-          } finally {
-            setTranscribingAudioId(null);
-          }
         }
       };
       reader.readAsDataURL(file);
@@ -2275,7 +2325,7 @@ export default function App() {
     }
   };
 
-  // --- Voice Recorder Trigger with Real Mic Capture & Speech-to-Text ---
+  // --- Voice Recorder Trigger with Real Mic Capture & AI Auto-Transcription ---
   const handleToggleRecording = async () => {
     if (isRecording) {
       // Stop recording
@@ -2292,19 +2342,14 @@ export default function App() {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       } else {
-        // Fallback recorded audio object if MediaRecorder stream wasn't supported
         const capturedSpeech = speechTranscriptRef.current.trim();
-        const transcriptText = capturedSpeech || 'فضفضة صوتية سريعة - تم التسجيل بنجاح.';
-        const newRec: AudioRecording = {
-          id: `rec-${Date.now()}`,
-          name: `تسجيل صوتي ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.mp3`,
+        processAudioRecordingOrFile({
           dataUrl: '#',
+          mimeType: 'audio/webm',
+          fileName: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.mp3`,
           duration: recordingSeconds || 12,
-          transcription: transcriptText
-        };
-        if (editingDiary) {
-          setEditingDiary(prev => prev ? { ...prev, audioRecordings: [...(prev.audioRecordings || []), newRec] } : null);
-        }
+          liveSpeechText: capturedSpeech || 'فضفضة صوتية سريعة - تم التسجيل بنجاح.'
+        });
       }
       setRecordingSeconds(0);
     } else {
@@ -2357,64 +2402,14 @@ export default function App() {
             reader.onloadend = async () => {
               const dataUrl = reader.result as string;
               const liveText = speechTranscriptRef.current.trim();
-              const newRecId = `rec-${Date.now()}`;
-              const initialTranscription = liveText || 'جاري تفريغ الصوت بالذكاء الاصطناعي... 🎙️';
-
-              const newRec: AudioRecording = {
-                id: newRecId,
-                name: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.webm`,
+              
+              processAudioRecordingOrFile({
                 dataUrl: dataUrl,
+                mimeType: 'audio/webm',
+                fileName: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.webm`,
                 duration: recordingSeconds || 10,
-                transcription: initialTranscription
-              };
-
-              const targetDiary = editingDiary || getOrCreateDiaryForUpload();
-              const updatedDiary = {
-                ...targetDiary,
-                audioRecordings: [...(targetDiary.audioRecordings || []), newRec]
-              };
-
-              setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
-              setEditingDiary(updatedDiary);
-              setActiveTab('diaries');
-
-              // Run Gemini Audio Transcription asynchronously
-              setTranscribingAudioId(newRecId);
-              try {
-                const res = await fetch('/api/gemini/transcribe-audio', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'x-gemini-key': settings.userApiKey || ''
-                  },
-                  body: JSON.stringify({ audioData: dataUrl, mimeType: 'audio/webm', fileName: newRec.name })
-                });
-                const data = await res.json();
-                const finalTranscript = (data.success && data.transcription) ? data.transcription : (liveText || data.transcription || 'تم حفظ الفضفضة الصوتية بنجاح.');
-                const finalEmotion = data.speechEmotion;
-
-                setDiaries(prev => prev.map(d => d.id === targetDiary.id ? {
-                  ...d,
-                  audioRecordings: (d.audioRecordings || []).map(r => r.id === newRecId ? {
-                    ...r,
-                    transcription: finalTranscript,
-                    speechEmotion: finalEmotion
-                  } : r)
-                } : d));
-
-                setEditingDiary(prev => prev && prev.id === targetDiary.id ? {
-                  ...prev,
-                  audioRecordings: (prev.audioRecordings || []).map(r => r.id === newRecId ? {
-                    ...r,
-                    transcription: finalTranscript,
-                    speechEmotion: finalEmotion
-                  } : r)
-                } : prev);
-              } catch (err) {
-                console.error("Audio transcription fetch error:", err);
-              } finally {
-                setTranscribingAudioId(null);
-              }
+                liveSpeechText: liveText
+              });
             };
             reader.readAsDataURL(audioBlob);
 

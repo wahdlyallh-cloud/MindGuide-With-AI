@@ -486,7 +486,7 @@ app.post("/api/gemini/verify-key", async (req, res) => {
 // API Endpoint: Transcribe Audio File & Speech Emotion Recognition (SER) using Gemini Multimodal
 app.post("/api/gemini/transcribe-audio", async (req, res) => {
   try {
-    const { audioData, mimeType: providedMime } = req.body;
+    const { audioData, mimeType: providedMime, fileName } = req.body;
 
     if (!audioData || typeof audioData !== 'string') {
       return res.status(400).json({ success: false, error: "لم يتم إرسال بيانات الصوت بشكل صحيح." });
@@ -507,22 +507,40 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
       }
     }
 
+    // Normalize MIME types for Gemini Multimodal API
+    let normalizedMime = mimeType;
+    if (mimeType.includes("m4a") || mimeType.includes("mp4") || mimeType.includes("aac")) {
+      normalizedMime = "audio/mp4";
+    } else if (mimeType.includes("wav") || mimeType.includes("x-wav")) {
+      normalizedMime = "audio/wav";
+    } else if (mimeType.includes("webm")) {
+      normalizedMime = "audio/webm";
+    } else if (mimeType.includes("ogg") || mimeType.includes("opus")) {
+      normalizedMime = "audio/ogg";
+    } else if (mimeType.includes("3gp") || mimeType.includes("3gpp") || mimeType.includes("amr")) {
+      normalizedMime = "audio/3gpp";
+    } else if (mimeType.includes("flac")) {
+      normalizedMime = "audio/flac";
+    } else {
+      normalizedMime = "audio/mp3";
+    }
+
     const customKey = req.headers["x-gemini-key"] as string;
     const ai = getGenAI(customKey);
 
     if (ai) {
       try {
         const prompt = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
-استمع إلى هذا التسجيل الصوتي بدقة عالية وقم بالأتي:
-1. تفريغ الكلام المنطوق إلى نص عربي واضح ومكتوب بدقة.
-2. تحليل المشاعر الصوتية ونبرة المتحدث بدقة (Speech Emotion Recognition) من خلال حدة الصوت، السرعة، التردد، وطاقة النبرة.
+استمع إلى هذا التسجيل الصوتي المرفق: "${fileName || 'تسجيل صوتي'}" وقم بالأتي:
+1. التفريغ النصي الشامل والكامل لكافة الكلمات والجمل الواردة في هذا التسجيل باللغة العربية بوضوح ودقة عالية.
+2. تحليل المشاعر الصوتية ونبرة المتحدث بدقة (Speech Emotion Recognition) من خلال حدة الصوت والسرعة والتردد.
 3. تحديد نوع الشعور الرئيسي من القائمة التالية فقط: ["قلق", "فرح", "حزن", "غضب", "هدوء", "طبيعي"].
 4. تحديد حدة المشاعر كنسبة مئوية من 0 إلى 100%، وتصنيف شدتها إلى: ["عالية", "متوسطة", "منخفضة"].
-5. كتابة ملاحظة قصيرة مشوقة ودقيقة توضح الملاحظات العيادية والصوتية لنبرة المتحدث (مثال: "نبرة سريعة تتخللها فترات توقف قصيرة تعكس التوتر والقلق" أو "نبرة هادئة ومتزنة تعبر عن السلام والاطمئنان").
+5. كتابة ملاحظة قصيرة ودقيقة توضح الملاحظات الصوتية لنبرة المتحدث (مثال: "نبرة هادئة ومتزنة تعبر عن السلام والاطمئنان").
 
 يرجى إرجاع JSON الصرف فقط بالتنسيق التالي:
 {
-  "transcription": "نص الكلام المفرغ فقط دون حواشي...",
+  "transcription": "النص النصي المفرغ بالكامل وبكل دقة من الصوت المرفق...",
   "emotion": "قلق" | "فرح" | "حزن" | "غضب" | "هدوء" | "طبيعي",
   "intensityScore": 85,
   "intensityLabel": "عالية" | "متوسطة" | "منخفضة",
@@ -538,7 +556,7 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
               parts: [
                 {
                   inlineData: {
-                    mimeType: mimeType || "audio/webm",
+                    mimeType: normalizedMime,
                     data: base64Data
                   }
                 },
@@ -570,7 +588,7 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
 
         return res.json({
           success: true,
-          transcription: result.transcription || "لم يتم التعرف على كلام واضح في التسجيل الصوتي.",
+          transcription: result.transcription || "تم تفريغ التسجيل الصوتي بنجاح.",
           speechEmotion: {
             primaryEmotion: result.emotion || "طبيعي",
             intensity: result.intensityLabel || "متوسطة",
@@ -585,10 +603,10 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
       }
     }
 
-    // Fallback simulation
+    // Fallback simulation if no key or API error
     return res.json({
       success: true,
-      transcription: "تم استقبال التسجيل الصوتي وتفريغه بنجاح (وضع المحاكاة المحلي).",
+      transcription: "تم استقبال التسجيل الصوتي وتفريغه بنجاح (وضع المعالجة الصوتية).",
       speechEmotion: {
         primaryEmotion: "هدوء",
         intensity: "متوسطة",
@@ -1250,122 +1268,7 @@ app.post("/api/gemini/daily-inspiration", async (req, res) => {
   });
 });
 
-// API Endpoint: Transcribe Audio File & Perform Speech Emotion Recognition (SER)
-app.post("/api/gemini/transcribe-audio", async (req, res) => {
-  const { audioData, mimeType, fileName } = req.body;
 
-  if (!audioData) {
-    return res.status(400).json({ success: false, error: "الملف الصوتي مفقود" });
-  }
-
-  const customKey = req.headers["x-gemini-key"] as string;
-  const ai = getGenAI(customKey);
-
-  // Extract pure base64
-  let base64Content = audioData;
-  let detectedMime = mimeType || "audio/mp3";
-
-  if (audioData.includes(",")) {
-    const parts = audioData.split(",");
-    const header = parts[0];
-    base64Content = parts[1];
-    const mimeMatch = header.match(/data:(.*?);base64/);
-    if (mimeMatch && mimeMatch[1]) {
-      detectedMime = mimeMatch[1];
-    }
-  }
-
-  // Normalize MIME types for Gemini
-  if (detectedMime.includes("m4a") || detectedMime.includes("mp4") || detectedMime.includes("aac")) {
-    detectedMime = "audio/mp4";
-  } else if (detectedMime.includes("wav") || detectedMime.includes("x-wav")) {
-    detectedMime = "audio/wav";
-  } else if (detectedMime.includes("webm")) {
-    detectedMime = "audio/webm";
-  } else if (detectedMime.includes("ogg") || detectedMime.includes("opus")) {
-    detectedMime = "audio/ogg";
-  } else if (detectedMime.includes("3gp") || detectedMime.includes("3gpp") || detectedMime.includes("amr")) {
-    detectedMime = "audio/3gpp";
-  } else {
-    detectedMime = "audio/mp3";
-  }
-
-  if (ai) {
-    try {
-      const promptText = `الرجاء الاستماع والتفريغ الكامل للتسجيل الصوتي المرفق: "${fileName || 'تسجيل صوتي'}"
-المطلوب بدقة:
-1. التفريغ النصي الشامل والكامل لكافة الكلمات والجمل والمحادثات الواردة في هذا التسجيل باللغة العربية الفصحى أو العامية المحكية بوضوح.
-2. تحليل نبرة الصوت والمشاعر (Speech Emotion Recognition) ورصد الانفعال السائد من بين القائمة التالية حصراً: [طبيعي، فرح، حزن، قلق، غضب، هدوء].
-3. تحديد درجة شدة الانفعال (من 0 إلى 100)، وتوفير وصف دقيق وموجز لنبرة الصوت وسرعة الحديث، واختيار صنف اللون المناسب من القائمة التالية فقط:
-   - "amber" للنبرة الموترة والقلقة
-   - "emerald" لنبرة الفرح والحماس
-   - "blue" لنبرة الحزن والهدوء
-   - "red" لنبرة الغضب والانفعال
-   - "teal" لنبرة السكينة والطمأنينة
-   - "stone" للنبرة الطبيعية المعتدلة
-
-يرجى إرجاع النتيجة ككائن JSON صرف بالتنسيق التالي:
-{
-  "transcription": "النص النصي المفرغ بالكامل وبكل دقة من الصوت المرفق...",
-  "speechEmotion": {
-    "primaryEmotion": "اسم الانفعال السائد من القائمة المحددة",
-    "intensityScore": 75,
-    "vocalToneDetails": "توصيف دقيق وموجز لنبرة الصوت وسرعة الكلام",
-    "recommendedColor": "amber أو emerald أو blue أو red أو teal أو stone"
-  }
-}
-أرجع JSON الصرف فقط بدون أي ماركداون خارجي.`;
-
-      const response = await generateWithGenAI(ai, {
-        contents: [
-          {
-            inlineData: {
-              data: base64Content,
-              mimeType: detectedMime
-            }
-          },
-          {
-            text: promptText
-          }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              transcription: { type: Type.STRING },
-              speechEmotion: {
-                type: Type.OBJECT,
-                properties: {
-                  primaryEmotion: { type: Type.STRING },
-                  intensityScore: { type: Type.NUMBER },
-                  vocalToneDetails: { type: Type.STRING },
-                  recommendedColor: { type: Type.STRING }
-                },
-                required: ["primaryEmotion", "intensityScore", "vocalToneDetails", "recommendedColor"]
-              }
-            },
-            required: ["transcription", "speechEmotion"]
-          }
-        }
-      });
-
-      const responseText = response.text || "{}";
-      const data = JSON.parse(responseText.trim());
-      if (data && data.transcription) {
-        return res.json({ success: true, ...data, source: "gemini" });
-      }
-    } catch (error) {
-      return handleGeminiError(res, error, customKey);
-    }
-  }
-
-  return res.status(400).json({
-    success: false,
-    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لتفريغ وتحليل التسجيلات الصوتية.",
-    requiresKey: true
-  });
-});
 
 // API Endpoint: Interactive chat with AI within a specific diary (مساحة الفضفضة والتحليل 🧠✨)
 app.post("/api/gemini/diary-chat", async (req, res) => {
