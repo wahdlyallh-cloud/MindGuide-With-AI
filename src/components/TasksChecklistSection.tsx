@@ -586,11 +586,14 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
                             </button>
 
                             <div className="min-w-0">
-                              <span className={`text-xs font-bold block truncate transition-all ${
-                                isCompleted ? 'line-through text-gray-400' : 'text-gray-700'
-                              }`}>
-                                {habit.name}
-                              </span>
+                              <div className="flex items-center space-x-1.5 space-x-reverse">
+                                {habit.icon && <span className="text-xs shrink-0 font-bold">{habit.icon}</span>}
+                                <span className={`text-xs font-bold block truncate transition-all ${
+                                  isCompleted ? 'line-through text-gray-400' : 'text-gray-700'
+                                }`}>
+                                  {habit.name}
+                                </span>
+                              </div>
                               <span className={`inline-block text-[8px] px-1.5 py-0.5 rounded-md border font-bold mt-0.5 ${categoryColor}`}>
                                 {categoryName}
                               </span>

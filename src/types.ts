@@ -174,6 +174,7 @@ export interface HabitHistoryEntry {
 export interface Habit {
   id: string;
   name: string;
+  icon?: string; // Expressive custom icon chosen by user (e.g. 🎯, 🏃, 💧, 📚, 🧘, 🏋️, 🥦, 🧠, 🎨, ✍️, 💰, 💤, ⚡, 🔥, 🏆)
   category: 'health' | 'mind' | 'sport' | 'culture' | 'custom';
   habitType?: 'boolean' | 'measurable'; // 'boolean' (نعم/لا) or 'measurable' (قابل للقياس)
   question?: string; // e.g. "هل استيقظت باكراً اليوم؟" / "كم ميلاً ركضت اليوم؟"

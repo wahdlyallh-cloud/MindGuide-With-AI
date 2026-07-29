@@ -20,6 +20,12 @@ const COLOR_PALETTE = [
   { id: 'slate', hex: '#64748B', label: 'رمادي' }
 ];
 
+const HABIT_ICONS = [
+  '🎯', '🏃', '💧', '📚', '🧘', '🏋️', '🥦', '🧠', 
+  '🎨', '✍️', '💰', '💤', '⚡', '🔥', '🏆', '🍏', 
+  '🚲', '💊', '☀️', '❤️', '⏰', '🎧', '🪴', '🧩'
+];
+
 export const HabitFormModal: React.FC<HabitFormModalProps> = ({
   isOpen,
   onClose,
@@ -34,6 +40,7 @@ export const HabitFormModal: React.FC<HabitFormModalProps> = ({
     initialHabit?.habitType || 'boolean'
   );
   const [name, setName] = useState(initialHabit?.name || '');
+  const [icon, setIcon] = useState(initialHabit?.icon || '🎯');
   const [question, setQuestion] = useState(initialHabit?.question || '');
   const [color, setColor] = useState(initialHabit?.color || '#3B82F6');
   const [unit, setUnit] = useState(initialHabit?.unit || '');
@@ -76,6 +83,7 @@ export const HabitFormModal: React.FC<HabitFormModalProps> = ({
 
     const habitData: Partial<Habit> = {
       name: name.trim(),
+      icon,
       habitType,
       question: question.trim() || undefined,
       color,
@@ -191,9 +199,11 @@ export const HabitFormModal: React.FC<HabitFormModalProps> = ({
                   <label className="text-[11px] font-bold text-gray-500 block">اللون</label>
                   <div className="flex items-center gap-1.5 p-2 border border-gray-200 rounded-2xl bg-gray-50">
                     <div
-                      className="w-7 h-7 rounded-xl shadow-xs border border-black/10 shrink-0"
+                      className="w-7 h-7 rounded-xl shadow-xs border border-black/10 shrink-0 flex items-center justify-center text-xs font-bold"
                       style={{ backgroundColor: color }}
-                    />
+                    >
+                      {icon}
+                    </div>
                     <div className="grid grid-cols-4 gap-1 w-20">
                       {COLOR_PALETTE.slice(0, 8).map(c => (
                         <button
@@ -222,6 +232,33 @@ export const HabitFormModal: React.FC<HabitFormModalProps> = ({
                     onChange={(e) => setName(e.target.value)}
                     className="w-full py-2.5 px-3.5 bg-white border border-gray-300 rounded-2xl text-xs font-semibold text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
                   />
+                </div>
+              </div>
+
+              {/* Icon Selector Box */}
+              <div className="space-y-1.5 bg-blue-50/20 p-3 rounded-2xl border border-blue-100">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-gray-700 flex items-center gap-1.5">
+                    <span>أيقونة العادة</span>
+                    <span className="text-base bg-white px-2 py-0.5 rounded-lg border border-gray-200 shadow-2xs">{icon}</span>
+                  </label>
+                  <span className="text-[10px] text-gray-400 font-medium">اختر الأيقونة المعبرة</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-1 max-h-28 overflow-y-auto p-1.5 bg-white rounded-xl border border-gray-200">
+                  {HABIT_ICONS.map((ic) => (
+                    <button
+                      key={ic}
+                      type="button"
+                      onClick={() => setIcon(ic)}
+                      className={`w-8 h-8 rounded-xl text-base flex items-center justify-center transition-all cursor-pointer ${
+                        icon === ic
+                          ? 'bg-blue-600 text-white shadow-xs scale-110 ring-2 ring-blue-300'
+                          : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-100'
+                      }`}
+                    >
+                      {ic}
+                    </button>
+                  ))}
                 </div>
               </div>
 

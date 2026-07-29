@@ -918,6 +918,7 @@ export default function App() {
   }, [settings.notificationsEnabled, settings.reminders]);
   const [showAddHabitModal, setShowAddHabitModal] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
+  const [newHabitIcon, setNewHabitIcon] = useState('🎯');
   const [newHabitCategory, setNewHabitCategory] = useState<'health' | 'mind' | 'sport' | 'culture' | 'custom'>('custom');
   const [newHabitReminderTime, setNewHabitReminderTime] = useState('08:00');
   const [newHabitReminderEnabled, setNewHabitReminderEnabled] = useState(true);
@@ -979,6 +980,7 @@ export default function App() {
     const newHabit: Habit = {
       id: `habit-${Date.now()}`,
       name: newHabitName.trim(),
+      icon: newHabitIcon,
       category: newHabitCategory,
       frequency: 'daily',
       reminderTime: newHabitReminderTime,
@@ -989,6 +991,7 @@ export default function App() {
 
     setHabits(prev => [...prev, newHabit]);
     setNewHabitName('');
+    setNewHabitIcon('🎯');
     setNewHabitCategory('custom');
     setNewHabitReminderTime('08:00');
     setNewHabitReminderEnabled(true);
@@ -2950,14 +2953,45 @@ export default function App() {
             <form onSubmit={handleCreateHabit} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-[#5A5A40] tracking-wider block">اسم العادة</label>
-                <input 
-                  type="text" 
-                  value={newHabitName}
-                  onChange={e => setNewHabitName(e.target.value)}
-                  placeholder="مثال: شرب لترين ماء، قراءة، تمدد..."
-                  className="w-full bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl px-4 py-2.5 text-xs text-[#3A3A3A] focus:outline-none focus:ring-1 focus:ring-[#8B9D83]"
-                  required
-                />
+                <div className="flex gap-2">
+                  <div className="w-10 h-10 rounded-2xl bg-[#F9F7F2] border border-[#E2DCC8] flex items-center justify-center text-lg shrink-0 shadow-2xs font-bold text-[#3A3A3A]">
+                    {newHabitIcon}
+                  </div>
+                  <input 
+                    type="text" 
+                    value={newHabitName}
+                    onChange={e => setNewHabitName(e.target.value)}
+                    placeholder="مثال: شرب لترين ماء، قراءة، تمدد..."
+                    className="flex-1 bg-[#F9F7F2] border border-[#E2DCC8] rounded-2xl px-4 py-2.5 text-xs text-[#3A3A3A] focus:outline-none focus:ring-1 focus:ring-[#8B9D83]"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* 🎨 أيقونة العادة المخصصة */}
+              <div className="space-y-1.5 bg-[#F9F7F2]/80 p-3 rounded-2xl border border-[#E2DCC8]/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-[#5A5A40] tracking-wider block">اختيار أيقونة العادة المخصصة</label>
+                  <span className="text-[10px] font-bold text-[#8B9D83] bg-white px-2 py-0.5 rounded-md border border-[#E2DCC8]/60">
+                    المحددة: {newHabitIcon}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1 bg-white rounded-xl border border-[#E2DCC8]/60">
+                  {['🎯', '🏃', '💧', '📚', '🧘', '🏋️', '🥦', '🧠', '🎨', '✍️', '💰', '💤', '⚡', '🔥', '🏆', '🍏', '🚲', '💊', '☀️', '❤️', '⏰', '🎧', '🪴', '🧩'].map(ic => (
+                    <button
+                      key={ic}
+                      type="button"
+                      onClick={() => setNewHabitIcon(ic)}
+                      className={`w-8 h-8 rounded-xl text-base flex items-center justify-center transition-all cursor-pointer ${
+                        newHabitIcon === ic 
+                          ? 'bg-[#8B9D83] text-white shadow-xs scale-110 ring-2 ring-[#8B9D83]/40' 
+                          : 'bg-[#F9F7F2] hover:bg-[#F0EDE4] text-gray-700 border border-[#E2DCC8]/40'
+                      }`}
+                    >
+                      {ic}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -3861,9 +3895,12 @@ export default function App() {
                           </button>
 
                           <div className="space-y-1">
-                            <span className={`text-xs font-bold block transition-all ${isCompleted ? 'line-through text-gray-400' : 'text-[#3A3A3A]'}`}>
-                              {habit.name}
-                            </span>
+                            <div className="flex items-center space-x-1.5 space-x-reverse">
+                              {habit.icon && <span className="text-sm shrink-0 font-bold">{habit.icon}</span>}
+                              <span className={`text-xs font-bold block transition-all ${isCompleted ? 'line-through text-gray-400' : 'text-[#3A3A3A]'}`}>
+                                {habit.name}
+                              </span>
+                            </div>
                             <div className="flex items-center space-x-2 space-x-reverse">
                               <span className={`text-[9px] px-1.5 py-0.5 rounded-md border font-medium ${catInfo.color}`}>
                                 {catInfo.label}
