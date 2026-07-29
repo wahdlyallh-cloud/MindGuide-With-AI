@@ -5156,31 +5156,31 @@ export default function App() {
                                     )}
                                   </button>
 
-                                  {rec.transcription && rec.transcription.trim() && !rec.transcription.includes('جاري') && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setEditingTranscriptId(rec.id);
-                                          setEditingTranscriptText(rec.transcription || '');
-                                        }}
-                                        className="px-2.5 py-1 bg-white/90 hover:bg-white text-indigo-800 border border-black/10 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 shadow-3xs"
-                                        title="تعديل النص المفرغ يدوياً وتصحيح أخطاء التعرف على الصوت"
-                                      >
-                                        <Edit3 className="w-3 h-3 text-indigo-600" />
-                                        <span>تعديل النص</span>
-                                      </button>
+                                  {/* Manual Edit Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingTranscriptId(rec.id);
+                                      const existing = rec.transcription && !rec.transcription.includes('انقر على زر') ? rec.transcription : '';
+                                      setEditingTranscriptText(existing);
+                                    }}
+                                    className="px-2.5 py-1 bg-white/90 hover:bg-white text-indigo-800 border border-black/10 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 shadow-3xs"
+                                    title="تعديل النص المفرغ يدوياً وتصحيح أخطاء التعرف على الصوت"
+                                  >
+                                    <Edit3 className="w-3 h-3 text-indigo-600" />
+                                    <span>تعديل النص</span>
+                                  </button>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => handleAppendTranscriptToContent(rec.transcription!)}
-                                        className="px-2.5 py-1 bg-white/90 hover:bg-white text-[#8C661D] border border-black/10 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 shadow-3xs"
-                                        title="نسخ النص المفرغ وإضافته مباشرة لمضمون اليومية"
-                                      >
-                                        <span>✍️</span>
-                                        <span>إضافة للنص</span>
-                                      </button>
-                                    </>
+                                  {rec.transcription && rec.transcription.trim() && !rec.transcription.includes('جاري') && !rec.transcription.includes('انقر على زر') && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAppendTranscriptToContent(rec.transcription!)}
+                                      className="px-2.5 py-1 bg-white/90 hover:bg-white text-[#8C661D] border border-black/10 rounded-lg font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 shadow-3xs"
+                                      title="نسخ النص المفرغ وإضافته مباشرة لمضمون اليومية"
+                                    >
+                                      <span>✍️</span>
+                                      <span>إضافة للنص</span>
+                                    </button>
                                   )}
                                 </div>
                               </div>
@@ -5198,13 +5198,13 @@ export default function App() {
                                       <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
                                       <span>تعديل النص المفرغ يدويّاً:</span>
                                     </span>
-                                    <span className="text-[10px] text-gray-500 font-medium">يمكنك إصلاح أي أخطاء في التعرف على الصوت</span>
+                                    <span className="text-[10px] text-gray-500 font-medium">يمكنك كتابة أو تصحيح النص المفرغ هنا</span>
                                   </div>
                                   <textarea
                                     value={editingTranscriptText}
                                     onChange={(e) => setEditingTranscriptText(e.target.value)}
                                     rows={3}
-                                    placeholder="أدخل النص المفرغ المعدل هنا..."
+                                    placeholder="اكتب النص المفرغ الصوتي هنا..."
                                     className="w-full bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-xl p-2.5 text-xs text-[#3A3A3A] leading-relaxed resize-y font-medium shadow-2xs"
                                     dir="rtl"
                                     autoFocus
@@ -5234,23 +5234,20 @@ export default function App() {
                                 <div className="space-y-2">
                                   <div
                                     onClick={() => {
-                                      if (rec.transcription && !rec.transcription.includes('جاري')) {
-                                        setEditingTranscriptId(rec.id);
-                                        setEditingTranscriptText(rec.transcription || '');
-                                      }
+                                      setEditingTranscriptId(rec.id);
+                                      const existing = rec.transcription && !rec.transcription.includes('انقر على زر') ? rec.transcription : '';
+                                      setEditingTranscriptText(existing);
                                     }}
-                                    className={`relative group rounded-xl p-2 transition-all cursor-pointer hover:bg-black/5 border border-transparent hover:border-black/10 ${emoStyle.textColor}`}
+                                    className={`relative group rounded-xl p-2.5 transition-all cursor-pointer hover:bg-black/5 border border-dashed border-black/10 hover:border-indigo-300 ${emoStyle.textColor}`}
                                     title="انقر هنا لتعديل النص المفرغ يدويًا"
                                   >
                                     <p className="whitespace-pre-wrap leading-relaxed text-xs">
-                                      {rec.transcription || 'انقر على زر (تحليل النبرة والتفريغ) أعلاه لتحويل الكلام الصوتي إلى نص وتلوين خلفيته حسب نبرة المشاعر.'}
+                                      {rec.transcription || 'انقر هنا لكتابة أو تعديل النص المفرغ يدويّاً، أو انقر (تحليل النبرة والتفريغ) للتفريغ التلقائي.'}
                                     </p>
-                                    {rec.transcription && !rec.transcription.includes('جاري') && (
-                                      <span className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-1.5 left-1.5 text-[10px] font-bold bg-white/95 text-[#3A3A3A] px-2 py-0.5 rounded-md border border-gray-200 shadow-2xs flex items-center gap-1">
-                                        <Edit3 className="w-2.5 h-2.5 text-indigo-600" />
-                                        <span>تعديل</span>
-                                      </span>
-                                    )}
+                                    <span className="opacity-80 group-hover:opacity-100 transition-opacity absolute top-1.5 left-1.5 text-[10px] font-bold bg-white/95 text-[#3A3A3A] px-2 py-0.5 rounded-md border border-gray-200 shadow-2xs flex items-center gap-1">
+                                      <Edit3 className="w-2.5 h-2.5 text-indigo-600" />
+                                      <span>تعديل</span>
+                                    </span>
                                   </div>
 
                                   {/* SER Vocal Tone Details */}
