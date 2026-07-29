@@ -1835,12 +1835,13 @@ export default function App() {
     if (file && editingDiary) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
+        const videoDataUrl = reader.result;
+        if (typeof videoDataUrl === 'string') {
           setEditingDiary(prev => {
             if (!prev) return null;
             return {
               ...prev,
-              videos: [...(prev.videos || []), reader.result]
+              videos: [...(prev.videos || []), videoDataUrl]
             };
           });
           setActiveInputSection('none');
@@ -6628,12 +6629,13 @@ export default function App() {
                           <button
                             onClick={() => {
                               if (!newAlarmTitle.trim()) return;
-                              const newAlarm = {
+                              const newAlarm: AppReminder = {
                                 id: `alarm-${Date.now()}`,
                                 title: newAlarmTitle.trim(),
                                 time: newAlarmTime,
                                 active: true,
-                                type: 'custom' as const
+                                type: 'custom',
+                                frequency: 'daily'
                               };
                               setSettings(prev => ({
                                 ...prev,
