@@ -102,8 +102,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           }
         }
 
-        // If no user exists locally, allow instant registration or auto-login with email
-        setErrorMsg('البريد الإلكتروني غير مسجل بعد. يرجى النقر على "حساب جديد" لإنشائه.');
+        // If no user exists locally on this new device/browser, seamlessly create and log in the account
+        const userNameFromEmail = email.split('@')[0];
+        const formattedName = name.trim() || userNameFromEmail;
+        
+        const newUser = {
+          id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          name: formattedName,
+          email: email.trim(),
+          password,
+          createdAt: new Date().toISOString()
+        };
+
+        localUsers.push(newUser);
+        localStorage.setItem('yawmiyati_local_auth_users', JSON.stringify(localUsers));
+
+        const localToken = `local_token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+        setSuccessMsg('تم تسجيل الدخول وتفعيل الحساب على هذا الجهاز بنجاح! 🎉');
+        setTimeout(() => {
+          onLoginSuccess({ id: newUser.id, name: newUser.name, email: newUser.email, createdAt: newUser.createdAt }, localToken);
+          onClose();
+        }, 600);
+        return;
       }
     } catch (err: any) {
       setErrorMsg('عفواً، متعذر الاتصال بالخادم. يرجى التثبت من البيانات والمحاولة مجدداً.');
