@@ -213,6 +213,22 @@ export interface Book {
   videoAttachment?: string;
   hasMindMap: boolean;
   createdAt: string;
+  tags?: string[];
+  category?: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  token?: string;
+  createdAt?: string;
+}
+
+export interface AuthState {
+  user: AuthUser | null;
+  token: string | null;
+  isAuthenticated: boolean;
 }
 
 

@@ -10,7 +10,7 @@ import {
   Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book, AppReminder } from './types';
+import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book, AppReminder, AuthUser } from './types';
 import StaticNotification from './components/StaticNotification';
 import FloatingBall from './components/FloatingBall';
 import DrawingCanvas from './components/DrawingCanvas';
@@ -30,6 +30,7 @@ import { CBTExercisesSection } from './components/CBTExercisesSection';
 import IntegratedTherapyReport from './components/IntegratedTherapyReport';
 import WeeklyHabitsMoodChart from './components/WeeklyHabitsMoodChart';
 import SmartRemindersModal from './components/SmartRemindersModal';
+import { AuthModal } from './components/AuthModal';
 
 // Recharts components for gorgeous analytics
 import { 
@@ -590,6 +591,39 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isBreathingActive]);
 
+  // --- 👤 User Authentication & Session State ---
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('yawmiyati_auth_token'));
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Check existing session token on mount
+  useEffect(() => {
+    const checkUserSession = async () => {
+      const token = localStorage.getItem('yawmiyati_auth_token');
+      if (token) {
+        try {
+          const response = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const res = await response.json();
+          if (res.success && res.user) {
+            setCurrentUser(res.user);
+            setAuthToken(token);
+            // Fetch account-specific cloud data
+            handleCloudRestoreWithToken(token);
+          } else {
+            localStorage.removeItem('yawmiyati_auth_token');
+            setAuthToken(null);
+            setCurrentUser(null);
+          }
+        } catch (e) {
+          console.error('Session validation error:', e);
+        }
+      }
+    };
+    checkUserSession();
+  }, []);
+
   // --- ☁️ Real-time Cloud Synchronization Engine ---
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudSyncMessage, setCloudSyncMessage] = useState<string | null>('النسخة الاحتياطية السحابية نشطة ومتصلة 🟢');
@@ -607,9 +641,15 @@ export default function App() {
         syncTime: new Date().toISOString()
       };
       
+      const token = authToken || localStorage.getItem('yawmiyati_auth_token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/cloud-sync/save', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
       const data = await response.json();
@@ -626,11 +666,17 @@ export default function App() {
     }
   };
 
-  const handleCloudRestore = async () => {
+  const handleCloudRestoreWithToken = async (tokenOverride?: string) => {
     setIsCloudSyncing(true);
     setCloudSyncMessage('جاري استيراد نسختك الاحتياطية من السحابة...');
     try {
-      const response = await fetch('/api/cloud-sync/fetch');
+      const token = tokenOverride || authToken || localStorage.getItem('yawmiyati_auth_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/cloud-sync/fetch', { headers });
       const res = await response.json();
       if (res.success && res.data) {
         if (res.data.diaries) {
@@ -654,7 +700,7 @@ export default function App() {
         }
         setCloudSyncMessage('تمت استعادة كل مذكراتك ومحادثاتك من السحابة بنجاح! 🎉☁️');
       } else {
-        setCloudSyncMessage('لم يتم العثور على نسخة احتياطية سحابية على الخادم لحسابك.');
+        setCloudSyncMessage('حسابك جديد ومتصل بالسحابة، يمكنك بدء التدوين وحفظ بياناتك تلقائياً.');
       }
     } catch (e) {
       console.error('Restore error:', e);
@@ -664,11 +710,65 @@ export default function App() {
     }
   };
 
+  const handleCloudRestore = () => handleCloudRestoreWithToken();
+
+  const handleLoginSuccess = (user: AuthUser, token: string, userData?: any) => {
+    setCurrentUser(user);
+    setAuthToken(token);
+    localStorage.setItem('yawmiyati_auth_token', token);
+
+    if (userData) {
+      if (userData.diaries) {
+        setDiaries(userData.diaries);
+        localStorage.setItem('yawmiyati_diaries', JSON.stringify(userData.diaries));
+      }
+      if (userData.habits) {
+        setHabits(userData.habits);
+        localStorage.setItem('yawmiyati_habits', JSON.stringify(userData.habits));
+      }
+      if (userData.settings) {
+        setSettings(userData.settings);
+        localStorage.setItem('yawmiyati_settings', JSON.stringify(userData.settings));
+      }
+      if (userData.gratitudeCards) {
+        setGratitudeCards(userData.gratitudeCards);
+        localStorage.setItem('yawmiyati_gratitude_cards', JSON.stringify(userData.gratitudeCards));
+      }
+      if (userData.chatMessages) {
+        localStorage.setItem('yawmiyati_chat_messages', JSON.stringify(userData.chatMessages));
+      }
+      setCloudSyncMessage(`مرحباً ${user.name}! تم تحميل واستعادة بياناتك المزامنة سحابياً 🎉`);
+    } else {
+      handleCloudRestoreWithToken(token);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (authToken) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+      } catch (e) {
+        console.error('Logout error:', e);
+      }
+    }
+    localStorage.removeItem('yawmiyati_auth_token');
+    setAuthToken(null);
+    setCurrentUser(null);
+    setCloudSyncMessage('تم تسجيل الخروج بنجاح.');
+  };
+
   // Auto-restore on load if local storage is completely empty (safeguard for clean/reset installs)
   useEffect(() => {
     const checkAndRestore = async () => {
       try {
-        const response = await fetch('/api/cloud-sync/fetch');
+        const token = localStorage.getItem('yawmiyati_auth_token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch('/api/cloud-sync/fetch', { headers });
         const res = await response.json();
         if (res.success && res.data) {
           const localDiaries = localStorage.getItem('yawmiyati_diaries');
@@ -981,14 +1081,23 @@ export default function App() {
   });
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [backupEmail, setBackupEmail] = useState(() => {
-    return localStorage.getItem('yawmiyati_backup_email') || 'wahdlyallh@gmail.com';
+    return localStorage.getItem('yawmiyati_backup_email') || '';
   });
   const [isSendingEmailBackup, setIsSendingEmailBackup] = useState(false);
   const [emailBackupStatus, setEmailBackupStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('yawmiyati_backup_email', backupEmail);
+    if (backupEmail) {
+      localStorage.setItem('yawmiyati_backup_email', backupEmail);
+    }
   }, [backupEmail]);
+
+  // Sync backup email when user logs in if not already set
+  useEffect(() => {
+    if (currentUser?.email && !backupEmail) {
+      setBackupEmail(currentUser.email);
+    }
+  }, [currentUser]);
 
   // Save active editing states to localStorage immediately
   useEffect(() => {
@@ -1040,6 +1149,7 @@ export default function App() {
         coverAttachment: '',
         videoAttachment: 'شرح العلاج المعرفي.mp4',
         hasMindMap: true,
+        tags: ['علم نفس', 'صحة نفسية'],
         createdAt: new Date().toISOString()
       },
       {
@@ -1053,6 +1163,21 @@ export default function App() {
         coverAttachment: '',
         videoAttachment: '',
         hasMindMap: false,
+        tags: ['تنمية ذاتية', 'صحة نفسية'],
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'book-3',
+        title: 'رواية الخيمائي والبحث عن الحقيقة 📖',
+        notes: 'باولو كويلو - رواية رمزية ملهمة تدور حول اتباع الشغف والإنصات لصوت القلب والرحلة الذاتية.',
+        rating: 5,
+        pdfPath: 'رواية_الخيمائي.pdf',
+        referenceLink: '',
+        audioAttachment: 'ملخص_صوتي.mp3',
+        coverAttachment: '',
+        videoAttachment: '',
+        hasMindMap: true,
+        tags: ['روايات', 'أدب', 'تنمية ذاتية'],
         createdAt: new Date().toISOString()
       }
     ];
@@ -1073,10 +1198,13 @@ export default function App() {
   const [bookFormCover, setBookFormCover] = useState('');
   const [bookFormVideo, setBookFormVideo] = useState('');
   const [bookFormHasMindMap, setBookFormHasMindMap] = useState(false);
+  const [bookFormTags, setBookFormTags] = useState<string[]>(['تنمية ذاتية']);
+  const [bookFormCustomTag, setBookFormCustomTag] = useState('');
   const [selectedBookDetail, setSelectedBookDetail] = useState<Book | null>(null);
   const [bookSearchQuery, setBookSearchQuery] = useState('');
   const [bookRatingFilter, setBookRatingFilter] = useState<number>(0);
   const [bookAttachmentFilter, setBookAttachmentFilter] = useState<string>('all');
+  const [selectedBookTagFilter, setSelectedBookTagFilter] = useState<string>('all');
 
   // --- Redesigned Settings Tab Subsections ---
   const [expandedSettingsCard, setExpandedSettingsCard] = useState<'api' | 'backup' | 'pin' | 'favorites' | 'reminders' | 'archive' | 'trash' | 'languages' | null>(null);
@@ -2953,7 +3081,30 @@ export default function App() {
               </span>
             </button>
 
-            {/* 4. Lock Button (🔒) with grey-brown background and border */}
+            {/* 4. Personal Account & Cloud Sync Login Button */}
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className={`flex items-center space-x-1.5 space-x-reverse px-3 py-2 border rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0 ${
+                currentUser
+                  ? 'bg-teal-700 text-white border-teal-800 hover:bg-teal-800'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+              }`}
+              title="حسابي الشخصي وتزامن البيانات السحابي"
+            >
+              {currentUser ? (
+                <>
+                  <Cloud className="w-3.5 h-3.5 text-teal-200" />
+                  <span className="truncate max-w-[90px]">{currentUser.name || currentUser.email.split('@')[0]}</span>
+                </>
+              ) : (
+                <>
+                  <User className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>تسجيل الدخول</span>
+                </>
+              )}
+            </button>
+
+            {/* 5. Lock Button (🔒) with grey-brown background and border */}
             <button
               onClick={() => setSettings(prev => ({ ...prev, isAppLocked: true }))}
               className="p-2.5 bg-[#EEECDF] border border-[#D1CCBA] text-[#5A5A40] rounded-xl hover:bg-[#DDD8C3] active:scale-95 transition-all cursor-pointer shadow-3xs shrink-0 flex items-center justify-center"
@@ -6203,7 +6354,39 @@ export default function App() {
                 </button>
               </div>
 
-              {/* CARD 3: BACKUP AND SYNC */}
+              {/* CARD 3: USER ACCOUNT & LOGIN */}
+              <div 
+                onClick={() => setIsAuthModalOpen(true)}
+                className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-teal-50/50 transition-all hover:border-teal-300 group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-teal-50 text-teal-700 rounded-2xl group-hover:bg-teal-100 transition-all">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-[#2B3E50] text-sm">الحساب الشخصي والتسجيل</h4>
+                      {currentUser ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          {currentUser.name}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                          زائر (غير مسجل)
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">
+                      {currentUser 
+                        ? `مسجل بالبريد: ${currentUser.email} • افتح مذكراتك من أي جهاز بنفس الحساب` 
+                        : 'سجل دخولك بحسابك الشخصي لمزامنة معلوماتك والوصول إليها من كل أجهزتك'}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+              </div>
+
+              {/* CARD 4: BACKUP AND SYNC */}
               <div 
                 onClick={() => setShowBackupSyncModal(true)}
                 className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#8B9D83]/5 transition-all hover:border-[#8B9D83]/40 group"
@@ -6829,6 +7012,19 @@ export default function App() {
         onOpenWriteDiaryImport={() => setShowWriteDiaryImporter(true)}
       />
 
+      {/* 👤 User Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentUser={currentUser}
+        onLoginSuccess={handleLoginSuccess}
+        onLogout={handleLogout}
+        onManualSync={() => performCloudSync()}
+        onManualRestore={handleCloudRestore}
+        isSyncing={isCloudSyncing}
+        syncMessage={cloudSyncMessage}
+      />
+
       {/* 📖 WriteDiary (يومياتي) Importer Modal */}
       <WriteDiaryImporter
         isOpen={showWriteDiaryImporter}
@@ -7445,6 +7641,7 @@ export default function App() {
             coverAttachment: bookFormCover || undefined,
             videoAttachment: bookFormVideo || undefined,
             hasMindMap: bookFormHasMindMap,
+            tags: bookFormTags.length > 0 ? bookFormTags : ['عام'],
             createdAt: selectedCalendarDate + 'T12:00:00.000Z' // Associate with selected calendar day
           };
           setBooks(prev => [newBook, ...prev]);
@@ -7459,6 +7656,8 @@ export default function App() {
           setBookFormCover('');
           setBookFormVideo('');
           setBookFormHasMindMap(false);
+          setBookFormTags(['تنمية ذاتية']);
+          setBookFormCustomTag('');
           setShowAddBookForm(false);
           alert('تم حفظ الكتاب في مكتبتك الشاملة بنجاح! 📖✨');
         };
@@ -7832,6 +8031,90 @@ export default function App() {
                                   <span className="text-[10px] text-gray-400 font-bold mr-2">({bookFormRating}/5 نجوم)</span>
                                 </div>
                               </div>
+
+                              {/* Book Categorization Tags */}
+                              <div>
+                                <label className="block text-[11px] font-black text-[#5A5A40] mb-1.5">تصنيفات وتقسيمات الكتاب (Tags) 🏷️</label>
+                                <div className="flex flex-wrap gap-1.5 mb-2">
+                                  {['تنمية ذاتية', 'روايات', 'علم نفس', 'صحة نفسية', 'فلسفة', 'تاريخ', 'أدب', 'علوم', 'سير ذاتية'].map((presetTag) => {
+                                    const isSelected = bookFormTags.includes(presetTag);
+                                    return (
+                                      <button
+                                        key={presetTag}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setBookFormTags(bookFormTags.filter(t => t !== presetTag));
+                                          } else {
+                                            setBookFormTags([...bookFormTags, presetTag]);
+                                          }
+                                        }}
+                                        className={`px-2.5 py-1 text-[10px] font-black rounded-lg border transition-all cursor-pointer ${
+                                          isSelected
+                                            ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-3xs'
+                                            : 'bg-white border-[#E2DCC8] text-gray-600 hover:border-[#8B9D83]'
+                                        }`}
+                                      >
+                                        {isSelected ? '✓ ' : '+ '}{presetTag}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Custom Tag Input */}
+                                <div className="flex items-center gap-1.5 mt-2">
+                                  <input
+                                    type="text"
+                                    value={bookFormCustomTag}
+                                    onChange={(e) => setBookFormCustomTag(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        if (bookFormCustomTag.trim() && !bookFormTags.includes(bookFormCustomTag.trim())) {
+                                          setBookFormTags([...bookFormTags, bookFormCustomTag.trim()]);
+                                          setBookFormCustomTag('');
+                                        }
+                                      }
+                                    }}
+                                    placeholder="أضف تصنيفاً خاصاً..."
+                                    className="flex-1 bg-[#F9F7F2]/50 border border-[#E2DCC8] rounded-lg px-2.5 py-1 text-[10px] font-bold text-[#3A3A3A] focus:outline-none focus:ring-1 focus:ring-[#8B9D83]"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (bookFormCustomTag.trim() && !bookFormTags.includes(bookFormCustomTag.trim())) {
+                                        setBookFormTags([...bookFormTags, bookFormCustomTag.trim()]);
+                                        setBookFormCustomTag('');
+                                      }
+                                    }}
+                                    className="px-3 py-1 bg-[#5A5A40] text-white text-[10px] font-bold rounded-lg hover:bg-[#3D3D2A] transition-colors cursor-pointer"
+                                  >
+                                    + إضافة
+                                  </button>
+                                </div>
+
+                                {/* Selected Tags list */}
+                                {bookFormTags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    <span className="text-[10px] font-bold text-gray-400 self-center">المحددة:</span>
+                                    {bookFormTags.map(tag => (
+                                      <span
+                                        key={tag}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-black rounded-md"
+                                      >
+                                        🏷️ {tag}
+                                        <button
+                                          type="button"
+                                          onClick={() => setBookFormTags(bookFormTags.filter(t => t !== tag))}
+                                          className="text-teal-600 hover:text-red-500 font-extrabold mr-0.5 cursor-pointer"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             {/* Column 2: Attachments & Simulation */}
@@ -7962,6 +8245,29 @@ export default function App() {
                                     {selectedBookDetail.notes || 'لا توجد ملاحظات تفصيلية مسجلة.'}
                                   </p>
                                 </div>
+
+                                {selectedBookDetail.tags && selectedBookDetail.tags.length > 0 && (
+                                  <div className="bg-teal-50/50 border border-teal-100/80 rounded-xl p-2.5 mt-2">
+                                    <span className="text-[10px] font-black text-teal-800 block mb-1">🏷️ تصنيفات الكتاب والوسوم:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {selectedBookDetail.tags.map(tag => (
+                                        <button
+                                          key={tag}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedBookTagFilter(tag);
+                                            setSelectedBookDetail(null);
+                                          }}
+                                          className="px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-800 border border-teal-200 text-[10px] font-extrabold rounded-lg transition-colors cursor-pointer flex items-center gap-1 shadow-3xs"
+                                          title="تصفية المكتبة بهذا التصنيف"
+                                        >
+                                          <span>🏷️</span>
+                                          <span>{tag}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
 
                               <div className="bg-[#F9F7F2]/30 border border-[#E2DCC8]/50 rounded-2xl p-4 space-y-3 flex flex-col justify-start">
@@ -8052,14 +8358,17 @@ export default function App() {
 
                           const filteredBooks = books.filter(book => {
                             const matchesSearch = book.title.toLowerCase().includes(bookSearchQuery.toLowerCase()) ||
-                                                  (book.notes || '').toLowerCase().includes(bookSearchQuery.toLowerCase());
+                                                  (book.notes || '').toLowerCase().includes(bookSearchQuery.toLowerCase()) ||
+                                                  (book.tags || []).some(t => t.toLowerCase().includes(bookSearchQuery.toLowerCase()));
                             const matchesRating = bookRatingFilter === 0 || book.rating >= bookRatingFilter;
                             const matchesAttachment = bookAttachmentFilter === 'all' ||
                                                       (bookAttachmentFilter === 'pdf' && book.pdfPath) ||
                                                       (bookAttachmentFilter === 'audio' && book.audioAttachment) ||
                                                       (bookAttachmentFilter === 'video' && book.videoAttachment) ||
                                                       (bookAttachmentFilter === 'mindmap' && book.hasMindMap);
-                            return matchesSearch && matchesRating && matchesAttachment;
+                            const matchesTag = selectedBookTagFilter === 'all' ||
+                                               (book.tags || []).includes(selectedBookTagFilter);
+                            return matchesSearch && matchesRating && matchesAttachment && matchesTag;
                           });
 
                           return (
@@ -8092,7 +8401,7 @@ export default function App() {
                                       type="text"
                                       value={bookSearchQuery}
                                       onChange={(e) => setBookSearchQuery(e.target.value)}
-                                      placeholder="ابحث عن كتاب بالاسم، المؤلف أو الكلمات الدلالية..."
+                                      placeholder="ابحث عن كتاب بالاسم، التصنيف، أو الكلمات الدلالية..."
                                       className="w-full bg-white border border-[#E2DCC8] rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#8B9D83] text-[#3A3A3A] font-bold"
                                     />
                                     <span className="absolute left-3.5 top-2.5 text-gray-400 text-xs">🔍</span>
@@ -8108,7 +8417,7 @@ export default function App() {
                                   </div>
 
                                   {/* Row 2: Attachment and Rating Filters */}
-                                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
+                                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-0.5">
                                     {/* Attachment Filter */}
                                     <div className="flex items-center space-x-1.5 space-x-reverse overflow-x-auto py-0.5">
                                       <span className="text-[10px] text-gray-400 font-black shrink-0">الملحقات:</span>
@@ -8149,6 +8458,71 @@ export default function App() {
                                       </select>
                                     </div>
                                   </div>
+
+                                  {/* Row 3: Quick Tag Filters Bar (التصنيفات والوسوم) */}
+                                  <div className="border-t border-[#E2DCC8]/40 pt-2.5 space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-black text-[#5A5A40] flex items-center gap-1">
+                                        <span>🏷️</span>
+                                        <span>تصفية سريعة بحسب التصنيفات:</span>
+                                      </span>
+                                      {selectedBookTagFilter !== 'all' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setSelectedBookTagFilter('all')}
+                                          className="text-[10px] text-teal-700 hover:underline font-extrabold cursor-pointer"
+                                        >
+                                          إلغاء التصفية (عرض الكل) ✕
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
+                                      {[
+                                        'الكل',
+                                        'تنمية ذاتية',
+                                        'روايات',
+                                        'علم نفس',
+                                        'صحة نفسية',
+                                        'فلسفة',
+                                        'تاريخ',
+                                        'أدب',
+                                        'علوم',
+                                        'سير ذاتية',
+                                        ...Array.from(new Set(books.flatMap(b => b.tags || [])))
+                                      ].filter((v, i, a) => a.indexOf(v) === i).map(tag => {
+                                        const isAll = tag === 'الكل';
+                                        const count = isAll
+                                          ? books.length
+                                          : books.filter(b => (b.tags || []).includes(tag)).length;
+                                        
+                                        if (!isAll && count === 0) return null; // Hide empty tag chips
+
+                                        const isSelected = isAll ? selectedBookTagFilter === 'all' : selectedBookTagFilter === tag;
+
+                                        return (
+                                          <button
+                                            key={tag}
+                                            type="button"
+                                            onClick={() => setSelectedBookTagFilter(isAll ? 'all' : tag)}
+                                            className={`px-2.5 py-1 rounded-xl text-[10px] font-black transition-all cursor-pointer flex items-center gap-1 shrink-0 border ${
+                                              isSelected
+                                                ? 'bg-gradient-to-r from-[#5A5A40] to-[#8B9D83] text-white border-[#5A5A40] shadow-2xs scale-[1.02]'
+                                                : 'bg-white text-[#3A3A3A] border-[#E2DCC8] hover:bg-teal-50/60 hover:border-teal-300'
+                                            }`}
+                                          >
+                                            <span>{isAll ? '📚' : '🏷️'}</span>
+                                            <span>{tag}</span>
+                                            <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                                              isSelected ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-600'
+                                            }`}>
+                                              {count}
+                                            </span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
                                 </div>
 
                                 {/* Books Grid (Custom Redesigned) */}
@@ -8156,7 +8530,7 @@ export default function App() {
                                   <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#F9F7F2]/20 border border-dashed border-[#E2DCC8] rounded-3xl my-2">
                                     <span className="text-3xl animate-bounce">📭</span>
                                     <div className="space-y-1 mt-2">
-                                      <h4 className="text-xs font-black text-[#5A5A40]">لم يتم العثور على أي مراجع مطابقة للبحث</h4>
+                                      <h4 className="text-xs font-black text-[#5A5A40]">لم يتم العثور على أي مراجع مطابقة للبحث أو التصنيف المحدد</h4>
                                       <p className="text-[10px] text-gray-400">يرجى تعديل خيارات التصفية أو إدخال مادة قرائية جديدة للبدء.</p>
                                     </div>
                                   </div>
@@ -8207,6 +8581,25 @@ export default function App() {
                                             <p className="text-[10.5px] text-gray-500 line-clamp-2 leading-relaxed">
                                               {book.notes || 'لا توجد ملاحظات أو اقتباسات مدونة لهذه المادة القرائية.'}
                                             </p>
+
+                                            {/* Tag Chips on Book Card */}
+                                            {book.tags && book.tags.length > 0 && (
+                                              <div className="flex flex-wrap gap-1 pt-1">
+                                                {book.tags.map(t => (
+                                                  <span
+                                                    key={t}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setSelectedBookTagFilter(t);
+                                                    }}
+                                                    className="text-[9px] font-black bg-teal-50 text-teal-800 border border-teal-200/80 px-1.5 py-0.2 rounded-md hover:bg-teal-100 transition-colors"
+                                                    title="تصفية حسب هذا التصنيف"
+                                                  >
+                                                    🏷️ {t}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            )}
                                           </div>
 
                                           {/* Glowing Attachment Badges */}

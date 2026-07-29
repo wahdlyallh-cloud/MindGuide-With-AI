@@ -3,6 +3,7 @@ import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
 import nodemailer from "nodemailer";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 
@@ -15,12 +16,78 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Cloud Synchronization file path setup
-const SYNC_FILE_PATH = path.join(process.cwd(), "data", "cloud_sync.json");
+// Cloud Synchronization and User Auth paths setup
+const DATA_DIR = path.join(process.cwd(), "data");
+const SYNC_FILE_PATH = path.join(DATA_DIR, "cloud_sync.json");
+const USERS_FILE_PATH = path.join(DATA_DIR, "users.json");
+const SESSIONS_FILE_PATH = path.join(DATA_DIR, "sessions.json");
+const USER_DATA_DIR = path.join(DATA_DIR, "user_data");
 
-// Create data directory if it doesn't exist
-if (!fs.existsSync(path.join(process.cwd(), "data"))) {
-  fs.mkdirSync(path.join(process.cwd(), "data"), { recursive: true });
+// Create required data directories
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+if (!fs.existsSync(USER_DATA_DIR)) {
+  fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+}
+
+// User Authentication & Session Helpers
+function loadUsers(): any[] {
+  try {
+    if (fs.existsSync(USERS_FILE_PATH)) {
+      return JSON.parse(fs.readFileSync(USERS_FILE_PATH, "utf8"));
+    }
+  } catch (e) {
+    console.error("Error loading users:", e);
+  }
+  return [];
+}
+
+function saveUsers(users: any[]) {
+  try {
+    fs.writeFileSync(USERS_FILE_PATH, JSON.stringify(users, null, 2), "utf8");
+  } catch (e) {
+    console.error("Error saving users:", e);
+  }
+}
+
+function loadSessions(): Record<string, any> {
+  try {
+    if (fs.existsSync(SESSIONS_FILE_PATH)) {
+      return JSON.parse(fs.readFileSync(SESSIONS_FILE_PATH, "utf8"));
+    }
+  } catch (e) {
+    console.error("Error loading sessions:", e);
+  }
+  return {};
+}
+
+function saveSessions(sessions: Record<string, any>) {
+  try {
+    fs.writeFileSync(SESSIONS_FILE_PATH, JSON.stringify(sessions, null, 2), "utf8");
+  } catch (e) {
+    console.error("Error saving sessions:", e);
+  }
+}
+
+function hashPassword(password: string, salt: string): string {
+  return crypto.pbkdf2Sync(password, salt, 10000, 64, "sha512").toString("hex");
+}
+
+function getUserFromReq(req: express.Request): any | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) return null;
+  
+  const sessions = loadSessions();
+  const session = sessions[token];
+  if (!session) return null;
+  
+  const users = loadUsers();
+  return users.find(u => u.id === session.userId) || null;
 }
 
 // Helper to safely format dates
@@ -46,14 +113,150 @@ function safeFormatDate(d: any): string {
   return String(d);
 }
 
+// User Authentication Endpoints
+app.post("/api/auth/register", (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "يرجى كتابة البريد الإلكتروني وكلمة المرور بشكل صحيح." });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: "كلمة المرور يجب أن تكون من 6 خانات أو أكثر لحماية حسابك." });
+    }
+
+    const users = loadUsers();
+    if (users.some(u => u.email === normalizedEmail)) {
+      return res.status(400).json({ success: false, error: "البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول إلى حسابك مباشرة." });
+    }
+
+    const salt = crypto.randomBytes(16).toString("hex");
+    const passwordHash = hashPassword(password, salt);
+    const userId = "user_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
+    
+    const newUser = {
+      id: userId,
+      name: name ? String(name).trim() : normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      salt,
+      passwordHash,
+      createdAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    saveUsers(users);
+
+    // Create Session Token
+    const token = "token_" + Date.now() + "_" + crypto.randomBytes(24).toString("hex");
+    const sessions = loadSessions();
+    sessions[token] = { userId, createdAt: new Date().toISOString() };
+    saveSessions(sessions);
+
+    const userPayload = { id: newUser.id, name: newUser.name, email: newUser.email, createdAt: newUser.createdAt };
+    return res.json({
+      success: true,
+      message: "تم إنشاء حسابك الشخصي بنجاح! تم تفعيل المزامنة السحابية بحسابك.",
+      token,
+      user: userPayload
+    });
+  } catch (error) {
+    console.error("Register error:", error);
+    return res.status(500).json({ success: false, error: "حدث خطأ أثناء إنشاء الحساب" });
+  }
+});
+
+app.post("/api/auth/login", (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "يرجى إدخال البريد الإلكتروني وكلمة المرور." });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const users = loadUsers();
+    const user = users.find(u => u.email === normalizedEmail);
+
+    if (!user) {
+      return res.status(401).json({ success: false, error: "البريد الإلكتروني أو كلمة المرور غير صحيحة." });
+    }
+
+    const hashCheck = hashPassword(password, user.salt);
+    if (hashCheck !== user.passwordHash) {
+      return res.status(401).json({ success: false, error: "البريد الإلكتروني أو كلمة المرور غير صحيحة." });
+    }
+
+    // Create Session Token
+    const token = "token_" + Date.now() + "_" + crypto.randomBytes(24).toString("hex");
+    const sessions = loadSessions();
+    sessions[token] = { userId: user.id, createdAt: new Date().toISOString() };
+    saveSessions(sessions);
+
+    // Check if user has synced data
+    const userFilePath = path.join(USER_DATA_DIR, `${user.id}.json`);
+    let userData = null;
+    if (fs.existsSync(userFilePath)) {
+      try {
+        userData = JSON.parse(fs.readFileSync(userFilePath, "utf8"));
+      } catch (e) {
+        console.error("Error reading user data file:", e);
+      }
+    }
+
+    const userPayload = { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt };
+    return res.json({
+      success: true,
+      message: "مرحباً بك مجدداً! تم تسجيل الدخول واستعادة بياناتك الشخصية بنجاح.",
+      token,
+      user: userPayload,
+      userData
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ success: false, error: "حدث خطأ أثناء تسجيل الدخول" });
+  }
+});
+
+app.get("/api/auth/me", (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "غير مسجل الدخول" });
+    }
+    const userPayload = { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt };
+    return res.json({ success: true, user: userPayload });
+  } catch (error) {
+    console.error("Auth me error:", error);
+    return res.status(500).json({ success: false, error: "خطأ أثناء التحقق من الجلسة" });
+  }
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      const sessions = loadSessions();
+      delete sessions[token];
+      saveSessions(sessions);
+    }
+    return res.json({ success: true, message: "تم تسجيل الخروج بنجاح" });
+  } catch (error) {
+    return res.json({ success: true });
+  }
+});
+
 // API Cloud Sync endpoints
 app.get("/api/cloud-sync/fetch", (req, res) => {
   try {
-    if (fs.existsSync(SYNC_FILE_PATH)) {
-      const data = fs.readFileSync(SYNC_FILE_PATH, "utf8");
-      return res.json({ success: true, data: JSON.parse(data) });
+    const user = getUserFromReq(req);
+    const targetFile = user ? path.join(USER_DATA_DIR, `${user.id}.json`) : SYNC_FILE_PATH;
+
+    if (fs.existsSync(targetFile)) {
+      const data = fs.readFileSync(targetFile, "utf8");
+      return res.json({ success: true, data: JSON.parse(data), user: user ? { id: user.id, email: user.email, name: user.name } : null });
     }
-    return res.json({ success: true, data: null });
+    return res.json({ success: true, data: null, user: user ? { id: user.id, email: user.email, name: user.name } : null });
   } catch (error) {
     console.error("Fetch cloud sync error:", error);
     res.status(500).json({ success: false, error: "فشل استرجاع البيانات المزامنة سحابياً" });
@@ -63,8 +266,14 @@ app.get("/api/cloud-sync/fetch", (req, res) => {
 app.post("/api/cloud-sync/save", (req, res) => {
   try {
     const state = req.body;
-    fs.writeFileSync(SYNC_FILE_PATH, JSON.stringify(state, null, 2), "utf8");
-    return res.json({ success: true, message: "تمت المزامنة السحابية بنجاح وحفظ نسختك الاحتياطية بأمان" });
+    const user = getUserFromReq(req);
+    const targetFile = user ? path.join(USER_DATA_DIR, `${user.id}.json`) : SYNC_FILE_PATH;
+
+    fs.writeFileSync(targetFile, JSON.stringify(state, null, 2), "utf8");
+    return res.json({
+      success: true,
+      message: user ? `تمت المزامنة وحفظ البيانات سحابياً لحسابك (${user.email})` : "تمت المزامنة السحابية بنجاح وحفظ نسختك الاحتياطية بأمان"
+    });
   } catch (error) {
     console.error("Save cloud sync error:", error);
     res.status(500).json({ success: false, error: "فشل حفظ وتزامن البيانات سحابياً" });
