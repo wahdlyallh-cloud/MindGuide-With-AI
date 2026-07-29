@@ -49,24 +49,64 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password })
-      });
-      const data = await response.json();
+      let isServerSuccess = false;
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), password })
+        });
 
-      if (data.success && data.user && data.token) {
-        setSuccessMsg('تم تسجيل الدخول بنجاح! جاري تحميل واستعادة مذكراتك...');
-        setTimeout(() => {
-          onLoginSuccess(data.user, data.token, data.userData);
-          onClose();
-        }, 600);
-      } else {
-        setErrorMsg(data.error || 'فشل تسجيل الدخول. يرجى التثبت من البريد وكلمة المرور.');
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (data.success && data.user && data.token) {
+              isServerSuccess = true;
+              setSuccessMsg('تم تسجيل الدخول بنجاح! جاري تحميل واستعادة مذكراتك...');
+              setTimeout(() => {
+                onLoginSuccess(data.user, data.token, data.userData);
+                onClose();
+              }, 600);
+              return;
+            } else if (data.error) {
+              setErrorMsg(data.error);
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        // Backend API unreachable or static export - fall through to local auth fallback
+      }
+
+      if (!isServerSuccess) {
+        // Local Authentication Fallback (for static exports like Vercel)
+        const localUsersRaw = localStorage.getItem('yawmiyati_local_auth_users');
+        const localUsers = localUsersRaw ? JSON.parse(localUsersRaw) : [];
+        const foundUser = localUsers.find((u: any) => u.email.toLowerCase() === email.trim().toLowerCase());
+
+        if (foundUser) {
+          if (foundUser.password === password) {
+            const localToken = `local_token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+            setSuccessMsg('تم تسجيل الدخول بنجاح عبر الحساب المحلي! 🎉');
+            setTimeout(() => {
+              onLoginSuccess({ id: foundUser.id, name: foundUser.name, email: foundUser.email, createdAt: foundUser.createdAt }, localToken);
+              onClose();
+            }, 600);
+            return;
+          } else {
+            setErrorMsg('كلمة المرور غير صحيحة. يرجى التثبت والمحاولة مجدداً.');
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        // If no user exists locally, allow instant registration or auto-login with email
+        setErrorMsg('البريد الإلكتروني غير مسجل بعد. يرجى النقر على "حساب جديد" لإنشائه.');
       }
     } catch (err: any) {
-      setErrorMsg('عفواً، متعذر الاتصال بالخادم لتسجيل الدخول. يرجى المحاولة لاحقاً.');
+      setErrorMsg('عفواً، متعذر الاتصال بالخادم. يرجى التثبت من البيانات والمحاولة مجدداً.');
     } finally {
       setIsLoading(false);
     }
@@ -94,28 +134,73 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      let isServerSuccess = false;
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim() || email.split('@')[0],
+            email: email.trim(),
+            password
+          })
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (data.success && data.user && data.token) {
+              isServerSuccess = true;
+              setSuccessMsg('تم إنشاء حسابك الشخصي وتفعيل التزامن السحابي بنجاح! 🎉');
+              setTimeout(() => {
+                onLoginSuccess(data.user, data.token);
+                onClose();
+              }, 800);
+              return;
+            } else if (data.error) {
+              setErrorMsg(data.error);
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        // Backend API unreachable or static export - fall through to local register fallback
+      }
+
+      if (!isServerSuccess) {
+        // Local Authentication Registration Fallback (for static exports like Vercel)
+        const localUsersRaw = localStorage.getItem('yawmiyati_local_auth_users');
+        const localUsers = localUsersRaw ? JSON.parse(localUsersRaw) : [];
+        const existingUser = localUsers.find((u: any) => u.email.toLowerCase() === email.trim().toLowerCase());
+
+        if (existingUser) {
+          setErrorMsg('هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول به.');
+          setIsLoading(false);
+          return;
+        }
+
+        const newUser = {
+          id: `local_user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           name: name.trim() || email.split('@')[0],
           email: email.trim(),
-          password
-        })
-      });
-      const data = await response.json();
+          password,
+          createdAt: new Date().toISOString()
+        };
 
-      if (data.success && data.user && data.token) {
-        setSuccessMsg('تم إنشاء حسابك الشخصي وتفعيل التزامن السحابي المخصص لك بنجاح! 🎉');
+        localUsers.push(newUser);
+        localStorage.setItem('yawmiyati_local_auth_users', JSON.stringify(localUsers));
+
+        const localToken = `local_token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+        setSuccessMsg('تم إنشاء حسابك وحفظ بياناتك بنجاح! 🎉');
         setTimeout(() => {
-          onLoginSuccess(data.user, data.token);
+          onLoginSuccess({ id: newUser.id, name: newUser.name, email: newUser.email, createdAt: newUser.createdAt }, localToken);
           onClose();
         }, 800);
-      } else {
-        setErrorMsg(data.error || 'حدث خطأ أثناء إنشاء الحساب.');
       }
     } catch (err: any) {
-      setErrorMsg('تعذر الاتصال بالخادم لإنشاء الحساب.');
+      setErrorMsg('تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsLoading(false);
     }
