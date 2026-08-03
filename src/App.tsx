@@ -6672,6 +6672,7 @@ export default function App() {
                     setGratitudeCards={setGratitudeCards}
                     settings={settings}
                     diaries={diaries}
+                    setDiaries={setDiaries}
                     setActiveTab={setActiveTab}
                     setActiveDiariesSubTab={setActiveDiariesSubTab}
                     triggerGratitudeNotificationNow={() => setActiveGratitudeReminderNotification(true)}

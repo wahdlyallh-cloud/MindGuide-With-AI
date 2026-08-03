@@ -1354,7 +1354,7 @@ ${summaryCore}
 }
 
 app.post("/api/gemini/gratitude-advisor", async (req, res) => {
-  const { gratitudeCards, diaries, action, cardText } = req.body;
+  const { gratitudeCards, diaries, action, cardText, customPrompt } = req.body;
   const customKey = req.headers["x-gemini-key"] as string;
   const ai = getGenAI(customKey);
 
@@ -1365,7 +1365,7 @@ app.post("/api/gemini/gratitude-advisor", async (req, res) => {
       const formattedDiaries = (diaries || []).map((d: any) => `- ${d.title}: ${d.content?.slice(0, 150)}...`).join("\n");
 
       let userPrompt = "";
-      if (action === "reflection") {
+      if (action === "reflection" || action === "reflect") {
         userPrompt = `أريد منك بصفتك استشارياً في علم النفس الإيجابي تقديم تحليل وإلهام راقٍ بناءً على بطاقات الامتنان واليوميات الأخيرة التالية:
 
 الأشياء الإيجابية التي أنا ممتن لها:
@@ -1380,6 +1380,17 @@ ${formattedDiaries || "لا توجد يوميات مسجلة."}
 "${cardText || ""}"
 
 قدم له بأسلوب دافئ، لطيف، وعلمي مبسط للغاية (في حدود سطرين أو ثلاثة فقط) كيف يؤثر هذا الحدث إيجابياً على مرونته النفسية وصحته العصبية ومسارات الدوبامين/السيروتونين لديه، وعزز شعوره بالامتنان بكلمة طيبة ومشجعة كطبيب صديق.`;
+      } else if (action === "custom_question") {
+        userPrompt = `استشارة من المستخدم لمستشار الامتنان والوعي الإيجابي:
+"${customPrompt || ""}"
+
+سياق بطاقات امتنان المستخدم:
+${formattedGratitude || "لا توجد بطاقات مسجلة."}
+
+اليوميات الأخيرة:
+${formattedDiaries || "لا توجد يوميات مسجلة."}
+
+أجب على تساؤل المستخدم أو استشارته بأسلوب دافئ، مشجع، وملهم من منظور علم النفس الإيجابي، واستخدم تنسيق Markdown منظم.`;
       } else if (action === "ai_generator") {
         userPrompt = `أنت معالج وأخصائي نفسي خبير في علم النفس الإيجابي. مهمتك هي قراءة مذكرات اليوميات الأخيرة للمستخدم التالية، والبحث بعناية مفرطة وبصيرة وحساسية إيجابية عن "نعمة بسيطة مخفية" أو "حدث إيجابي لطيف" أو "لحظة رضا" (مثل إنجاز عمل، طقس جميل، فنجان قهوة هادئ، تواصل مع عائلة، أو حتى تغلّب بسيط على ضغط أو قلق) قد يكون المستخدم مر بها ولم يدرك عظمتها بالكامل في غمرة القلق.
 صغ هذه النعمة في بطاقة امتنان واضحة ورشيقة باللغة العربية تبدأ بضمير المتكلم (مثال: "أنا ممتن لـ...") بحيث يمكن إضافتها لمفكرة الامتنان لتعزز مرونته النفسية.

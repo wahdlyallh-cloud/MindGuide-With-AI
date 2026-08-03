@@ -3,15 +3,27 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Heart, Sparkles, Plus, Trash2, Bell, Calendar, Award, 
   Lightbulb, Smile, Check, RefreshCw, Search, Filter, 
-  Brain, HelpCircle, ArrowRight, Zap, Play, Volume2, Copy, Printer, Shuffle
+  Brain, HelpCircle, ArrowRight, Zap, Play, Volume2, Copy, Printer, Shuffle,
+  Send, Edit3, MessageSquare
 } from 'lucide-react';
 import { GratitudeCard, AppSettings, DiaryEntry } from '../types';
+
+export interface AIGratitudeHistoryItem {
+  id: string;
+  type: 'reflect' | 'suggest' | 'ai_generator' | 'qa';
+  title: string;
+  promptOrContext?: string;
+  content: string;
+  userAnswer?: string;
+  createdAt: string;
+}
 
 interface GratitudeJournalProps {
   gratitudeCards: GratitudeCard[];
   setGratitudeCards: React.Dispatch<React.SetStateAction<GratitudeCard[]>>;
   settings: AppSettings;
   diaries: DiaryEntry[];
+  setDiaries?: React.Dispatch<React.SetStateAction<DiaryEntry[]>>;
   setActiveTab?: (tab: 'dashboard' | 'diaries' | 'advisor' | 'analytics' | 'settings') => void;
   setActiveDiariesSubTab?: (subTab: 'journal' | 'gratitude') => void;
   triggerGratitudeNotificationNow?: () => void;
@@ -47,6 +59,7 @@ export default function GratitudeJournal({
   setGratitudeCards,
   settings,
   diaries,
+  setDiaries,
   setActiveTab,
   setActiveDiariesSubTab,
   triggerGratitudeNotificationNow,
@@ -211,6 +224,191 @@ export default function GratitudeJournal({
     }
   };
 
+  // Toast notification state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // AI History state & local persistence
+  const [aiHistory, setAiHistory] = useState<AIGratitudeHistoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('yawmiyati_gratitude_ai_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('yawmiyati_gratitude_ai_history', JSON.stringify(aiHistory));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [aiHistory]);
+
+  const [historyTab, setHistoryTab] = useState<'all' | 'reflect' | 'suggest' | 'ai_generator' | 'qa'>('all');
+  const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null);
+  const [tempAnswerText, setTempAnswerText] = useState<string>('');
+
+  // Direct question input
+  const [directQuestionText, setDirectQuestionText] = useState('');
+  const [directQuestionLoading, setDirectQuestionLoading] = useState(false);
+
+  const addHistoryItem = (
+    type: 'reflect' | 'suggest' | 'ai_generator' | 'qa',
+    title: string,
+    content: string,
+    promptOrContext?: string,
+    userAnswer?: string
+  ) => {
+    const newItem: AIGratitudeHistoryItem = {
+      id: `ai-hist-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      type,
+      title,
+      promptOrContext,
+      content,
+      userAnswer,
+      createdAt: new Date().toISOString(),
+    };
+    setAiHistory(prev => [newItem, ...prev]);
+    return newItem;
+  };
+
+  const handleSaveQuestionAnswer = (itemId: string, answer: string) => {
+    if (!answer.trim()) return;
+    setAiHistory(prev => prev.map(item => item.id === itemId ? { ...item, userAnswer: answer.trim() } : item));
+    setEditingAnswerId(null);
+    setTempAnswerText('');
+    showToast(isEn ? 'Answer saved successfully! ✓' : 'تم حفظ إجابتك وتأملك بنجاح! ✓');
+  };
+
+  const handleDeleteHistoryItem = (itemId: string) => {
+    setAiHistory(prev => prev.filter(item => item.id !== itemId));
+    showToast(isEn ? 'Item deleted from history.' : 'تم حذف العنصر من السجل.');
+  };
+
+  // Export functions
+  const handleExportToGratitudeCard = (text: string, suggestedColor?: string) => {
+    if (!text.trim()) return;
+    const foundColor = PASTEL_COLORS.find(c => c.id === suggestedColor) || PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
+    const newCard: GratitudeCard = {
+      id: `grat-${Date.now()}`,
+      text: text.trim(),
+      color: foundColor.class,
+      createdAt: new Date().toISOString(),
+    };
+    setGratitudeCards(prev => [newCard, ...prev]);
+    showToast(isEn ? 'Added to Gratitude Wall! 🌸' : 'تمت إضافة البطاقة إلى جدار امتنناك بنجاح! 🌸');
+  };
+
+  const handleExportToDailyVenting = (title: string, bodyText: string) => {
+    if (!bodyText.trim()) return;
+    const newEntry: DiaryEntry = {
+      id: `diary-${Date.now()}`,
+      title: title || (isEn ? 'Gratitude Reflection' : 'فضفضة امتنان ووعي إيجابي 🌸'),
+      content: bodyText.trim(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      moods: ['امتنان 🌸', 'سكينة ✨'],
+      importance: 4,
+      color: 'bg-[#FEF9E7]',
+      images: [],
+      videos: [],
+      audioRecordings: [],
+      files: [],
+      tasks: [],
+      tags: ['امتنان', 'تأمل_إيجابي'],
+      chatLogs: [],
+      isLocked: false,
+      diaryType: 'diary',
+    };
+
+    if (setDiaries) {
+      setDiaries(prev => [newEntry, ...prev]);
+    } else {
+      try {
+        const saved = localStorage.getItem('yawmiyati_diaries');
+        const list = saved ? JSON.parse(saved) : [];
+        localStorage.setItem('yawmiyati_diaries', JSON.stringify([newEntry, ...list]));
+      } catch (e) { console.error(e); }
+    }
+    showToast(isEn ? 'Exported to Daily Venting! 📖' : 'تمت إضافة النص بنجاح إلى الفضفضة اليومية! 📖');
+  };
+
+  const handleExportToThoughts = (title: string, bodyText: string) => {
+    if (!bodyText.trim()) return;
+    const newEntry: DiaryEntry = {
+      id: `diary-${Date.now()}`,
+      title: title || (isEn ? 'Positive Reflection' : 'خاطرة امتنان ورؤية إيجابية ✍️'),
+      content: bodyText.trim(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      moods: ['صفاء 🧘‍♂️', 'إلهام 💡'],
+      importance: 5,
+      color: 'bg-[#F4ECF7]',
+      images: [],
+      videos: [],
+      audioRecordings: [],
+      files: [],
+      tasks: [],
+      tags: ['خواطر', 'امتنان'],
+      chatLogs: [],
+      isLocked: false,
+      diaryType: 'thought',
+    };
+
+    if (setDiaries) {
+      setDiaries(prev => [newEntry, ...prev]);
+    } else {
+      try {
+        const saved = localStorage.getItem('yawmiyati_diaries');
+        const list = saved ? JSON.parse(saved) : [];
+        localStorage.setItem('yawmiyati_diaries', JSON.stringify([newEntry, ...list]));
+      } catch (e) { console.error(e); }
+    }
+    showToast(isEn ? 'Exported to Thoughts & Reflections! ✍️' : 'تمت إضافة الخاطرة بنجاح إلى قسم الخواطر! ✍️');
+  };
+
+  const handleSendDirectQuestion = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!directQuestionText.trim() || directQuestionLoading) return;
+
+    const qText = directQuestionText.trim();
+    setDirectQuestionLoading(true);
+
+    try {
+      const response = await fetch('/api/gemini/gratitude-advisor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': settings.userApiKey || '',
+        },
+        body: JSON.stringify({
+          gratitudeCards,
+          diaries,
+          action: 'custom_question',
+          customPrompt: qText,
+        }),
+      });
+      const data = await response.json();
+      if (data.success && data.answer) {
+        addHistoryItem('qa', isEn ? 'Gratitude Consultation' : 'استشارة امتنانية خاصة', data.answer, qText);
+        setDirectQuestionText('');
+        showToast(isEn ? 'Consultation saved to AI History! 🤖' : 'تمت الإجابة وحفظ الاستشارة في سجل الذكاء الاصطناعي! 🤖');
+      } else {
+        showToast(isEn ? 'Failed to respond.' : 'تعذر الحصول على رد حالياً.');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(isEn ? 'Connection error.' : 'خطأ في الاتصال بالذكاء الاصطناعي.');
+    } finally {
+      setDirectQuestionLoading(false);
+    }
+  };
+
   // Trigger AI Endpoint for main panel actions
   const handleAiAction = async (action: 'reflect' | 'suggest' | 'ai_generator') => {
     setAiLoading(true);
@@ -240,16 +438,22 @@ export default function GratitudeJournal({
               text: parsed.text,
               colorClass: parsed.suggestedColor || 'lavender'
             });
+            addHistoryItem('ai_generator', isEn ? 'Generated Gratitude Card' : 'بطاقة امتنان مستخلصة من المذكرات', parsed.text);
           } catch (e) {
-            // If Gemini didn't return pure JSON, try to handle or parse
             console.error("Failed to parse AI Card generator response", e);
+            const cardTxt = data.answer.replace(/[{}]/g, '').trim();
             setProposedCard({
-              text: data.answer.replace(/[{}]/g, '').trim(),
+              text: cardTxt,
               colorClass: 'lavender'
             });
+            addHistoryItem('ai_generator', isEn ? 'Generated Gratitude Card' : 'بطاقة امتنان مستخلصة من المذكرات', cardTxt);
           }
+        } else if (action === 'reflect') {
+          setAiResult(data.answer);
+          addHistoryItem('reflect', isEn ? 'Gratitude Pattern Analysis' : 'تحليل أنماط امتناني', data.answer);
         } else {
           setAiResult(data.answer);
+          addHistoryItem('suggest', isEn ? 'Mindful Gratitude Questions' : 'أسئلة تفكرية للامتنان', data.answer);
         }
       } else {
         setAiResult(isEn ? 'An error occurred during AI generation.' : 'حدث خطأ أثناء الحصول على الرد السلوكي من الذكاء الاصطناعي.');
@@ -570,29 +774,36 @@ export default function GratitudeJournal({
               )}
             </AnimatePresence>
 
-            {/* Smart Advisor Direct Query Link */}
-            {setActiveTab && (
-              <div className="pt-2 border-t border-[#E2DCC8]/40">
+            {/* Direct Query Input to AI Advisor */}
+            <div className="pt-2 border-t border-[#E2DCC8]/40 space-y-2">
+              <label className="block text-[10px] font-extrabold text-[#5A5A40] flex items-center space-x-1 space-x-reverse">
+                <Brain className="w-3.5 h-3.5 text-[#8B9D83]" />
+                <span>{isEn ? "Ask Smart Advisor about your gratitude:" : "اطرح سؤالاً ذكياً مباشرًا على مستشارك حول امتنانك 🤖"}</span>
+              </label>
+              <form onSubmit={handleSendDirectQuestion} className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={directQuestionText}
+                  onChange={(e) => setDirectQuestionText(e.target.value)}
+                  placeholder={isEn ? "e.g., How can I stay grateful on tough days?" : "مثال: كيف أستثمر هذه الامتنانات لتقوية عزيمتي في الأيام الصعبة؟"}
+                  className="flex-1 bg-white border border-[#E2DCC8] focus:border-[#8B9D83] focus:ring-1 focus:ring-[#8B9D83] rounded-xl px-2.5 py-1.5 text-xs text-[#3A3A3A] focus:outline-none"
+                />
                 <button
-                  onClick={() => {
-                    setActiveTab('advisor');
-                    // wait and pre-fill query if possible
-                    setTimeout(() => {
-                      const input = document.getElementById('advisor-search-input') as HTMLTextAreaElement;
-                      if (input) {
-                        input.value = "استناداً لمفكرة الامتنان وبطاقاتي المسجلة، ما هي أكثر مصادر السعادة التي تدعمني نفسياً وكيف أحافظ عليها؟";
-                        input.focus();
-                      }
-                    }, 100);
-                  }}
-                  className="w-full text-center text-[10px] font-extrabold text-[#8B9D83] hover:text-[#5A5A40] flex items-center justify-center space-x-1.5 space-x-reverse cursor-pointer py-1 bg-white/40 hover:bg-white/80 rounded-lg transition-all"
+                  type="submit"
+                  disabled={directQuestionLoading || !directQuestionText.trim()}
+                  className="px-3 py-1.5 bg-[#8B9D83] hover:bg-[#72856A] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
                 >
-                  <Brain className="w-3.5 h-3.5" />
-                  <span>{isEn ? "Open Smart Advisor to Ask About Gratitude" : "اطرح سؤالاً ذكياً على مستشارك حول امتنانك 🤖"}</span>
-                  <ArrowRight className="w-3 h-3 text-[#8B9D83] rotate-180" />
+                  {directQuestionLoading ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-3 h-3 rotate-180" />
+                      <span>{isEn ? "Ask" : "إرسال"}</span>
+                    </>
+                  )}
                 </button>
-              </div>
-            )}
+              </form>
+            </div>
 
             {/* Normal AI Text Result */}
             <AnimatePresence mode="wait">
@@ -617,6 +828,250 @@ export default function GratitudeJournal({
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* AI History Log & Exports Accordion Container */}
+            <div className="mt-4 pt-4 border-t border-[#E2DCC8]/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <div className="p-1.5 bg-amber-100/60 rounded-xl text-amber-700">
+                    <Award className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-[#3A3A3A]">
+                      {isEn ? "AI Gratitude History & Answers Log" : "سجل نتائج ومقترحات الذكاء الاصطناعي"}
+                    </h4>
+                    <p className="text-[10px] text-gray-400">
+                      {isEn ? "Saved reflections, answered questions, and generated cards" : "حفظ تلقائي لكافة التحليلات، الأسئلة والأجوبة، والبطاقات المولدة"}
+                    </p>
+                  </div>
+                </div>
+                
+                <span className="text-[10px] font-extrabold bg-[#8B9D83]/15 text-[#5A5A40] px-2.5 py-0.5 rounded-full">
+                  {aiHistory.length} {isEn ? "saved" : "عنصر محفوظ"}
+                </span>
+              </div>
+
+              {/* History Filter Tabs */}
+              <div className="flex flex-wrap gap-1 bg-[#F9F7F2] p-1 rounded-xl border border-[#E2DCC8]/50 text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab('all')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${historyTab === 'all' ? 'bg-[#8B9D83] text-white shadow-2xs' : 'text-gray-500 hover:bg-white/60'}`}
+                >
+                  {isEn ? "All" : "الكل"} ({aiHistory.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab('reflect')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${historyTab === 'reflect' ? 'bg-[#8B9D83] text-white shadow-2xs' : 'text-gray-500 hover:bg-white/60'}`}
+                >
+                  ✨ {isEn ? "Patterns" : "أنماط امتناني"} ({aiHistory.filter(h => h.type === 'reflect').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab('suggest')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${historyTab === 'suggest' ? 'bg-[#8B9D83] text-white shadow-2xs' : 'text-gray-500 hover:bg-white/60'}`}
+                >
+                  💡 {isEn ? "Prompts & Answers" : "الأسئلة وإجاباتك"} ({aiHistory.filter(h => h.type === 'suggest').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab('ai_generator')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${historyTab === 'ai_generator' ? 'bg-[#8B9D83] text-white shadow-2xs' : 'text-gray-500 hover:bg-white/60'}`}
+                >
+                  🪄 {isEn ? "Cards" : "البطاقات المولدة"} ({aiHistory.filter(h => h.type === 'ai_generator').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab('qa')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${historyTab === 'qa' ? 'bg-[#8B9D83] text-white shadow-2xs' : 'text-gray-500 hover:bg-white/60'}`}
+                >
+                  🤖 {isEn ? "Consultations" : "استشارات خاصة"} ({aiHistory.filter(h => h.type === 'qa').length})
+                </button>
+              </div>
+
+              {/* History items list */}
+              {aiHistory.filter(item => historyTab === 'all' || item.type === historyTab).length === 0 ? (
+                <div className="bg-white/60 border border-dashed border-[#E2DCC8] rounded-2xl p-5 text-center text-gray-400 text-xs space-y-1">
+                  <Sparkles className="w-6 h-6 mx-auto opacity-30 text-amber-500" />
+                  <p className="font-bold text-[#3A3A3A]">{isEn ? "No items saved in this category yet" : "لا توجد عناصر محفوظة في هذا التصنيف حتى الآن"}</p>
+                  <p className="text-[10px] text-gray-400">
+                    {isEn ? "Click any AI button above to generate and automatically save insights & questions." : "اضغط على أزرار الذكاء الاصطناعي أعلاه للحصول على تحليلات وأسئلة وحفظها تلقائياً هنا."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
+                  {aiHistory
+                    .filter(item => historyTab === 'all' || item.type === historyTab)
+                    .map((item) => (
+                      <div key={item.id} className="bg-white border border-[#E2DCC8] rounded-2xl p-3.5 shadow-2xs space-y-2.5">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                          <div className="flex items-center space-x-1.5 space-x-reverse">
+                            <span className="text-xs">
+                              {item.type === 'reflect' ? '✨' : item.type === 'suggest' ? '💡' : item.type === 'ai_generator' ? '🪄' : '🤖'}
+                            </span>
+                            <span className="text-xs font-bold text-[#3A3A3A]">{item.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] text-gray-400">
+                              {new Date(item.createdAt).toLocaleDateString(isEn ? 'en-US' : 'ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHistoryItem(item.id)}
+                              className="text-gray-300 hover:text-red-500 p-1 rounded-lg transition-colors cursor-pointer"
+                              title={isEn ? "Delete from history" : "حذف من السجل"}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Prompt or Question Context if available */}
+                        {item.promptOrContext && (
+                          <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-2 text-[11px] text-amber-900 font-semibold">
+                            <span className="font-extrabold">{isEn ? "Query / Context: " : "السؤال / السياق: "}</span>
+                            {item.promptOrContext}
+                          </div>
+                        )}
+
+                        {/* Main AI Generated Content */}
+                        <div className="text-xs text-[#3A3A3A] leading-relaxed font-normal whitespace-pre-wrap bg-[#F9F7F2]/70 p-2.5 rounded-xl border border-[#E2DCC8]/40">
+                          {item.content}
+                        </div>
+
+                        {/* User Answer Area for Prompts/Questions */}
+                        {item.type === 'suggest' && (
+                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-2.5 space-y-2">
+                            <div className="flex items-center justify-between text-[10px] font-bold text-emerald-800">
+                              <span className="flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3 text-emerald-600" />
+                                <span>{isEn ? "Your Answer / Reflection:" : "إجابتك وتأملك الشخصي على هذا السؤال:"}</span>
+                              </span>
+                              {item.userAnswer && (
+                                <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                                  {isEn ? "Answered ✓" : "تمت الإجابة ✓"}
+                                </span>
+                              )}
+                            </div>
+
+                            {editingAnswerId === item.id ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  rows={2}
+                                  value={tempAnswerText}
+                                  onChange={(e) => setTempAnswerText(e.target.value)}
+                                  placeholder={isEn ? "Write your thoughts and answer here..." : "اكتب إجابتك وتأملك هنا مستلهمة من هذا السؤال..."}
+                                  className="w-full bg-white border border-emerald-200 focus:border-emerald-500 rounded-xl p-2 text-xs text-[#3A3A3A] focus:outline-none resize-none"
+                                />
+                                <div className="flex gap-1.5 justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingAnswerId(null)}
+                                    className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold rounded-lg cursor-pointer"
+                                  >
+                                    {isEn ? "Cancel" : "إلغاء"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveQuestionAnswer(item.id, tempAnswerText)}
+                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold rounded-lg cursor-pointer shadow-2xs"
+                                  >
+                                    {isEn ? "Save Answer ✓" : "حفظ الإجابة وتأكيد الرضا ✓"}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : item.userAnswer ? (
+                              <div className="space-y-1.5">
+                                <p className="text-xs font-semibold text-emerald-950 italic bg-white p-2 rounded-lg border border-emerald-100">
+                                  "{item.userAnswer}"
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingAnswerId(item.id);
+                                    setTempAnswerText(item.userAnswer || '');
+                                  }}
+                                  className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer flex items-center gap-1"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>{isEn ? "Edit Answer" : "تعديل الإجابة"}</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingAnswerId(item.id);
+                                  setTempAnswerText('');
+                                }}
+                                className="w-full py-1.5 bg-white border border-emerald-200 hover:bg-emerald-100/50 text-emerald-700 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>{isEn ? "Answer this question now" : "أجب على هذا السؤال وسجل تأملك الآن"}</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Export Toolbar */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-gray-100">
+                          <span className="text-[10px] text-gray-400 font-bold ml-1">{isEn ? "Export to:" : "إضافة السجل إلى:"}</span>
+
+                          {/* Save to Gratitude Card */}
+                          <button
+                            type="button"
+                            onClick={() => handleExportToGratitudeCard(item.userAnswer ? `${item.content}\n\nإجابتي: ${item.userAnswer}` : item.content)}
+                            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 text-amber-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
+                            title={isEn ? "Save as Gratitude Card on Wall" : "تعليق كبطاقة ملونة في جدار الامتنان"}
+                          >
+                            <span>🌸</span>
+                            <span>{isEn ? "Gratitude Card" : "بطاقة امتنان"}</span>
+                          </button>
+
+                          {/* Export to Daily Venting */}
+                          <button
+                            type="button"
+                            onClick={() => handleExportToDailyVenting(item.title, item.userAnswer ? `سؤال الامتنان: ${item.content}\n\nتأملي وإجابتي اليومية:\n${item.userAnswer}` : item.content)}
+                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 text-emerald-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
+                            title={isEn ? "Append to Daily Venting Entries" : "إضافة إلى الفضفضة اليومية"}
+                          >
+                            <span>📖</span>
+                            <span>{isEn ? "Daily Venting" : "الفضفضة اليومية"}</span>
+                          </button>
+
+                          {/* Export to Thoughts */}
+                          <button
+                            type="button"
+                            onClick={() => handleExportToThoughts(item.title, item.userAnswer ? `فكرة تفكرية: ${item.content}\n\nالخاطرة الإيجابية:\n${item.userAnswer}` : item.content)}
+                            className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 border border-purple-200/60 text-purple-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
+                            title={isEn ? "Save to Thoughts & Reflections" : "إضافة إلى الخواطر واليوميات"}
+                          >
+                            <span>✍️</span>
+                            <span>{isEn ? "Thoughts & Diary" : "الخواطر واليوميات"}</span>
+                          </button>
+
+                          {/* Copy Text */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fullText = item.userAnswer ? `${item.content}\n\nإجابتي: ${item.userAnswer}` : item.content;
+                              navigator.clipboard.writeText(fullText);
+                              showToast(isEn ? "Copied to clipboard!" : "تم نسخ النص إلى الحافظة! 📋");
+                            }}
+                            className="px-2 py-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                            title={isEn ? "Copy text" : "نسخ النص"}
+                          >
+                            <Copy className="w-3 h-3" />
+                            <span>{isEn ? "Copy" : "نسخ"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
 
         </div>
@@ -884,6 +1339,21 @@ export default function GratitudeJournal({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification Banner */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-6 right-6 z-50 bg-[#3A3A3A] text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-extrabold flex items-center space-x-2 space-x-reverse border border-amber-400/30 backdrop-blur-md"
+          >
+            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+            <span>{toastMessage}</span>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
