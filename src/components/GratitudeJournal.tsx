@@ -26,6 +26,7 @@ interface GratitudeJournalProps {
   setDiaries?: React.Dispatch<React.SetStateAction<DiaryEntry[]>>;
   setActiveTab?: (tab: 'dashboard' | 'diaries' | 'advisor' | 'analytics' | 'settings') => void;
   setActiveDiariesSubTab?: (subTab: 'journal' | 'gratitude') => void;
+  setDiaryTypeFilter?: (filter: 'all' | 'diary' | 'thought') => void;
   triggerGratitudeNotificationNow?: () => void;
 }
 
@@ -62,6 +63,7 @@ export default function GratitudeJournal({
   setDiaries,
   setActiveTab,
   setActiveDiariesSubTab,
+  setDiaryTypeFilter,
   triggerGratitudeNotificationNow,
 }: GratitudeJournalProps) {
   const isEn = settings.appLanguage === 'en';
@@ -335,7 +337,12 @@ export default function GratitudeJournal({
         localStorage.setItem('yawmiyati_diaries', JSON.stringify([newEntry, ...list]));
       } catch (e) { console.error(e); }
     }
-    showToast(isEn ? 'Exported to Daily Venting! 📖' : 'تمت إضافة النص بنجاح إلى الفضفضة اليومية! 📖');
+    showToast(isEn ? 'Exported to Daily Venting! 📖' : 'تمت إضافة النص بنجاح إلى قسم اليوميات! 📖');
+    if (setActiveTab && setActiveDiariesSubTab) {
+      setActiveTab('diaries');
+      setActiveDiariesSubTab('journal');
+      if (setDiaryTypeFilter) setDiaryTypeFilter('diary');
+    }
   };
 
   const handleExportToThoughts = (title: string, bodyText: string) => {
@@ -370,6 +377,11 @@ export default function GratitudeJournal({
       } catch (e) { console.error(e); }
     }
     showToast(isEn ? 'Exported to Thoughts & Reflections! ✍️' : 'تمت إضافة الخاطرة بنجاح إلى قسم الخواطر! ✍️');
+    if (setActiveTab && setActiveDiariesSubTab) {
+      setActiveTab('diaries');
+      setActiveDiariesSubTab('journal');
+      if (setDiaryTypeFilter) setDiaryTypeFilter('thought');
+    }
   };
 
   const handleSendDirectQuestion = async (e?: React.FormEvent) => {

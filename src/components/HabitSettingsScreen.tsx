@@ -50,11 +50,19 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
   isDarkMode = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [toastMessage, setToastMessage] = React.useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const mergedSettings = { ...DEFAULT_HABIT_SETTINGS, ...habitSettings };
 
-  const handleToggle = (key: keyof HabitSettings) => {
-    onUpdateSettings({ [key]: !mergedSettings[key] });
+  const handleToggle = (key: keyof HabitSettings, label: string) => {
+    const newValue = !mergedSettings[key];
+    onUpdateSettings({ [key]: newValue });
+    showToast(newValue ? `تم تفعيل: ${label}` : `تم تعطيل: ${label}`);
   };
 
   // 1. Export Full JSON Backup
@@ -74,6 +82,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+    showToast('تم تصدير النسخة الاحتياطية JSON بنجاح! 📥');
   };
 
   // 2. Export CSV Data
@@ -111,6 +120,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+    showToast('تم تصدير بيانات CSV بنجاح! 📊');
   };
 
   // 3. Import Data
@@ -127,12 +137,12 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
           const importedHabits = parsed.habits || (Array.isArray(parsed) ? parsed : []);
           const importedDiaries = parsed.diaries || [];
           onImportData(importedHabits, importedDiaries);
-          alert('تم استيراد النسخة الاحتياطية بنجاح!');
+          showToast('تم استيراد النسخة الاحتياطية بنجاح! 🎉');
         } else if (file.name.endsWith('.csv')) {
-          alert('تم قراءة ملف CSV بنجاح!');
+          showToast('تم قراءة ملف CSV بنجاح! 📄');
         }
       } catch (err) {
-        alert('حدث خطأ أثناء قراءة الملف. يرجى التأكد من أن الملف بصيغة JSON صحيحة.');
+        showToast('حدث خطأ أثناء قراءة الملف. يرجى التأكد من أن الملف بصيغة JSON صحيحة.');
       }
     };
     reader.readAsText(file);
@@ -188,7 +198,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
               <p className="text-[10px] text-gray-400 font-medium">ضع علامات اختيار بنقرة واحدة بدلاً من الضغط مع الاستمرار.</p>
             </div>
             <button
-              onClick={() => handleToggle('singleTapToggle')}
+              onClick={() => handleToggle('singleTapToggle', 'تبديل العادة بضغطة قصيرة')}
               className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
                 mergedSettings.singleTapToggle ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
               }`}
@@ -204,7 +214,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
               <p className="text-[10px] text-gray-400 font-medium">انتظر حتى 3:00 صباحاً لعرض يوم جديد. مفيد إذا كنت تذهب إلى السكون بعد منتصف الليل.</p>
             </div>
             <button
-              onClick={() => handleToggle('extendDayPastMidnight')}
+              onClick={() => handleToggle('extendDayPastMidnight', 'تمديد اليوم بعد منتصف الليل')}
               className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
                 mergedSettings.extendDayPastMidnight ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
               }`}
@@ -220,7 +230,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
               <p className="text-[10px] text-gray-400 font-medium">بدل مرتين لإضافة علامة تخطي بدلاً من اختيار. التخطي يحافظ على درجاتك دون تغيير سلسلة الانتصارات.</p>
             </div>
             <button
-              onClick={() => handleToggle('enableSkipDays')}
+              onClick={() => handleToggle('enableSkipDays', 'تمكين أيام التخطي')}
               className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
                 mergedSettings.enableSkipDays ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
               }`}
@@ -236,7 +246,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
               <p className="text-[10px] text-gray-400 font-medium">التفريغ بين الأيام التي لا تحتوي على بيانات من الهفوات الفعلية.</p>
             </div>
             <button
-              onClick={() => handleToggle('showMissingDataMark')}
+              onClick={() => handleToggle('showMissingDataMark', 'علامات الاستفهام للبيانات المفقودة')}
               className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
                 mergedSettings.showMissingDataMark ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
               }`}
@@ -252,7 +262,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
               <p className="text-[10px] text-gray-400 font-medium">عرض الأيام في ترتيب عكسي على الشاشة الرئيسية.</p>
             </div>
             <button
-              onClick={() => handleToggle('reverseDayOrder')}
+              onClick={() => handleToggle('reverseDayOrder', 'ترتيب عكسي للأيام')}
               className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
                 mergedSettings.reverseDayOrder ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
               }`}
@@ -268,7 +278,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
               <p className="text-[10px] text-gray-400 font-medium">يستبدل خلفيات رمادية مع أسود نقي في الوضع الليلى.</p>
             </div>
             <button
-              onClick={() => handleToggle('pureBlackDarkMode')}
+              onClick={() => handleToggle('pureBlackDarkMode', 'الوضع الليلي الأسود النقي')}
               className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
                 mergedSettings.pureBlackDarkMode ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
               }`}
@@ -284,7 +294,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
               <p className="text-[10px] text-gray-400 font-medium">Disable confetti animation after adding a checkmark.</p>
             </div>
             <button
-              onClick={() => handleToggle('disableAnimations')}
+              onClick={() => handleToggle('disableAnimations', 'تعطيل المؤثرات المتحركة')}
               className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
                 mergedSettings.disableAnimations ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
               }`}
@@ -300,7 +310,10 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
             </div>
             <select
               value={mergedSettings.firstDayOfWeek}
-              onChange={(e) => onUpdateSettings({ firstDayOfWeek: e.target.value as any })}
+              onChange={(e) => {
+                onUpdateSettings({ firstDayOfWeek: e.target.value as any });
+                showToast(`تم تغيير بداية الأسبوع إلى: ${e.target.options[e.target.selectedIndex].text}`);
+              }}
               className="py-1.5 px-3 bg-[#F9F7F2] border border-[#E2DCC8] rounded-xl text-xs font-bold text-gray-800 cursor-pointer"
             >
               <option value="saturday">السبت (Saturday)</option>
@@ -327,7 +340,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
             <p className="text-[10px] text-gray-400 font-medium">منع الإشعارات من تمريرها بعيداً.</p>
           </div>
           <button
-            onClick={() => handleToggle('persistentNotifications')}
+            onClick={() => handleToggle('persistentNotifications', 'الإشعارات الثابتة')}
             className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
               mergedSettings.persistentNotifications ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
             }`}
@@ -410,6 +423,14 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
 
         </div>
       </div>
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#3A3A3A] text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-extrabold flex items-center space-x-2 space-x-reverse border border-amber-400/30 backdrop-blur-md animate-fade-in">
+          <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
     </div>
   );

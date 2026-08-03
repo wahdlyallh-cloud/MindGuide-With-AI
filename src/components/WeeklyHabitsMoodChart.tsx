@@ -12,7 +12,10 @@ interface WeeklyHabitsMoodChartProps {
 }
 
 export const WeeklyHabitsMoodChart: React.FC<WeeklyHabitsMoodChartProps> = ({ habits, diaries }) => {
-  // Generate past 7 days data
+  const [daysCount, setDaysCount] = React.useState<7 | 14 | 30>(7);
+  const [showRangeMenu, setShowRangeMenu] = React.useState(false);
+
+  // Generate past N days data
   const weeklyData = React.useMemo(() => {
     const days: { 
       day: string; 
@@ -25,7 +28,7 @@ export const WeeklyHabitsMoodChart: React.FC<WeeklyHabitsMoodChartProps> = ({ ha
 
     const arabicDayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-    for (let i = 6; i >= 0; i--) {
+    for (let i = daysCount - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
@@ -62,13 +65,13 @@ export const WeeklyHabitsMoodChart: React.FC<WeeklyHabitsMoodChartProps> = ({ ha
       if (totalHabits === 0 && !dayDiary) {
         const mockHabitsRates = [65, 80, 55, 90, 85, 70, 95];
         const mockMoodScores = [6, 8, 5, 9, 8, 7, 9];
-        const mockIdx = 6 - i;
+        const mockIdx = (daysCount - 1 - i) % 7;
         habitRate = mockHabitsRates[mockIdx];
         moodScore = mockMoodScores[mockIdx];
       }
 
       days.push({
-        day: `${dayName} ${dateStr.slice(5)}`,
+        day: daysCount > 7 ? `${d.getDate()}/${d.getMonth()+1}` : `${dayName} ${dateStr.slice(5)}`,
         date: dateStr,
         'نسبة إنجاز العادات (%)': habitRate,
         'استقرار المزاج (من 10)': moodScore,
@@ -78,7 +81,7 @@ export const WeeklyHabitsMoodChart: React.FC<WeeklyHabitsMoodChartProps> = ({ ha
     }
 
     return days;
-  }, [habits, diaries]);
+  }, [habits, diaries, daysCount]);
 
   // Calculate summary metrics
   const avgHabitRate = Math.round(
@@ -104,10 +107,49 @@ export const WeeklyHabitsMoodChart: React.FC<WeeklyHabitsMoodChartProps> = ({ ha
           </p>
         </div>
 
-        <span className="text-[10px] font-black text-[#556E4F] bg-[#EEF1EB] border border-[#DCE4D8] px-3 py-1 rounded-xl self-start sm:self-auto shrink-0 flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-[#D4A373]" />
-          <span>مقارنة 7 أيام</span>
-        </span>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowRangeMenu(!showRangeMenu)}
+            className="text-[10px] font-black text-[#556E4F] bg-[#EEF1EB] hover:bg-[#E2E8DC] border border-[#DCE4D8] px-3 py-1.5 rounded-xl self-start sm:self-auto shrink-0 flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs active:scale-95"
+            title="تغيير النطاق الزمني للمقارنة"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#D4A373]" />
+            <span>مقارنة {daysCount} أيام</span>
+          </button>
+
+          {showRangeMenu && (
+            <>
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setShowRangeMenu(false)} 
+              />
+              <div className="absolute left-0 mt-1.5 w-36 bg-white border border-[#E2DCC8] rounded-2xl shadow-xl p-2 z-50 text-xs font-bold space-y-1 dir-rtl animate-fade-in">
+                {[
+                  { value: 7, label: 'آخر 7 أيام' },
+                  { value: 14, label: 'آخر 14 يوم' },
+                  { value: 30, label: 'آخر 30 يوم' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      setDaysCount(opt.value as any);
+                      setShowRangeMenu(false);
+                    }}
+                    className={`w-full text-right py-1.5 px-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-between ${
+                      daysCount === opt.value
+                        ? 'bg-[#8B9D83] text-white font-extrabold'
+                        : 'text-gray-700 hover:bg-[#F9F7F2]'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {daysCount === opt.value && <span>✓</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Summary Stat Badges */}

@@ -7,7 +7,6 @@ import {
   ChevronDown, 
   Check, 
   X, 
-  Info, 
   Calendar, 
   ArrowUpDown, 
   Edit3, 
@@ -216,70 +215,86 @@ export const HabitsMatrixGrid: React.FC<HabitsMatrixGridProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowFilterMenu(!showFilterMenu)}
-              className="p-2.5 rounded-2xl bg-[#F0EDE4] hover:bg-[#E2DCC8] text-gray-700 flex items-center gap-1 text-xs font-bold cursor-pointer transition-all"
+              className="p-2.5 rounded-2xl bg-[#F0EDE4] hover:bg-[#E2DCC8] text-gray-700 flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all shadow-2xs active:scale-95"
+              title="فلاتر وفرز العادات"
             >
               <Sliders className="w-4 h-4 text-[#5A5A40]" />
-              <span className="hidden sm:inline">فلاتر وفرز</span>
+              <span className="inline text-xs font-bold">فلاتر وفرز</span>
             </button>
 
-            {/* Filter & Sort Dropdown Popup (Images 6 & 7) */}
+            {/* Filter & Sort Dropdown Popup */}
             {showFilterMenu && (
-              <div className="absolute left-0 mt-2 w-56 bg-white border border-[#E2DCC8] rounded-2xl shadow-xl p-3 z-50 text-xs space-y-3 font-sans">
-                <div className="font-bold text-[#5A5A40] border-b border-gray-100 pb-2 flex items-center justify-between">
-                  <span>تصفية العادات</span>
-                  <button onClick={() => setShowFilterMenu(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-                </div>
-
-                {/* Filter Checkboxes (Image 6) */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-semibold">
-                    <input
-                      type="checkbox"
-                      checked={hideArchived}
-                      onChange={(e) => setHideArchived(e.target.checked)}
-                      className="rounded text-blue-600 cursor-pointer"
-                    />
-                    <span>إخفاء المؤرشفة</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-semibold">
-                    <input
-                      type="checkbox"
-                      checked={hideCompleted}
-                      onChange={(e) => setHideCompleted(e.target.checked)}
-                      className="rounded text-blue-600 cursor-pointer"
-                    />
-                    <span>إخفاء المكتملة</span>
-                  </label>
-                </div>
-
-                {/* Sort Options Submenu (Image 7) */}
-                <div className="border-t border-gray-100 pt-2 space-y-1">
-                  <span className="font-bold text-gray-500 block mb-1">فرز (Sort):</span>
-                  {[
-                    { id: 'manual', label: 'يدوياً ⬆' },
-                    { id: 'name', label: 'حسب الاسم' },
-                    { id: 'color', label: 'حسب اللون' },
-                    { id: 'score', label: 'حسب النقاط' },
-                    { id: 'status', label: 'حسب الحالة' }
-                  ].map(s => (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px]"
+                  onClick={() => setShowFilterMenu(false)}
+                />
+                <div className="absolute right-0 sm:left-0 sm:right-auto mt-2 w-60 bg-white border border-[#E2DCC8] rounded-2xl shadow-xl p-3.5 z-50 text-xs space-y-3 font-sans dir-rtl animate-fade-in">
+                  <div className="font-bold text-[#5A5A40] border-b border-gray-100 pb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs">
+                      <Sliders className="w-3.5 h-3.5 text-[#8B9D83]" />
+                      <span>تصفية وفرز العادات</span>
+                    </span>
                     <button
-                      key={s.id}
-                      onClick={() => {
-                        setSortMethod(s.id as any);
-                        setShowFilterMenu(false);
-                      }}
-                      className={`w-full text-right py-1.5 px-2 rounded-xl transition-all font-bold ${
-                        sortMethod === s.id
-                          ? 'bg-[#8B9D83] text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      onClick={() => setShowFilterMenu(false)}
+                      className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 cursor-pointer"
                     >
-                      {s.label}
+                      ✕
                     </button>
-                  ))}
+                  </div>
+
+                  {/* Filter Checkboxes */}
+                  <div className="space-y-2 bg-[#F9F7F2]/60 p-2.5 rounded-xl border border-[#E2DCC8]/40">
+                    <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-bold select-none">
+                      <input
+                        type="checkbox"
+                        checked={hideArchived}
+                        onChange={(e) => setHideArchived(e.target.checked)}
+                        className="w-4 h-4 rounded text-[#8B9D83] focus:ring-[#8B9D83] cursor-pointer"
+                      />
+                      <span>إخفاء المؤرشفة</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-bold select-none">
+                      <input
+                        type="checkbox"
+                        checked={hideCompleted}
+                        onChange={(e) => setHideCompleted(e.target.checked)}
+                        className="w-4 h-4 rounded text-[#8B9D83] focus:ring-[#8B9D83] cursor-pointer"
+                      />
+                      <span>إخفاء المكتملة</span>
+                    </label>
+                  </div>
+
+                  {/* Sort Options Submenu */}
+                  <div className="border-t border-gray-100 pt-2 space-y-1">
+                    <span className="font-bold text-gray-500 block mb-1.5 text-[11px]">طريقة الفرز (Sort):</span>
+                    {[
+                      { id: 'manual', label: 'يدوياً ⬆' },
+                      { id: 'name', label: 'حسب الاسم' },
+                      { id: 'color', label: 'حسب اللون' },
+                      { id: 'score', label: 'حسب النقاط' },
+                      { id: 'status', label: 'حسب الحالة' }
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          setSortMethod(s.id as any);
+                          setShowFilterMenu(false);
+                        }}
+                        className={`w-full text-right py-2 px-3 rounded-xl transition-all font-bold flex items-center justify-between cursor-pointer ${
+                          sortMethod === s.id
+                            ? 'bg-[#8B9D83] text-white shadow-2xs'
+                            : 'text-gray-700 hover:bg-[#F9F7F2]'
+                        }`}
+                      >
+                        <span>{s.label}</span>
+                        {sortMethod === s.id && <span className="text-xs">✓</span>}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
@@ -514,14 +529,6 @@ export const HabitsMatrixGrid: React.FC<HabitsMatrixGridProps> = ({
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* 4. Bottom Info Banner (Image 2) */}
-      <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-2xl flex items-center gap-3 text-amber-900 text-xs font-medium">
-        <Info className="w-5 h-5 text-amber-600 shrink-0" />
-        <p className="leading-relaxed">
-          هل كنت تعلم؟ لإعادة ترتيب القوائم، أضغط اسم من هذه العادة، أو استخدم أسهم الترتيب السريع لتحريك العادة للمكان الصحيح.
-        </p>
       </div>
 
       {/* Modal for editing measurable numeric value */}

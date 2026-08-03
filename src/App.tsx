@@ -3155,8 +3155,12 @@ export default function App() {
     } else if (type === 'sports') {
       targetDiary.sportsDuration = Number(value);
     } else if (type === 'medication') {
-      if (targetDiary.medications && targetDiary.medications.length > 0) {
+      if (Array.isArray(value)) {
+        targetDiary.medications = value;
+      } else if (targetDiary.medications && targetDiary.medications.length > 0) {
         targetDiary.medications[0].taken = Boolean(value);
+      } else {
+        targetDiary.medications = [{ id: 'm1', name: 'مكمل فيتامين D اليومي', time: '10:00 ص', taken: Boolean(value) }];
       }
     } else if (type === 'water') {
       targetDiary.waterCups = Number(value);
@@ -6675,6 +6679,7 @@ export default function App() {
                     setDiaries={setDiaries}
                     setActiveTab={setActiveTab}
                     setActiveDiariesSubTab={setActiveDiariesSubTab}
+                    setDiaryTypeFilter={setDiaryTypeFilter}
                     triggerGratitudeNotificationNow={() => setActiveGratitudeReminderNotification(true)}
                   />
                 ) : activeDiariesSubTab === 'cbt' ? (

@@ -90,12 +90,70 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
+  // Medication Modal & Toast State
+  const [showMedicationModal, setShowMedicationModal] = useState(false);
+  const [newMedName, setNewMedName] = useState('');
+  const [newMedTime, setNewMedTime] = useState('10:00 ص');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   // Extract daily variables
   const tasks = activeDiaryForSelectedDate?.tasks || [];
   const sleepHours = activeDiaryForSelectedDate?.sleepHours ?? 8;
   const sportsDuration = activeDiaryForSelectedDate?.sportsDuration ?? 0;
   const waterCups = activeDiaryForSelectedDate?.waterCups ?? 0;
-  const isMedicationTaken = activeDiaryForSelectedDate?.medications?.[0]?.taken ?? false;
+  
+  // Extract medications list
+  const rawMeds = activeDiaryForSelectedDate?.medications;
+  const medicationsList = Array.isArray(rawMeds) && rawMeds.length > 0
+    ? rawMeds
+    : [{ id: 'm1', name: 'مكمل فيتامين D اليومي', time: '10:00 ص', taken: false }];
+
+  const isMedicationTaken = medicationsList.every(m => m.taken);
+
+  // Toggle single medication
+  const toggleMedication = (medId: string) => {
+    const updated = medicationsList.map(m => {
+      if (m.id === medId) {
+        const nextTaken = !m.taken;
+        showToast(nextTaken ? `تم تسجيل أخذ "${m.name}" بنجاح! 💊` : `تم إلغاء تحديد "${m.name}"`);
+        return { ...m, taken: nextTaken };
+      }
+      return m;
+    });
+    handleUpdateHabit('medication', updated);
+  };
+
+  // Add new medication
+  const handleAddMedicationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMedName.trim()) return;
+
+    const newMed = {
+      id: `med-${Date.now()}`,
+      name: newMedName.trim(),
+      time: newMedTime.trim() || '10:00 ص',
+      taken: false
+    };
+
+    const updated = [...medicationsList, newMed];
+    handleUpdateHabit('medication', updated);
+    setNewMedName('');
+    setNewMedTime('10:00 ص');
+    setShowMedicationModal(false);
+    showToast(`تمت إضافة "${newMed.name}" لقائمة أدوية ومكملات اليوم! 💊`);
+  };
+
+  // Delete medication
+  const handleDeleteMedication = (medId: string) => {
+    const updated = medicationsList.filter(m => m.id !== medId);
+    handleUpdateHabit('medication', updated);
+    showToast('تم حذف المكمل/الدواء من القائمة.');
+  };
 
   // Calculate metrics for selected date / period
   const totalCustomTasks = tasks.length;
@@ -110,8 +168,8 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
     return false;
   }).length;
 
-  const totalMedsCount = 1;
-  const completedMedsCount = isMedicationTaken ? 1 : 0;
+  const totalMedsCount = medicationsList.length;
+  const completedMedsCount = medicationsList.filter(m => m.taken).length;
 
   const totalItems = totalCustomTasks + totalHabits + totalMedsCount;
   const completedItems = completedCustomTasks + completedHabits + completedMedsCount;
@@ -475,43 +533,92 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
               <div className={`p-5 rounded-3xl border space-y-4 ${
                 isDarkMode ? 'bg-[#1A1917] border-gray-800' : 'bg-white border-[#E2DCC8]'
               }`}>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
-                    <span>💊</span>
-                    <span>تتبع الأدوية والفيتامينات اليومية</span>
-                  </h4>
-                  <p className="text-[10px] text-gray-500 font-medium">
-                    سجل جرعات دوائك ومكملاتك العلاجية للحفاظ على مستوياتك الحيوية مستقرة.
-                  </p>
-                </div>
-
-                <div className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
-                  isMedicationTaken 
-                    ? 'bg-emerald-50/20 border-emerald-200' 
-                    : 'bg-[#F9F7F2]/30 border-[#E2DCC8]/60'
-                }`}>
-                  <div className="flex items-center space-x-3 space-x-reverse">
-                    <div className={`p-2.5 rounded-xl ${isMedicationTaken ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                      <Pill className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold block text-gray-700">مكمل فيتامين D اليومي</span>
-                      <span className="text-[9px] text-gray-400 block font-bold">الموعد المحدد: 10:00 ص</span>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
+                      <span>💊</span>
+                      <span>تتبع الأدوية والفيتامينات اليومية</span>
+                    </h4>
+                    <p className="text-[10px] text-gray-500 font-medium">
+                      سجل جرعات دوائك ومكملاتك العلاجية للحفاظ على مستوياتك الحيوية مستقرة.
+                    </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => handleUpdateHabit('medication', !isMedicationTaken)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      isMedicationTaken 
-                        ? 'bg-[#8B9D83] text-white shadow-xs' 
-                        : 'bg-[#F0EDE4] text-[#5A5A40] hover:bg-[#E2DCC8]/60'
-                    }`}
+                    onClick={() => setShowMedicationModal(true)}
+                    className="p-2 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                    title="إضافة دواء أو مكمل جديد"
                   >
-                    {isMedicationTaken ? '✓ تم التناول' : 'تحديد كمنجز'}
+                    <Plus className="w-4 h-4" />
+                    <span>إضافة دواء</span>
                   </button>
                 </div>
+
+                {medicationsList.length === 0 ? (
+                  <div className="bg-[#F9F7F2]/40 border border-dashed border-[#E2DCC8]/60 rounded-2xl p-4 text-center text-xs text-gray-400 space-y-1">
+                    <p className="font-bold text-gray-600">لا توجد أدوية أو مكملات مضافة لليوم</p>
+                    <p className="text-[10px]">اضغط على "إضافة دواء" لإضافة جرعتك اليومية ومتابعة التزامك.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {medicationsList.map((med) => (
+                      <div
+                        key={med.id}
+                        className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
+                          med.taken 
+                            ? 'bg-emerald-50/30 border-emerald-200' 
+                            : 'bg-[#F9F7F2]/40 border-[#E2DCC8]/70 hover:border-[#8B9D83]/50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 space-x-reverse">
+                          <button
+                            type="button"
+                            onClick={() => toggleMedication(med.id)}
+                            className={`p-2 rounded-xl transition-all cursor-pointer ${
+                              med.taken 
+                                ? 'bg-emerald-500 text-white shadow-2xs' 
+                                : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'
+                            }`}
+                          >
+                            <Pill className="w-4 h-4" />
+                          </button>
+                          <div>
+                            <span className={`text-xs font-bold block ${med.taken ? 'text-emerald-900 line-through' : 'text-gray-800'}`}>
+                              {med.name}
+                            </span>
+                            <span className="text-[9px] text-gray-400 block font-bold">
+                              الموعد المحدد: {med.time}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleMedication(med.id)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-2xs ${
+                              med.taken 
+                                ? 'bg-[#8B9D83] text-white' 
+                                : 'bg-[#F0EDE4] text-[#5A5A40] hover:bg-[#E2DCC8]'
+                            }`}
+                          >
+                            {med.taken ? '✓ تم التناول' : 'تحديد كمنجز'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMedication(med.id)}
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="حذف هذا الدواء"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -760,7 +867,7 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
         />
       )}
 
-      {/* Habit Create / Edit Modal (Images 3, 4, 5) */}
+      {/* Habit Create / Edit Modal */}
       <HabitFormModal
         isOpen={showHabitModal}
         onClose={() => {
@@ -770,6 +877,80 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
         onSaveHabit={handleSaveHabit}
         initialHabit={editingHabit}
       />
+
+      {/* Add Medication Modal */}
+      {showMedicationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-[#E2DCC8] space-y-5 dir-rtl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="font-bold text-base text-[#3A3A3A] flex items-center gap-2">
+                <Pill className="w-5 h-5 text-[#8B9D83]" />
+                <span>إضافة دواء أو مكمل جديد</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowMedicationModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddMedicationSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  اسم الدواء أو المكمل الغذائي *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="مثال: مكمل فيتامين D، أوميغا 3، مسكن..."
+                  value={newMedName}
+                  onChange={(e) => setNewMedName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#8B9D83]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  الموعد أو التوقيت المفضل
+                </label>
+                <input
+                  type="text"
+                  placeholder="مثال: 10:00 ص، بعد وجبة الإفطار، قبل النوم..."
+                  value={newMedTime}
+                  onChange={(e) => setNewMedTime(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#8B9D83]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 space-x-reverse pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMedicationModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 rounded-xl cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold text-white bg-[#8B9D83] hover:bg-[#72856A] rounded-xl shadow-xs cursor-pointer"
+                >
+                  حفظ الدواء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#3A3A3A] text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-extrabold flex items-center space-x-2 space-x-reverse border border-amber-400/30 backdrop-blur-md animate-fade-in">
+          <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
     </div>
   );
