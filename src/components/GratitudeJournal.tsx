@@ -1035,10 +1035,10 @@ export default function GratitudeJournal({
                             type="button"
                             onClick={() => handleExportToDailyVenting(item.title, item.userAnswer ? `سؤال الامتنان: ${item.content}\n\nتأملي وإجابتي اليومية:\n${item.userAnswer}` : item.content)}
                             className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 text-emerald-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
-                            title={isEn ? "Append to Daily Venting Entries" : "إضافة إلى الفضفضة اليومية"}
+                            title={isEn ? "Append to Daily Venting Entries" : "إضافة إلى اليوميات"}
                           >
                             <span>📖</span>
-                            <span>{isEn ? "Daily Venting" : "الفضفضة اليومية"}</span>
+                            <span>{isEn ? "Daily Venting" : "اليوميات"}</span>
                           </button>
 
                           {/* Export to Thoughts */}
@@ -1046,10 +1046,10 @@ export default function GratitudeJournal({
                             type="button"
                             onClick={() => handleExportToThoughts(item.title, item.userAnswer ? `فكرة تفكرية: ${item.content}\n\nالخاطرة الإيجابية:\n${item.userAnswer}` : item.content)}
                             className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 border border-purple-200/60 text-purple-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
-                            title={isEn ? "Save to Thoughts & Reflections" : "إضافة إلى الخواطر واليوميات"}
+                            title={isEn ? "Save to Thoughts & Reflections" : "إضافة إلى الخواطر"}
                           >
                             <span>✍️</span>
-                            <span>{isEn ? "Thoughts & Diary" : "الخواطر واليوميات"}</span>
+                            <span>{isEn ? "Thoughts & Diary" : "الخواطر"}</span>
                           </button>
 
                           {/* Copy Text */}
