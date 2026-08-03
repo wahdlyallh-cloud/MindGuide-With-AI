@@ -8,6 +8,7 @@ export interface AudioRecording {
   id: string;
   name: string;
   dataUrl: string;
+  blobUrl?: string;
   duration: number; // in seconds
   transcription?: string;
   speechEmotion?: {

@@ -410,11 +410,11 @@ function handleGeminiError(res: any, error: any, customKey?: string) {
 // Helper function to generate content with fallback models
 async function generateWithGenAI(aiInstance: GoogleGenAI, config: any) {
   const modelsToTry = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
     'gemini-1.5-flash',
     'gemini-2.5-flash-lite',
-    'gemini-2.0-flash-lite',
-    'gemini-2.0-flash',
-    'gemini-2.5-flash'
+    'gemini-2.0-flash-lite'
   ];
   let lastErr: any = null;
   for (const modelName of modelsToTry) {
@@ -525,10 +525,13 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
       normalizedMime = "audio/mp3";
     }
 
+    const cleanBase64 = base64Data ? base64Data.trim() : "";
+    const isValidBase64 = cleanBase64.length > 50 && cleanBase64 !== '#' && !cleanBase64.startsWith('http') && !cleanBase64.startsWith('blob:');
+
     const customKey = req.headers["x-gemini-key"] as string;
     const ai = getGenAI(customKey);
 
-    if (ai) {
+    if (ai && isValidBase64) {
       try {
         const prompt = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
 استمع إلى هذا التسجيل الصوتي المرفق: "${fileName || 'تسجيل صوتي'}" وقم بالأتي:

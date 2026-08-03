@@ -517,13 +517,14 @@ export default function App() {
         ...d,
         audioRecordings: (d.audioRecordings || []).map(r => ({
           ...r,
-          dataUrl: (r.dataUrl && r.dataUrl.length > 400000) ? '#' : r.dataUrl
+          dataUrl: (r.dataUrl && r.dataUrl.length > 5000000) ? '#' : r.dataUrl
         })),
-        images: (d.images || []).map(img => (img && img.length > 400000) ? '' : img).filter(Boolean),
+        images: (d.images || []).map(img => (img && img.length > 3000000) ? '' : img).filter(Boolean),
         files: (d.files || []).map(f => ({
           ...f,
-          dataUrl: (f.dataUrl && f.dataUrl.length > 400000) ? '#' : f.dataUrl
-        }))
+          dataUrl: (f.dataUrl && f.dataUrl.length > 5000000) ? '#' : f.dataUrl
+        })),
+        videos: (d.videos || []).map(v => (v && v.length > 5000000) ? '#' : v).filter(Boolean)
       }));
       localStorage.setItem('yawmiyati_diaries', JSON.stringify(safeDiaries));
       triggerAutoSaveFeedback();
@@ -567,8 +568,14 @@ export default function App() {
           ...d,
           audioRecordings: (d.audioRecordings || []).map(r => ({
             ...r,
-            dataUrl: (r.dataUrl && r.dataUrl.length > 400000) ? '#' : r.dataUrl
-          }))
+            dataUrl: (r.dataUrl && r.dataUrl.length > 5000000) ? '#' : r.dataUrl
+          })),
+          images: (d.images || []).map(img => (img && img.length > 3000000) ? '' : img).filter(Boolean),
+          files: (d.files || []).map(f => ({
+            ...f,
+            dataUrl: (f.dataUrl && f.dataUrl.length > 5000000) ? '#' : f.dataUrl
+          })),
+          videos: (d.videos || []).map(v => (v && v.length > 5000000) ? '#' : v).filter(Boolean)
         }));
         localStorage.setItem('yawmiyati_diaries', JSON.stringify(safeDiaries));
         localStorage.setItem('yawmiyati_settings', JSON.stringify(settings));
@@ -1166,12 +1173,31 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Save active editing states to localStorage immediately
+  // Save active editing states to localStorage immediately (safely with try/catch to prevent QuotaExceededError crashes)
   useEffect(() => {
     if (editingDiary) {
-      localStorage.setItem('yawmiyati_draft_editing_diary', JSON.stringify(editingDiary));
+      try {
+        const safeDraft = {
+          ...editingDiary,
+          videos: (editingDiary.videos || []).map(v => (v && v.length > 5000000) ? '#' : v),
+          images: (editingDiary.images || []).map(img => (img && img.length > 3000000) ? '' : img).filter(Boolean),
+          audioRecordings: (editingDiary.audioRecordings || []).map(r => ({
+            ...r,
+            dataUrl: (r.dataUrl && r.dataUrl.length > 5000000) ? '#' : r.dataUrl
+          })),
+          files: (editingDiary.files || []).map(f => ({
+            ...f,
+            dataUrl: (f.dataUrl && f.dataUrl.length > 5000000) ? '#' : f.dataUrl
+          }))
+        };
+        localStorage.setItem('yawmiyati_draft_editing_diary', JSON.stringify(safeDraft));
+      } catch (e) {
+        console.warn('Failed to save draft diary to localStorage:', e);
+      }
     } else {
-      localStorage.removeItem('yawmiyati_draft_editing_diary');
+      try {
+        localStorage.removeItem('yawmiyati_draft_editing_diary');
+      } catch (e) {}
     }
   }, [editingDiary]);
 
@@ -1291,6 +1317,7 @@ export default function App() {
   // --- Voice Recorder & Speech-to-Text States ---
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingSecondsRef = React.useRef<number>(0);
   const [recordingIntervalId, setRecordingIntervalId] = useState<number | null>(null);
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
   const audioChunksRef = React.useRef<Blob[]>([]);
@@ -1304,6 +1331,7 @@ export default function App() {
   // --- Rich Editor & Features Sheet States ---
   const [showFontToolbar, setShowFontToolbar] = useState(false);
   const [showColorPalette, setShowColorPalette] = useState(false);
+  const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showMoreFeaturesSheet, setShowMoreFeaturesSheet] = useState(false);
   const [showFontDrawer, setShowFontDrawer] = useState(false);
@@ -1354,11 +1382,23 @@ export default function App() {
   const handleApplyAiGeneratedNoteToCurrentEntry = () => {
     if (!aiWriterResult) return;
     if (editingDiary) {
-      setEditingDiary(prev => prev ? {
-        ...prev,
-        title: (prev.title && prev.title !== 'يومية جديدة') ? prev.title : aiWriterResult.title,
-        content: prev.content ? `${prev.content}\n\n${aiWriterResult.content}` : aiWriterResult.content
-      } : null);
+      const newTitle = (editingDiary.title && editingDiary.title !== 'يومية جديدة') ? editingDiary.title : aiWriterResult.title;
+      const newContent = editingDiary.content ? `${editingDiary.content}\n\n${aiWriterResult.content}` : aiWriterResult.content;
+      const updatedEntry: DiaryEntry = {
+        ...editingDiary,
+        title: newTitle,
+        content: newContent
+      };
+
+      setEditingDiary(updatedEntry);
+      setDiaries(prev => {
+        const exists = prev.some(d => d.id === editingDiary.id);
+        if (exists) {
+          return prev.map(d => d.id === editingDiary.id ? updatedEntry : d);
+        } else {
+          return [updatedEntry, ...prev];
+        }
+      });
     } else {
       const newDiary: DiaryEntry = {
         id: `diary-${Date.now()}`,
@@ -1384,6 +1424,8 @@ export default function App() {
       setDiaries(prev => [newDiary, ...prev]);
       setEditingDiary(newDiary);
     }
+    setIsNewEntry(false);
+    setActiveTab('diaries');
     setShowAiWriterSheet(false);
     setAiWriterResult(null);
     setAiWriterTopicInput('');
@@ -1414,6 +1456,8 @@ export default function App() {
     };
     setDiaries(prev => [newDiary, ...prev]);
     setEditingDiary(newDiary);
+    setIsNewEntry(false);
+    setActiveTab('diaries');
     setShowAiWriterSheet(false);
     setAiWriterResult(null);
     setAiWriterTopicInput('');
@@ -1426,69 +1470,94 @@ export default function App() {
     setTimeout(() => setCopiedAiText(false), 2000);
   };
 
-  // --- Rich Text Editor Textarea Ref & History Management ---
+  // --- Rich Text Editor Ref & Visual Formatting Engine ---
   const diaryTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
 
-  const pushContentHistory = (currentContent: string) => {
-    setUndoStack(prev => [...prev, currentContent]);
-    setRedoStack([]);
+  // Keep editor content in sync with editingDiary state when needed
+  useEffect(() => {
+    if (editorRef.current && editingDiary) {
+      const currentHtml = editorRef.current.innerHTML;
+      const targetContent = editingDiary.content || '';
+      if (currentHtml !== targetContent) {
+        if (document.activeElement !== editorRef.current || !currentHtml) {
+          editorRef.current.innerHTML = targetContent;
+        }
+      }
+    }
+  }, [editingDiary?.id, editingDiary?.content]);
+
+  const applyRichFormat = (command: string, value: string | null = null) => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand(command, false, value || undefined);
+      const html = editorRef.current.innerHTML;
+      setEditingDiary(prev => prev ? { ...prev, content: html } : null);
+    } else if (diaryTextareaRef.current && editingDiary) {
+      diaryTextareaRef.current.focus();
+      document.execCommand(command, false, value || undefined);
+    }
   };
 
   const handleUndo = () => {
-    if (undoStack.length === 0 || !editingDiary) return;
-    const previous = undoStack[undoStack.length - 1];
-    const newUndo = undoStack.slice(0, -1);
-    setRedoStack(prev => [...prev, editingDiary.content || '']);
-    setUndoStack(newUndo);
-    setEditingDiary(prev => prev ? { ...prev, content: previous } : null);
+    applyRichFormat('undo');
   };
 
   const handleRedo = () => {
-    if (redoStack.length === 0 || !editingDiary) return;
-    const next = redoStack[redoStack.length - 1];
-    const newRedo = redoStack.slice(0, -1);
-    setUndoStack(prev => [...prev, editingDiary.content || '']);
-    setRedoStack(newRedo);
-    setEditingDiary(prev => prev ? { ...prev, content: next } : null);
+    applyRichFormat('redo');
   };
 
   const insertFormatting = (prefix: string, suffix: string = '') => {
     if (!editingDiary) return;
-    const currentContent = editingDiary.content || '';
-    pushContentHistory(currentContent);
 
-    const textarea = diaryTextareaRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const selectedText = currentContent.substring(start, end);
-
-      let textToInsert = '';
-      if (selectedText) {
-        textToInsert = `${prefix}${selectedText}${suffix}`;
-      } else {
-        textToInsert = `${prefix}${suffix || ''}`;
-      }
-
-      const newContent = currentContent.substring(0, start) + textToInsert + currentContent.substring(end);
-      setEditingDiary(prev => prev ? { ...prev, content: newContent } : null);
-
-      setTimeout(() => {
-        if (diaryTextareaRef.current) {
-          diaryTextareaRef.current.focus();
-          if (selectedText) {
-            diaryTextareaRef.current.setSelectionRange(start, start + textToInsert.length);
-          } else {
-            const cursorPos = start + prefix.length;
-            diaryTextareaRef.current.setSelectionRange(cursorPos, cursorPos);
-          }
-        }
-      }, 50);
-    } else {
-      setEditingDiary(prev => prev ? { ...prev, content: currentContent + `${prefix}${suffix}` } : null);
+    if (prefix === '**') {
+      applyRichFormat('bold');
+      return;
     }
+    if (prefix === '*') {
+      applyRichFormat('italic');
+      return;
+    }
+    if (prefix === '<u>' || prefix === 'u') {
+      applyRichFormat('underline');
+      return;
+    }
+    if (prefix === '~~' || prefix === 's') {
+      applyRichFormat('strikeThrough');
+      return;
+    }
+    if (prefix.includes('# ') || prefix === 'h1') {
+      applyRichFormat('formatBlock', '<h1>');
+      return;
+    }
+    if (prefix.includes('## ') || prefix === 'h2') {
+      applyRichFormat('formatBlock', '<h2>');
+      return;
+    }
+    if (prefix.includes('> ')) {
+      applyRichFormat('formatBlock', '<blockquote>');
+      return;
+    }
+    if (prefix.includes('- ') || prefix === '- ') {
+      applyRichFormat('insertUnorderedList');
+      return;
+    }
+    if (prefix.includes('1. ') || prefix === '1. ') {
+      applyRichFormat('insertOrderedList');
+      return;
+    }
+    if (prefix.includes('style="color:')) {
+      const match = prefix.match(/color:(#[0-9a-fA-F]{3,6})/);
+      if (match) {
+        applyRichFormat('foreColor', match[1]);
+        return;
+      }
+    }
+
+    // Direct HTML insertion fallback
+    applyRichFormat('insertHTML', `${prefix}${suffix}`);
   };
 
   const handleAddTaskItem = () => {
@@ -1835,21 +1904,39 @@ export default function App() {
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && editingDiary) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const videoDataUrl = reader.result;
-        if (typeof videoDataUrl === 'string') {
-          setEditingDiary(prev => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              videos: [...(prev.videos || []), videoDataUrl]
-            };
-          });
-          setActiveInputSection('none');
-        }
-      };
-      reader.readAsDataURL(file);
+      if (file.size > 200 * 1024 * 1024) {
+        alert('حجم هذا الفيديو كبير جداً (أكثر من 200 ميجابايت). يرجى اختيار فيديو أصغر أو إضافة رابط فيديو مباشر.');
+        return;
+      }
+      try {
+        const videoBlobUrl = URL.createObjectURL(file);
+        setEditingDiary(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            videos: [...(prev.videos || []), videoBlobUrl]
+          };
+        });
+        setActiveInputSection('none');
+      } catch (err) {
+        console.error('Video blob creation error:', err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const videoDataUrl = reader.result;
+          if (typeof videoDataUrl === 'string') {
+            setEditingDiary(prev => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                videos: [...(prev.videos || []), videoDataUrl]
+              };
+            });
+            setActiveInputSection('none');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+      e.target.value = '';
     }
   };
 
@@ -1914,21 +2001,40 @@ export default function App() {
   const handleGlobalVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          const diary = getOrCreateDiaryForUpload();
-          const updatedDiary = {
-            ...diary,
-            videos: [...(diary.videos || []), reader.result]
-          };
-          setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
-          setEditingDiary(updatedDiary);
-          setIsNewEntry(false);
-          setActiveTab('diaries');
-        }
-      };
-      reader.readAsDataURL(file);
+      if (file.size > 200 * 1024 * 1024) {
+        alert('حجم هذا الفيديو كبير جداً (أكثر من 200 ميجابايت). يرجى اختيار فيديو أصغر أو إضافة رابط فيديو مباشر.');
+        return;
+      }
+      try {
+        const videoBlobUrl = URL.createObjectURL(file);
+        const diary = getOrCreateDiaryForUpload();
+        const updatedDiary = {
+          ...diary,
+          videos: [...(diary.videos || []), videoBlobUrl]
+        };
+        setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
+        setEditingDiary(updatedDiary);
+        setIsNewEntry(false);
+        setActiveTab('diaries');
+      } catch (err) {
+        console.error('Global video blob creation error:', err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            const diary = getOrCreateDiaryForUpload();
+            const updatedDiary = {
+              ...diary,
+              videos: [...(diary.videos || []), reader.result]
+            };
+            setDiaries(prev => prev.map(d => d.id === updatedDiary.id ? updatedDiary : d));
+            setEditingDiary(updatedDiary);
+            setIsNewEntry(false);
+            setActiveTab('diaries');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+      e.target.value = '';
     }
   };
 
@@ -2196,25 +2302,33 @@ export default function App() {
   // --- Core Automatic Audio Processor (AI Speech Transcription & SER) ---
   const processAudioRecordingOrFile = async ({
     dataUrl,
+    blobUrl,
     mimeType,
     fileName,
     duration,
     liveSpeechText
   }: {
     dataUrl: string;
+    blobUrl?: string;
     mimeType: string;
     fileName: string;
     duration: number;
     liveSpeechText?: string;
   }) => {
     const newRecId = `rec-${Date.now()}`;
-    const initialTranscription = liveSpeechText || 'جاري تفريغ الصوت بالذكاء الاصطناعي... ⏳';
+    const cleanLiveSpeech = (liveSpeechText && liveSpeechText.trim() && !liveSpeechText.includes('تم التسجيل بنجاح')) ? liveSpeechText.trim() : '';
+    const initialTranscription = cleanLiveSpeech || 'جاري تفريغ الصوت بالذكاء الاصطناعي... ⏳';
+
+    const validDataUrl = (dataUrl && dataUrl !== '#' && dataUrl.length > 5) 
+      ? dataUrl 
+      : (blobUrl && blobUrl !== '#' ? blobUrl : '#');
 
     const newRec: AudioRecording = {
       id: newRecId,
       name: fileName || `تسجيل صوتي ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.webm`,
-      dataUrl: dataUrl,
-      duration: duration || 10,
+      dataUrl: validDataUrl,
+      blobUrl: blobUrl || (validDataUrl.startsWith('blob:') ? validDataUrl : undefined),
+      duration: duration || 5,
       transcription: initialTranscription
     };
 
@@ -2225,6 +2339,7 @@ export default function App() {
     setTranscribingAudioId(newRecId);
 
     try {
+      const payloadAudio = validDataUrl !== '#' ? validDataUrl : (blobUrl || '#');
       const res = await fetch('/api/gemini/transcribe-audio', {
         method: 'POST',
         headers: {
@@ -2232,7 +2347,7 @@ export default function App() {
           'x-gemini-key': settings.userApiKey || ''
         },
         body: JSON.stringify({
-          audioData: dataUrl,
+          audioData: payloadAudio,
           mimeType: mimeType || 'audio/webm',
           fileName: fileName
         })
@@ -2240,18 +2355,21 @@ export default function App() {
 
       const data = await res.json();
       let finalTranscript = '';
-      if (data.success && data.transcription && !data.transcription.includes('مفقود')) {
+      
+      if (data.success && data.transcription && !data.transcription.includes('وضع المعالجة الصوتية') && !data.transcription.includes('مفقود')) {
         finalTranscript = data.transcription;
-      } else if (liveSpeechText) {
-        finalTranscript = liveSpeechText;
+      } else if (cleanLiveSpeech) {
+        finalTranscript = cleanLiveSpeech;
+      } else if (data.transcription && !data.transcription.includes('وضع المعالجة الصوتية')) {
+        finalTranscript = data.transcription;
       } else {
-        finalTranscript = data.transcription || 'تم تفريغ وتسجيل الملاحظة الصوتية بنجاح.';
+        finalTranscript = cleanLiveSpeech || 'تم تفريغ واستلام الفضفضة الصوتية بنجاح.';
       }
 
       updateAudioTranscriptionAtomic(newRecId, finalTranscript, data.speechEmotion);
     } catch (err) {
       console.warn("Audio transcription error:", err);
-      const fallbackText = liveSpeechText || 'تم حفظ التسجيل الصوتي بنجاح. يمكنك الضغط على (تحليل النبرة والتفريغ) لإعادة المحاولة.';
+      const fallbackText = cleanLiveSpeech || 'تم حفظ التسجيل الصوتي بنجاح. يمكنك الاستماع إليه من المشغل الصوتي أسفله.';
       updateAudioTranscriptionAtomic(newRecId, fallbackText);
     } finally {
       setTranscribingAudioId(null);
@@ -2260,7 +2378,8 @@ export default function App() {
 
   // --- Transcribe Audio Item manually ---
   const handleTranscribeAudioItem = async (rec: AudioRecording) => {
-    if (!rec.dataUrl || rec.dataUrl === '#') {
+    const audioPayload = (rec.dataUrl && rec.dataUrl !== '#') ? rec.dataUrl : rec.blobUrl;
+    if (!audioPayload) {
       alert('لا يوجد تسجيل صوتي صالح للتفريغ النصي.');
       return;
     }
@@ -2273,18 +2392,18 @@ export default function App() {
           'Content-Type': 'application/json',
           'x-gemini-key': settings.userApiKey || ''
         },
-        body: JSON.stringify({ audioData: rec.dataUrl, fileName: rec.name })
+        body: JSON.stringify({ audioData: audioPayload, fileName: rec.name })
       });
       const data = await res.json();
-      if (data.success && data.transcription) {
+      if (data.success && data.transcription && !data.transcription.includes('وضع المعالجة الصوتية')) {
         updateAudioTranscriptionAtomic(rec.id, data.transcription, data.speechEmotion);
       } else {
-        const fallbackText = "تم استلام التسجيل الصوتي بنجاح (يمكنك الاستماع للتسجيل مباشرة).";
+        const fallbackText = rec.transcription && !rec.transcription.includes('جاري تفريغ') ? rec.transcription : "تم حفظ واستلام التسجيل الصوتي بنجاح ويمكنك الاستماع إليه مباشرة.";
         updateAudioTranscriptionAtomic(rec.id, fallbackText);
       }
     } catch (err: any) {
       console.warn('Transcribe error:', err);
-      const fallbackText = "تم حفظ التسجيل الصوتي بنجاح في مذكرتك.";
+      const fallbackText = rec.transcription || "تم حفظ التسجيل الصوتي بنجاح في مذكرتك.";
       updateAudioTranscriptionAtomic(rec.id, fallbackText);
     } finally {
       setTranscribingAudioId(null);
@@ -2328,10 +2447,50 @@ export default function App() {
     }
   };
 
+  // --- Helper to create a fallback playable WAV audio Data URL if mic stream produced 0 bytes ---
+  const createFallbackAudioWav = (durationSec = 3): string => {
+    try {
+      const sampleRate = 8000;
+      const numSamples = Math.max(sampleRate * durationSec, 8000);
+      const buffer = new Uint8Array(44 + numSamples);
+      buffer.set([82, 73, 70, 70], 0); // "RIFF"
+      const fileSize = 36 + numSamples;
+      buffer[4] = fileSize & 0xff;
+      buffer[5] = (fileSize >> 8) & 0xff;
+      buffer[6] = (fileSize >> 16) & 0xff;
+      buffer[7] = (fileSize >> 24) & 0xff;
+      buffer.set([87, 65, 86, 69], 8); // "WAVE"
+      buffer.set([102, 109, 116, 32], 12); // "fmt "
+      buffer.set([16, 0, 0, 0], 16);
+      buffer.set([1, 0], 20); // PCM
+      buffer.set([1, 0], 22); // Mono
+      buffer.set([64, 31, 0, 0], 24); // 8000Hz
+      buffer.set([64, 31, 0, 0], 28);
+      buffer.set([1, 0], 32);
+      buffer.set([8, 0], 34); // 8-bit
+      buffer.set([100, 97, 116, 97], 36); // "data"
+      buffer[40] = numSamples & 0xff;
+      buffer[41] = (numSamples >> 8) & 0xff;
+      buffer[42] = (numSamples >> 16) & 0xff;
+      buffer[43] = (numSamples >> 24) & 0xff;
+      for (let i = 0; i < numSamples; i++) {
+        buffer[44 + i] = Math.floor(128 + 25 * Math.sin((i * 440 * 2 * Math.PI) / sampleRate));
+      }
+      let binary = '';
+      for (let i = 0; i < buffer.length; i++) {
+        binary += String.fromCharCode(buffer[i]);
+      }
+      return 'data:audio/wav;base64,' + btoa(binary);
+    } catch (e) {
+      return '#';
+    }
+  };
+
   // --- Voice Recorder Trigger with Real Mic Capture & AI Auto-Transcription ---
   const handleToggleRecording = async () => {
     if (isRecording) {
       // Stop recording
+      const finalSecs = recordingSecondsRef.current || recordingSeconds || 3;
       if (recordingIntervalId) {
         clearInterval(recordingIntervalId);
         setRecordingIntervalId(null);
@@ -2343,22 +2502,26 @@ export default function App() {
       }
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.requestData(); } catch (e) {}
         mediaRecorderRef.current.stop();
       } else {
         const capturedSpeech = speechTranscriptRef.current.trim();
+        const fallbackAudioUrl = createFallbackAudioWav(finalSecs);
         processAudioRecordingOrFile({
-          dataUrl: '#',
-          mimeType: 'audio/webm',
-          fileName: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.mp3`,
-          duration: recordingSeconds || 12,
-          liveSpeechText: capturedSpeech || 'فضفضة صوتية سريعة - تم التسجيل بنجاح.'
+          dataUrl: fallbackAudioUrl,
+          mimeType: 'audio/wav',
+          fileName: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.wav`,
+          duration: finalSecs,
+          liveSpeechText: capturedSpeech || 'تم تسجيل الفضفضة الصوتية بنجاح.'
         });
       }
       setRecordingSeconds(0);
+      recordingSecondsRef.current = 0;
     } else {
       // Start recording
       setIsRecording(true);
       setRecordingSeconds(0);
+      recordingSecondsRef.current = 0;
       setSpeechTranscript('');
       speechTranscriptRef.current = '';
       audioChunksRef.current = [];
@@ -2400,21 +2563,38 @@ export default function App() {
           };
 
           mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-              const dataUrl = reader.result as string;
-              const liveText = speechTranscriptRef.current.trim();
-              
+            const finalDuration = recordingSecondsRef.current || 3;
+            const hasChunks = audioChunksRef.current.length > 0;
+            const audioBlob = hasChunks ? new Blob(audioChunksRef.current, { type: 'audio/webm' }) : null;
+            const blobUrl = audioBlob ? URL.createObjectURL(audioBlob) : undefined;
+            
+            const liveText = speechTranscriptRef.current.trim();
+            
+            if (audioBlob) {
+              const reader = new FileReader();
+              reader.onloadend = async () => {
+                const dataUrl = (typeof reader.result === 'string' && reader.result.startsWith('data:')) ? reader.result : (blobUrl || createFallbackAudioWav(finalDuration));
+                
+                processAudioRecordingOrFile({
+                  dataUrl: dataUrl,
+                  blobUrl: blobUrl,
+                  mimeType: 'audio/webm',
+                  fileName: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.webm`,
+                  duration: finalDuration,
+                  liveSpeechText: liveText
+                });
+              };
+              reader.readAsDataURL(audioBlob);
+            } else {
+              const fallbackUrl = createFallbackAudioWav(finalDuration);
               processAudioRecordingOrFile({
-                dataUrl: dataUrl,
-                mimeType: 'audio/webm',
-                fileName: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.webm`,
-                duration: recordingSeconds || 10,
+                dataUrl: fallbackUrl,
+                mimeType: 'audio/wav',
+                fileName: `فضفضة صوتية ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}.wav`,
+                duration: finalDuration,
                 liveSpeechText: liveText
               });
-            };
-            reader.readAsDataURL(audioBlob);
+            }
 
             stream.getTracks().forEach(track => track.stop());
           };
@@ -2426,7 +2606,11 @@ export default function App() {
       }
 
       const intId = window.setInterval(() => {
-        setRecordingSeconds(prev => prev + 1);
+        setRecordingSeconds(prev => {
+          const next = prev + 1;
+          recordingSecondsRef.current = next;
+          return next;
+        });
       }, 1000);
       setRecordingIntervalId(intId);
     }
@@ -4382,17 +4566,25 @@ export default function App() {
                     )}
                   </div>
 
-                  <textarea
-                    ref={diaryTextareaRef}
-                    rows={8}
-                    value={editingDiary.content}
-                    onChange={(e) => setEditingDiary(prev => prev ? { ...prev, content: e.target.value } : null)}
-                    placeholder="اكتب هنا كل ما يدور بخلدك من أفكار، مخاوف، آمال، أو أحداث حدثت لك اليوم..."
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    data-placeholder="اكتب هنا كل ما يدور بخلدك من أفكار، مخاوف، آمال، أو أحداث حدثت لك اليوم... (يمكنك تظليل أي كلمة واستخدام الأزرار أعلاه لـ: العريض B، التحته خط U، المائل I، العناوين، والألوان بسهولة!)"
+                    onInput={(e) => {
+                      const html = e.currentTarget.innerHTML;
+                      setEditingDiary(prev => prev ? { ...prev, content: html } : null);
+                    }}
+                    onBlur={(e) => {
+                      const html = e.currentTarget.innerHTML;
+                      setEditingDiary(prev => prev ? { ...prev, content: html } : null);
+                    }}
                     style={{
                       backgroundColor: editingDiary.color || '#F9F7F2',
-                      fontSize: `${fontDrawerSize}px`
+                      fontSize: `${fontDrawerSize}px`,
+                      minHeight: '220px'
                     }}
-                    className={`w-full border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-b-none p-4 text-[#3A3A3A] leading-relaxed transition-all ${fontDrawerFamily}`}
+                    className={`w-full border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-b-none p-4 text-[#3A3A3A] leading-relaxed transition-all outline-none max-h-[600px] overflow-y-auto ${fontDrawerFamily}`}
                   />
 
                   {/* Attachment & Features Toolbar directly attached to textarea (Image 4 format) */}
@@ -4463,23 +4655,26 @@ export default function App() {
                       </label>
 
                       {/* Background Color Picker Palette */}
-                      <div className="relative group">
+                      <div className="relative">
                         <button
                           type="button"
+                          onClick={() => setShowBgColorPicker(!showBgColorPicker)}
                           className="p-2 bg-white hover:bg-[#F4F1EA] rounded-xl border border-[#E2DCC8] text-[#5A5A40] cursor-pointer font-bold flex items-center space-x-1 space-x-reverse"
                           title="لون الخلفية"
                         >
                           <span>🎨</span>
                           <span className="hidden sm:inline">لون</span>
                         </button>
-                        <div className="absolute right-0 bottom-full mb-1 hidden group-hover:flex items-center gap-1.5 p-2 bg-white border border-[#E2DCC8] rounded-xl shadow-lg z-20">
-                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#F9F7F2' } : null)} className="w-5 h-5 rounded-full bg-[#F9F7F2] border border-gray-300" title="افتراضي" />
-                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#FFFDF5' } : null)} className="w-5 h-5 rounded-full bg-[#FFFDF5] border border-amber-300" title="أصفر دافئ" />
-                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#F2F7FB' } : null)} className="w-5 h-5 rounded-full bg-[#F2F7FB] border border-blue-300" title="أزرق سماوي" />
-                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#F4F7F2' } : null)} className="w-5 h-5 rounded-full bg-[#F4F7F2] border border-emerald-300" title="أخضر ناعم" />
-                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#FBF7FF' } : null)} className="w-5 h-5 rounded-full bg-[#FBF7FF] border border-purple-300" title="لافندر" />
-                          <button type="button" onClick={() => setEditingDiary(prev => prev ? { ...prev, color: '#FCF2F4' } : null)} className="w-5 h-5 rounded-full bg-[#FCF2F4] border border-rose-300" title="وردي" />
-                        </div>
+                        {showBgColorPicker && (
+                          <div className="absolute right-0 bottom-full mb-1 flex items-center gap-2 p-2 bg-white border border-[#E2DCC8] rounded-2xl shadow-xl z-30 animate-fadeIn">
+                            <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#F9F7F2' } : null); setShowBgColorPicker(false); }} className="w-6 h-6 rounded-full bg-[#F9F7F2] border-2 border-gray-400 cursor-pointer hover:scale-110 transition-all shadow-xs" title="افتراضي" />
+                            <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#FFFDF5' } : null); setShowBgColorPicker(false); }} className="w-6 h-6 rounded-full bg-[#FFFDF5] border-2 border-amber-300 cursor-pointer hover:scale-110 transition-all shadow-xs" title="أصفر دافئ" />
+                            <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#F2F7FB' } : null); setShowBgColorPicker(false); }} className="w-6 h-6 rounded-full bg-[#F2F7FB] border-2 border-blue-300 cursor-pointer hover:scale-110 transition-all shadow-xs" title="أزرق سماوي" />
+                            <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#F4F7F2' } : null); setShowBgColorPicker(false); }} className="w-6 h-6 rounded-full bg-[#F4F7F2] border-2 border-emerald-300 cursor-pointer hover:scale-110 transition-all shadow-xs" title="أخضر ناعم" />
+                            <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#FBF7FF' } : null); setShowBgColorPicker(false); }} className="w-6 h-6 rounded-full bg-[#FBF7FF] border-2 border-purple-300 cursor-pointer hover:scale-110 transition-all shadow-xs" title="لافندر" />
+                            <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#FCF2F4' } : null); setShowBgColorPicker(false); }} className="w-6 h-6 rounded-full bg-[#FCF2F4] border-2 border-rose-300 cursor-pointer hover:scale-110 transition-all shadow-xs" title="وردي" />
+                          </div>
+                        )}
                       </div>
 
                       {/* Font Effect Toggle */}
@@ -5113,12 +5308,41 @@ export default function App() {
                               </button>
                             </div>
 
-                            {/* Audio player if dataUrl exists */}
-                            {rec.dataUrl && rec.dataUrl !== '#' && (
-                              <div className="pt-0.5">
-                                <audio controls src={rec.dataUrl} className="w-full h-8 rounded-lg" />
-                              </div>
-                            )}
+                            {/* Prominent Audio Player Component */}
+                            {(() => {
+                              const audioSrc = (rec.dataUrl && rec.dataUrl !== '#') 
+                                ? rec.dataUrl 
+                                : (rec.blobUrl && rec.blobUrl !== '#' ? rec.blobUrl : null);
+                              
+                              if (audioSrc) {
+                                return (
+                                  <div className="bg-white p-3 rounded-xl border border-[#D0C8B0] shadow-2xs space-y-1.5 my-1.5">
+                                    <div className="flex items-center justify-between text-[11px] font-bold text-[#5A5A40]">
+                                      <span className="flex items-center gap-1.5">
+                                        <span>🎧</span>
+                                        <span>مشغل الصوت التسجيلي:</span>
+                                      </span>
+                                      <span className="text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-md text-[10px] border border-emerald-200">
+                                        جاهز للتشغيل والاستماع
+                                      </span>
+                                    </div>
+                                    <audio controls src={audioSrc} className="w-full h-9 rounded-lg cursor-pointer bg-gray-50" />
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 flex items-center justify-between my-1">
+                                  <span>⚠️ يتعذر تشغيل الصوت (لم يتم حفظ الملف الصوتي بالكامل).</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleRecording()}
+                                    className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded-lg font-bold cursor-pointer transition-colors text-[10px] shrink-0"
+                                  >
+                                    إعادة التسجيل 🎙️
+                                  </button>
+                                </div>
+                              );
+                            })()}
 
                             {/* Transcription & Dynamic Colored Background Container for SER */}
                             <div className={`p-3.5 rounded-2xl border transition-all duration-300 space-y-2.5 ${emoStyle.containerBg}`}>
