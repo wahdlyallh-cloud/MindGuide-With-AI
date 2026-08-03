@@ -6,7 +6,7 @@ import {
   Settings as SettingsIcon, Sparkles, LogOut, CheckSquare, 
   Trash2, Edit3, Trash, Star, Image, Paperclip, Mic, MicOff, 
   Smile, ShieldCheck, Download, Upload, Activity, Moon, Pill,
-  User, Printer, ChevronRight, Lock, Eye, EyeOff, Flame, Bell, Key,
+  User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key,
   Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -1158,6 +1158,79 @@ export default function App() {
   });
   const [isSendingEmailBackup, setIsSendingEmailBackup] = useState(false);
   const [emailBackupStatus, setEmailBackupStatus] = useState<string | null>(null);
+
+  // --- Universal Navigation History & Back Handler ---
+  interface NavState {
+    activeTab: 'dashboard' | 'diaries' | 'advisor' | 'analytics' | 'settings';
+    activeDiariesSubTab: 'journal' | 'gratitude' | 'cbt' | 'tasks';
+    analyticsSubTab: 'report' | 'charts';
+    editingDiaryId: string | null;
+    diaryTypeFilter: 'all' | 'diary' | 'thought';
+  }
+
+  const [navHistory, setNavHistory] = useState<NavState[]>([]);
+  const isNavigatingBackRef = useRef(false);
+  const prevNavStateRef = useRef<NavState>({
+    activeTab,
+    activeDiariesSubTab,
+    analyticsSubTab,
+    editingDiaryId: editingDiary?.id || null,
+    diaryTypeFilter
+  });
+
+  useEffect(() => {
+    const currentState: NavState = {
+      activeTab,
+      activeDiariesSubTab,
+      analyticsSubTab,
+      editingDiaryId: editingDiary?.id || null,
+      diaryTypeFilter
+    };
+
+    const prev = prevNavStateRef.current;
+    const isDifferent = 
+      prev.activeTab !== currentState.activeTab ||
+      prev.activeDiariesSubTab !== currentState.activeDiariesSubTab ||
+      prev.analyticsSubTab !== currentState.analyticsSubTab ||
+      prev.editingDiaryId !== currentState.editingDiaryId ||
+      prev.diaryTypeFilter !== currentState.diaryTypeFilter;
+
+    if (isDifferent) {
+      if (!isNavigatingBackRef.current) {
+        setNavHistory(history => [...history.slice(-15), prev]);
+      }
+      isNavigatingBackRef.current = false;
+      prevNavStateRef.current = currentState;
+    }
+  }, [activeTab, activeDiariesSubTab, analyticsSubTab, editingDiary?.id, diaryTypeFilter]);
+
+  const handleGoBack = () => {
+    if (editingDiary) {
+      setEditingDiary(null);
+      return;
+    }
+
+    if (navHistory.length > 0) {
+      const lastState = navHistory[navHistory.length - 1];
+      isNavigatingBackRef.current = true;
+      setNavHistory(history => history.slice(0, history.length - 1));
+
+      setActiveTab(lastState.activeTab);
+      setActiveDiariesSubTab(lastState.activeDiariesSubTab);
+      setAnalyticsSubTab(lastState.analyticsSubTab);
+      setDiaryTypeFilter(lastState.diaryTypeFilter);
+      if (lastState.editingDiaryId) {
+        const found = diaries.find(d => d.id === lastState.editingDiaryId);
+        setEditingDiary(found || null);
+      } else {
+        setEditingDiary(null);
+      }
+      prevNavStateRef.current = lastState;
+    } else if (activeTab !== 'dashboard') {
+      setActiveTab('dashboard');
+      setEditingDiary(null);
+    }
+  };
 
   useEffect(() => {
     if (backupEmail) {
@@ -3552,6 +3625,41 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* 🔙 Universal Top-Right Back Navigation Bar under fixed header */}
+      {(activeTab !== 'dashboard' || editingDiary !== null || navHistory.length > 0) && (
+        <div className="bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E2DCC8]/80 py-2 px-4 sticky top-[65px] z-20 transition-all shadow-3xs" dir="rtl">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleGoBack}
+              className="inline-flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-white hover:bg-[#8B9D83] text-[#3A3A3A] hover:text-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-2xl text-xs font-black shadow-2xs hover:shadow-md transition-all active:scale-95 cursor-pointer group shrink-0"
+              title="الرجوع إلى الشاشة أو الصفحة السابقة"
+            >
+              <ArrowRight className="w-4 h-4 text-[#8B9D83] group-hover:text-white group-hover:-translate-x-1 transition-transform" />
+              <span>رجوع للخلف</span>
+              {navHistory.length > 0 && (
+                <span className="text-[10px] bg-[#EEF1EB] group-hover:bg-white/20 text-[#556E4F] group-hover:text-white px-1.5 py-0.5 rounded-full font-black">
+                  {navHistory.length}
+                </span>
+              )}
+            </button>
+
+            {/* Current Breadcrumb Location */}
+            <div className="text-[11px] font-bold text-gray-500 hidden sm:flex items-center space-x-1.5 space-x-reverse bg-white/80 px-3 py-1 rounded-xl border border-[#E2DCC8]/50 shadow-3xs">
+              <span className="text-gray-400">الصفحة الحالية:</span>
+              <span className="text-[#556E4F] font-black">
+                {editingDiary ? 'تعديل/عرض المذكرة' :
+                 activeTab === 'dashboard' ? 'الرئيسية' :
+                 activeTab === 'diaries' ? `اليوميات والمهام (${activeDiariesSubTab === 'journal' ? 'سجل المذكرات' : activeDiariesSubTab === 'tasks' ? 'المهام' : activeDiariesSubTab === 'gratitude' ? 'الامتنان' : 'CBT'})` :
+                 activeTab === 'advisor' ? 'المستشار النفسي الذكي' :
+                 activeTab === 'analytics' ? 'التقدم والاستشارات' :
+                 activeTab === 'settings' ? 'إعدادات التطبيق' : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
