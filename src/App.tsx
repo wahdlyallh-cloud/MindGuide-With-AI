@@ -1319,6 +1319,7 @@ export default function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const recordingSecondsRef = React.useRef<number>(0);
+  const recordingStartTimeRef = React.useRef<number | null>(null);
   const [recordingIntervalId, setRecordingIntervalId] = useState<number | null>(null);
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
   const audioChunksRef = React.useRef<Blob[]>([]);
@@ -2619,7 +2620,11 @@ export default function App() {
   const handleToggleRecording = async () => {
     if (isRecording) {
       // Stop recording
-      const finalSecs = recordingSecondsRef.current || recordingSeconds || 0;
+      const stopTime = Date.now();
+      const startTime = recordingStartTimeRef.current || stopTime;
+      const elapsedTime = (stopTime - startTime) / 1000;
+      const finalSecs = Math.max(Math.round(elapsedTime), recordingSecondsRef.current || 0, recordingSeconds || 0);
+
       if (recordingIntervalId) {
         clearInterval(recordingIntervalId);
         setRecordingIntervalId(null);
@@ -2630,8 +2635,8 @@ export default function App() {
         try { speechRecognitionRef.current.stop(); } catch (e) {}
       }
 
-      // Check recording duration (<3 seconds)
-      if (finalSecs < 3) {
+      // Check recording duration (< 3 seconds) using actual elapsedTime
+      if (finalSecs < 3 || elapsedTime < 2.8) {
         alert('مدة التسجيل قصيرة جداً (أقل من 3 ثوانٍ). يرجى التسجيل لمدة أطول لضمان تفريغ الصوت بدقة وبجودة عالية.');
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
           mediaRecorderRef.current.onstop = null;
@@ -2640,8 +2645,12 @@ export default function App() {
         audioChunksRef.current = [];
         setRecordingSeconds(0);
         recordingSecondsRef.current = 0;
+        recordingStartTimeRef.current = null;
         return;
       }
+
+      // Store finalSecs in ref so onstop can access it
+      recordingSecondsRef.current = finalSecs;
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try { mediaRecorderRef.current.requestData(); } catch (e) {}
@@ -2656,11 +2665,14 @@ export default function App() {
           duration: finalSecs,
           liveSpeechText: capturedSpeech || 'تم تسجيل الفضفضة الصوتية بنجاح.'
         });
+        setRecordingSeconds(0);
+        recordingSecondsRef.current = 0;
+        recordingStartTimeRef.current = null;
       }
-      setRecordingSeconds(0);
-      recordingSecondsRef.current = 0;
     } else {
       // Start recording
+      const startTime = Date.now();
+      recordingStartTimeRef.current = startTime;
       setIsRecording(true);
       setRecordingSeconds(0);
       recordingSecondsRef.current = 0;
@@ -2715,11 +2727,18 @@ export default function App() {
           };
 
           mediaRecorder.onstop = () => {
-            const finalDuration = recordingSecondsRef.current || 0;
-            if (finalDuration < 3) {
+            const stopTimestamp = Date.now();
+            const startTimestamp = recordingStartTimeRef.current || stopTimestamp;
+            const realElapsed = (stopTimestamp - startTimestamp) / 1000;
+            const finalDuration = Math.max(Math.round(realElapsed), recordingSecondsRef.current || 0, 3);
+
+            if (realElapsed < 2.8 && finalDuration < 3) {
               alert('مدة التسجيل قصيرة جداً (أقل من 3 ثوانٍ). يرجى التسجيل لمدة أطول لضمان تفريغ الصوت بدقة وبجودة عالية.');
               stream.getTracks().forEach(track => track.stop());
               audioChunksRef.current = [];
+              setRecordingSeconds(0);
+              recordingSecondsRef.current = 0;
+              recordingStartTimeRef.current = null;
               return;
             }
 
@@ -2742,6 +2761,9 @@ export default function App() {
                   duration: finalDuration,
                   liveSpeechText: liveText
                 });
+                setRecordingSeconds(0);
+                recordingSecondsRef.current = 0;
+                recordingStartTimeRef.current = null;
               };
               reader.readAsDataURL(audioBlob);
             } else {
@@ -2753,6 +2775,9 @@ export default function App() {
                 duration: finalDuration,
                 liveSpeechText: liveText
               });
+              setRecordingSeconds(0);
+              recordingSecondsRef.current = 0;
+              recordingStartTimeRef.current = null;
             }
 
             stream.getTracks().forEach(track => track.stop());
@@ -2765,11 +2790,17 @@ export default function App() {
       }
 
       const intId = window.setInterval(() => {
-        setRecordingSeconds(prev => {
-          const next = prev + 1;
-          recordingSecondsRef.current = next;
-          return next;
-        });
+        if (recordingStartTimeRef.current) {
+          const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
+          setRecordingSeconds(elapsed);
+          recordingSecondsRef.current = elapsed;
+        } else {
+          setRecordingSeconds(prev => {
+            const next = prev + 1;
+            recordingSecondsRef.current = next;
+            return next;
+          });
+        }
       }, 1000);
       setRecordingIntervalId(intId);
     }
