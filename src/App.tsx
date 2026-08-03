@@ -2619,7 +2619,7 @@ export default function App() {
   const handleToggleRecording = async () => {
     if (isRecording) {
       // Stop recording
-      const finalSecs = recordingSecondsRef.current || recordingSeconds || 3;
+      const finalSecs = recordingSecondsRef.current || recordingSeconds || 0;
       if (recordingIntervalId) {
         clearInterval(recordingIntervalId);
         setRecordingIntervalId(null);
@@ -2628,6 +2628,19 @@ export default function App() {
 
       if (speechRecognitionRef.current) {
         try { speechRecognitionRef.current.stop(); } catch (e) {}
+      }
+
+      // Check recording duration (<3 seconds)
+      if (finalSecs < 3) {
+        alert('مدة التسجيل قصيرة جداً (أقل من 3 ثوانٍ). يرجى التسجيل لمدة أطول لضمان تفريغ الصوت بدقة وبجودة عالية.');
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.onstop = null;
+          try { mediaRecorderRef.current.stop(); } catch (e) {}
+        }
+        audioChunksRef.current = [];
+        setRecordingSeconds(0);
+        recordingSecondsRef.current = 0;
+        return;
       }
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -2682,17 +2695,34 @@ export default function App() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          const mediaRecorder = new MediaRecorder(stream);
+          
+          let options: MediaRecorderOptions = { mimeType: 'audio/webm;codecs=opus' };
+          if (typeof MediaRecorder !== 'undefined' && !MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            if (MediaRecorder.isTypeSupported('audio/webm')) {
+              options = { mimeType: 'audio/webm' };
+            } else {
+              options = {};
+            }
+          }
+
+          const mediaRecorder = new MediaRecorder(stream, options);
           mediaRecorderRef.current = mediaRecorder;
 
           mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
+            if (e.data && e.data.size > 0) {
               audioChunksRef.current.push(e.data);
             }
           };
 
           mediaRecorder.onstop = () => {
-            const finalDuration = recordingSecondsRef.current || 3;
+            const finalDuration = recordingSecondsRef.current || 0;
+            if (finalDuration < 3) {
+              alert('مدة التسجيل قصيرة جداً (أقل من 3 ثوانٍ). يرجى التسجيل لمدة أطول لضمان تفريغ الصوت بدقة وبجودة عالية.');
+              stream.getTracks().forEach(track => track.stop());
+              audioChunksRef.current = [];
+              return;
+            }
+
             const hasChunks = audioChunksRef.current.length > 0;
             const audioBlob = hasChunks ? new Blob(audioChunksRef.current, { type: 'audio/webm' }) : null;
             const blobUrl = audioBlob ? URL.createObjectURL(audioBlob) : undefined;

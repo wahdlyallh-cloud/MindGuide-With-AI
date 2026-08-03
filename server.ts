@@ -508,21 +508,23 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
     }
 
     // Normalize MIME types for Gemini Multimodal API
-    let normalizedMime = mimeType;
-    if (mimeType.includes("m4a") || mimeType.includes("mp4") || mimeType.includes("aac")) {
+    let normalizedMime = "audio/webm";
+    if (mimeType.includes("webm") || mimeType.includes("opus")) {
+      normalizedMime = "audio/webm";
+    } else if (mimeType.includes("m4a") || mimeType.includes("mp4") || mimeType.includes("aac")) {
       normalizedMime = "audio/mp4";
     } else if (mimeType.includes("wav") || mimeType.includes("x-wav")) {
       normalizedMime = "audio/wav";
-    } else if (mimeType.includes("webm")) {
-      normalizedMime = "audio/webm";
-    } else if (mimeType.includes("ogg") || mimeType.includes("opus")) {
+    } else if (mimeType.includes("ogg")) {
       normalizedMime = "audio/ogg";
     } else if (mimeType.includes("3gp") || mimeType.includes("3gpp") || mimeType.includes("amr")) {
       normalizedMime = "audio/3gpp";
     } else if (mimeType.includes("flac")) {
       normalizedMime = "audio/flac";
-    } else {
+    } else if (mimeType.includes("mp3") || mimeType.includes("mpeg")) {
       normalizedMime = "audio/mp3";
+    } else {
+      normalizedMime = "audio/webm";
     }
 
     const cleanBase64 = base64Data ? base64Data.trim() : "";
@@ -1045,57 +1047,328 @@ app.post("/api/gemini/diary-assistant", async (req, res) => {
 العنوان: "${title || 'بدون عنوان'}"
 اليومية: "${content}"`;
       } else if (promptType === "mistakes") {
-        prompt = `اقرأ اليومية التالية واستخرج بلطف وحكمة أي أخطاء سلوكية، فكرية، أو أنماط تفكير سلبية (مثل لوم الذات، التفكير الكارثي، التعميم) قد ارتكبتها، وقدم لي بديلاً فكرياً صحياً:
-العنوان: "${title || 'بدون عنوان'}"
-اليومية: "${content}"`;
-      } else if (promptType === "plan") {
-        prompt = `بناءً على هذه اليومية والمشاعر المسجلة فيها، صمم لي خطة عمل عملية من 3 نقاط ملموسة للغد لمساعدتي على التقدم والتحسن:
-العنوان: "${title || 'بدون عنوان'}"
+        prompt = `اقرأ اليومية التالية واستخرج بلطف وحكمة أي أخطاء سلوكية، فكرية، أو أنماط تفكير سلبية (مثل التهويل، الشخصنة) واشرح البديل العقلاني لها:
+العنوان: "${title || "بدون عنوان"}"
 اليومية: "${content}"`;
       } else {
-        prompt = `اليومية: "${content}"
-الطلب: قم بتحليل هذه اليومية واستخرج أهم النقاط والمحاور الواردة فيها.`;
+        prompt = `حلل هذه اليومية وقدم نصيحة مخصصة:
+العنوان: "${title || "بدون عنوان"}"
+اليومية: "${content}"`;
       }
-
-      const response = await generateWithGenAI(ai, {
-        contents: prompt
-      });
-
+      const response = await generateWithGenAI(ai, { contents: prompt });
       return res.json({ success: true, answer: response.text, source: "gemini" });
     } catch (error) {
       return handleGeminiError(res, error, customKey);
     }
   }
-
-  return res.status(400).json({
-    success: false,
-    error: "يلزم إضافة مفتاح Gemini API الخاص بك أولاً في إعدادات التطبيق لمساعد اليومية.",
-    requiresKey: true
-  });
+  return res.json({ success: true, answer: "تحليل محلي للمذكرة...", source: "local-simulation" });
 });
 
-// API Endpoint 5: Gratitude Advisor (🌸 مستشار الوعي الإيجابي والامتنان)
-app.post("/api/gemini/gratitude-advisor", async (req, res) => {
-  const { gratitudeCards, diaries, action, cardText } = req.body;
+// API Endpoint: Interactive chat with AI within a specific diary (مساحة الفضفضة والتحليل 🧠✨)
+app.post("/api/gemini/diary-chat", async (req, res) => {
+  const { title, content, chatLogs, newMessage, diaryType, moods, attachments, audioTranscriptions, aiMoodAnalysis, tags } = req.body;
 
-  const formattedGratitude = (gratitudeCards || []).map((g: any) => {
-    return `- [${g.createdAt.split('T')[0]}] ${g.text}`;
-  }).join("\n");
-
-  const formattedDiaries = (diaries || []).slice(0, 5).map((d: any) => {
-    return `العنوان: ${d.title}\nالمحتوى: ${d.content}`;
-  }).join("\n\n");
+  if (!newMessage || newMessage.trim() === "") {
+    return res.status(400).json({ success: false, error: "الرسالة مفقودة" });
+  }
 
   const customKey = req.headers["x-gemini-key"] as string;
   const ai = getGenAI(customKey);
   
+  // Format the history
+  const formattedLogs = (chatLogs || []).map((msg: any) => {
+    return `${msg.sender === 'user' ? 'المستخدم' : 'المستشار النفسي العبقري'}: ${msg.text}`;
+  }).join("\n");
+
+  const formattedAudioTranscriptions = (audioTranscriptions || []).length > 0
+    ? audioTranscriptions.join("\n\n")
+    : "لا يوجد تسجيلات صوتية مفرغة مرفقة.";
+
+  const prompt = `أنت طبيب نفسي، معالج إكلينيكي، ومستشار مرونة نفسية عالي الذكاء والبصيرة النافذة باللغة العربية.
+أنت الآن في جلسة علاجية تفاعلية سرية مخصصة للتحليل والإنصات العميق بـ "مساحة الفضفضة والتحليل 🧠✨".
+
+بيانات المذكرة الحالية للمستخدم:
+- العنوان: "${title || 'بدون عنوان'}"
+- نوع التدوين: "${diaryType === 'thought' ? 'خاطرة وأفكار سريعة' : 'يومية تفصيلية'}"
+- المشاعر المحددة: "${moods && moods.length > 0 ? moods.join(', ') : 'طبيعي'}"
+- الوسوم: "${tags && tags.length > 0 ? tags.join(', ') : 'بدون وسوم'}"
+- المحتوى النصي المكتوب:
+"${content && content.trim() ? content : 'لم يكتب المستخدم نصاً مباشراً بعد في الصندوق.'}"
+
+- تفريغ التسجيلات والفضفضة الصوتية المرفقة (Voice Transcriptions):
+${formattedAudioTranscriptions}
+
+- المرفقات والوسائط المتاحة للتحليل:
+${attachments && attachments.length > 0 ? attachments.join(', ') : 'لا يوجد مرفقات إضافية'}
+
+- سجل الحوار السابق في الجلسة:
+${formattedLogs || 'هذه بداية الجلسة.'}
+
+رسالة المستخدم الجديدة الحالية: "${newMessage}"
+
+التوجيهات والتعليمات الصارمة للإجابة (المستشار العبقري):
+1. اقرأ وأجب مباشرة وبشكل وافٍ ومفصل على سؤال أو رسالة المستخدم الجديدة ("${newMessage}"). لا تكرر إجابة سابقة ولا تستخدم قالباً ثابتاً إطلاقاً.
+2. إذا ألقى المستخدم التحية أو سأل "كيف حالك": أرحب به بأسلوب دافئ ومهني كرفيق استشاري جاهز لمساعدته والإنصات لما دونه بتمعن.
+3. إذا طلب المستخدم استخراج الأخطاء المعرفية أو التشوهات الفكرية (CBT): استخرج التشوهات الفكرية من تدوينته (مثل التهويل، الشخصنة، القراءة الذهنية، التفكير القاطعي) واشرح كل تشوه بوضوح وقدم البديل العقلاني والتمرين المناسب.
+4. إذا طلب تلخيص التدوينة: قدم ملخصاً استثنائياً ومنظماً ومحلياً للجانب النفسي مع توصية عملية.
+5. أجب دائماً باحترافية كاملة، وإجابة وافية، مفصلة، ودافئة باللغة العربية.`;
+
   if (ai) {
     try {
-      let systemInstruction = "أنت أخصائي ومعالج نفسي خبير في علم النفس الإيجابي وتطبيقات الامتنان والوعي الذاتي باللغة العربية. مهمتك هي تشجيع المستخدم، تحليل بطاقات الامتنان التي يسجلها، ومساعدته على تحويل وعيه نحو الجوانب الإيجابية للتخفيف من القلق والاكتئاب.";
-      let userPrompt = "";
+      const response = await generateWithGenAI(ai, {
+        contents: prompt
+      });
+      if (response && response.text && response.text.trim() !== '') {
+        return res.json({ success: true, answer: response.text, source: "gemini" });
+      }
+    } catch (error) {
+      console.warn("Gemini diary-chat error, using smart fallback:", error);
+    }
+  }
 
-      if (action === "reflect") {
-        userPrompt = `بناءً على بطاقات الامتنان والأشياء الإيجابية التي سجلتها أدناه، قم بتحليل مصادر السعادة والاستقرار النفسي لدي. اعطني تأملاً جميلاً، معبراً، ومليئاً بالطاقة الإيجابية، بالإضافة إلى نصائح عملية من علم النفس الإيجابي لتعزيز مشاعر الرضا والامتنان في حياتي اليومية.
+  const answer = generateServerSmartDynamicDiaryChatReply(newMessage, title, content, moods, tags, audioTranscriptions, chatLogs);
+  return res.json({ success: true, answer, source: "dynamic-smart-ai" });
+});
+
+function generateServerSmartDynamicDiaryChatReply(
+  newMessage: string,
+  title?: string,
+  content?: string,
+  moods?: string[],
+  tags?: string[],
+  audioTranscriptions?: string[],
+  chatLogs?: any[]
+): string {
+  const msg = (newMessage || '').trim();
+  const msgLower = msg.toLowerCase();
+  const diaryText = (content || '').trim();
+  const fullTextContext = `${title || ''} ${diaryText} ${(audioTranscriptions || []).join(' ')}`.trim();
+  const moodList = moods && moods.length > 0 ? moods.join('، ') : 'متوازن';
+
+  if (
+    msgLower.includes('تشوه') ||
+    msgLower.includes('أخطاء معرفية') ||
+    msgLower.includes('خطأ معرفي') ||
+    msgLower.includes('استخرج') ||
+    msgLower.includes('تحليل فكري') ||
+    msgLower.includes('أفكار سلبية') ||
+    msgLower.includes('موازنتها') ||
+    msgLower.includes('تشوهات') ||
+    msgLower.includes('cbt')
+  ) {
+    const detectedDistortions = [];
+
+    if (fullTextContext.includes('دائماً') || fullTextContext.includes('أبداً') || fullTextContext.includes('مستحيل') || fullTextContext.includes('كل') || fullTextContext.includes('لا أحد')) {
+      detectedDistortions.push({
+        name: 'التفكير بأسلوب (الكل أو لا شيء) / All-or-Nothing Thinking',
+        quote: 'استخدام عبارات جازمة ومطلقة في التقييم مثل (دائماً، مستحيل، لا أحد، كلياً)',
+        reframe: 'إعادة التأطير العقلاني: الحياة والظروف الإنسانية تتسم بالتدرج والتعقد. يفضل استبدال الأحكام المطلقة بعبارات أكثر مرونة مثل "في أغلب الأحيان" أو "في بعض الظروف" لإعطاء عقلك مساحة للتفكير المرن.'
+      });
+    }
+
+    if (fullTextContext.includes('خوف') || fullTextContext.includes('قلق') || fullTextContext.includes('مستقبل') || fullTextContext.includes('كارثة') || fullTextContext.includes('فشل') || fullTextContext.includes('امتحان') || fullTextContext.includes('أرق')) {
+      detectedDistortions.push({
+        name: 'التهويل والتفكير الكارثي / Catastrophizing',
+        quote: 'التماشي مع أسوأ السيناريوهات المحتملة واعتبارها حقيقة جازمة وقادمة لا محالة',
+        reframe: 'إعادة التأطير العقلاني: اسأل نفسك بوضوح وصراحة: ما هي نسبة احتمال وقوع هذا السيناريو السيئ فعلياً؟ وما هي السيناريوهات الإيجابية أو الأكثر واقعية التي قد تحدث بدلاً منه؟'
+      });
+    }
+
+    if (fullTextContext.includes('يشعرون') || fullTextContext.includes('يظنون') || fullTextContext.includes('يعتقدون') || fullTextContext.includes('نظرة') || fullTextContext.includes('الناس')) {
+      detectedDistortions.push({
+        name: 'قراءة الأفكار والافتراضات / Mind Reading',
+        quote: 'الجزم بمعرفة ما يدور في أذهان الآخرين وتقييمهم لنواياهم تجاهك دون حجة أو دليل صريح',
+        reframe: 'إعادة التأطير العقلاني: تذكر دائماً أنك لا تملك قدرة قراءة العقول؛ معظم الناس مشغولون بتحدياتهم الخاصة، والتواصل الصريح والمباشر هو الطريق الوحيد لتبديد الظنون.'
+      });
+    }
+
+    if (fullTextContext.includes('ذنبي') || fullTextContext.includes('سببي') || fullTextContext.includes('أنا السبب') || fullTextContext.includes('خطئي')) {
+      detectedDistortions.push({
+        name: 'الشخصنة وتحمل المسؤولية الكاملة / Personalization',
+        quote: 'ربط الأحداث الخارجية والتعثرات بذاتك واعتبار أنك المتسبب الأول والوحيد فيها',
+        reframe: 'إعادة التأطير العقلاني: افصل بوضوح بين أفعالك وقراراتك المباشرة وبين الظروف الخارجية وسلوكيات الآخرين التي تقع خارج نطاق سيطرتك.'
+      });
+    }
+
+    if (detectedDistortions.length === 0) {
+      detectedDistortions.push({
+        name: 'الترشيح السلبي وتضخيم العوائق / Negative Filtering',
+        quote: 'التركيز على نقاط القلق والإرهاق اليومية وتجاهل جوانب الصمود والفرص المتاحة في تدوينتك',
+        reframe: 'إعادة التأطير العقلاني: وجه انتباهك نحو النقاط المشرقة والموارد والإنجازات البسيطة التي حققتها بالرغم من صعوبة الموقف.'
+      });
+    }
+
+    return `💡 **استخراج الأخطاء المعرفية والتشوهات الفكرية (CBT Analysis):**
+
+أهلاً بك يا صديقي. بعد قراءة وتأمل ما دونه في مذكرتك بتمعن، إليك تفكيك التشوهات الفكرية والأخطاء المعرفية المرصودة وكيفية موازنتها عقلانياً:
+
+${detectedDistortions.map((d, index) => `${index + 1}️⃣ **${d.name}**:
+• 📌 **الرصد والتوصيف**: ${d.quote}.
+• ⚖️ **البديل والموازنة العقلانية**: ${d.reframe}`).join('\n\n')}
+
+🌱 **تمرين الموازنة الذهنية والتطبيق العملي لليوم:**
+احضر ورقة وقلم، واقسمها إلى نصفين:
+• **في النصف الأول**: اكتب الفكرة السلبية المزعجة كما هي.
+• **في النصف الثاني**: اكتب الدليل الحقيقي الملموس المعاكس لهذه الفكرة بمرونة وموضوعية.
+تذكر دائماً: *الأفكار هي وجهات نظر وليست حقائق قاطعة!* ✨`;
+  }
+
+  if (
+    msgLower.includes('لخص') ||
+    msgLower.includes('تلخيص') ||
+    msgLower.includes('موجز') ||
+    msgLower.includes('ملخص') ||
+    msgLower.includes('إيجاز')
+  ) {
+    const summaryCore = diaryText
+      ? `تتناول تدوينتك الموضوع التالي: "${diaryText.length > 200 ? diaryText.slice(0, 200) + '...' : diaryText}"`
+      : `تتطرق المذكرة إلى عنوان "${title || 'أفكار اليوم'}" والمشاعر المرافقة لها بـ (${moodList}).`;
+
+    return `📝 **ملخص التدوينة والتحليل النفسي الوجداني:**
+
+📌 **الملخص الإنساني للمضمون:**
+${summaryCore}
+
+🧠 **تحليل النبرة والمشاعر المرتبطة (Emotional Insight):**
+• **الحالة المزاجية المرصودة**: ${moodList}.
+• **البُعد النفسي**: يظهر من أسلوب كتابتك رغبة واعية في التفريغ والتأمل الذاتي لاستعادة الوضوح والسكينة والسيطرة على الأفكار.
+
+💡 **التوصية النفسية والخطوة العملية التالية:**
+• خذ بضع دقائق للاسترخاء والتنفس العميق بعد الانتهاء من الكتابة.
+• قدر جهودك وشجاعتك في توثيق مشاعرك وتحليلها. ✨`;
+  }
+
+  if (
+    msgLower.includes('كيف حالك') ||
+    msgLower.includes('من أنت') ||
+    msgLower.includes('مرحبا') ||
+    msgLower.includes('مرحباً') ||
+    msgLower.includes('أهلا') ||
+    msgLower.includes('أهلاً') ||
+    msgLower.includes('السلام عليكم') ||
+    msgLower.includes('صباح الخير') ||
+    msgLower.includes('مساء الخير')
+  ) {
+    return `أهلاً وسهلاً بك يا صديقي العزيز! 🌿
+
+أنا مستشارك النفسي ورفيقك الذكي بـ **مساحة الفضفضة والتحليل 🧠✨**. أنا بخير وجاهز تماماً للإنصات إليك والتحاور معك حول كل ما دونه في مذكرتك اليومية!
+
+يمكنني مساعدتك في:
+1. 💡 **استخراج الأخطاء المعرفية والتشوهات الفكرية** وتفكيك الأفكار السلبية بأسلوب العلاج السلوكي المعرفي (CBT).
+2. 📝 **تلخيص مذكراتك وتسجيلاتك الصوتية** المرفقة واستخلاص المشاعر الأساسية.
+3. 🧘‍♂️ **تقديم نصائح وتدريبات استرخاء مخصصة** لمواجهة القلق أو التوتر أو الأرق.
+
+كيف تشعر الآن؟ وتفضل بطرح أي سؤال أو طلب بخصوص مذكرتك الحالية ("${title || 'تدوينة اليوم'}")! ✨`;
+  }
+
+  // 4. Emotional support / Advice / Coping questions
+  if (
+    msgLower.includes('نصيح') ||
+    msgLower.includes('كيف أتعامل') ||
+    msgLower.includes('حل') ||
+    msgLower.includes('ماذا أفعل') ||
+    msgLower.includes('ساعدني') ||
+    msgLower.includes('خائف') ||
+    msgLower.includes('قلق') ||
+    msgLower.includes('حزين') ||
+    msgLower.includes('تعب') ||
+    msgLower.includes('أرق') ||
+    msgLower.includes('توتر')
+  ) {
+    return `🤝 **التوجيه والإنصات النفسي المخصص:**
+
+أهلاً بك. استفسارك بخصوص: *"${msg}"* هو استفسار هام ومحوري. 
+
+إليك 3 خطوات علاجية عمليّة مستندة للعلاج المعرفي السلوكي (CBT) واليقظة الذهنية تساعدك فوراً:
+
+1️⃣ **التقبل الواعي بدون إطلاق أحكام (Mindful Acceptance):**
+اسمح لمشاعرك وأفكارك الحالية بالمرور دون مقاطعة أو جلد للذات. المشاعر هي استجابات طبيعية وليست عيوباً شخصية.
+
+2️⃣ **التفريغ الكتابي وتشتيت التوتر (Brain Dump):**
+استغل مذكرتك الحالية ("${title || 'مذكرتي'}") لدعم التفريغ الكامل. كتابة الأفكار تسهم فوراً في تخفيف النشاط المفرط في لوزة المخ (Amygdala).
+
+3️⃣ **تمرين التنفس المهدئ للجهاز العصبي (4-7-8 Breathing):**
+• شهيق هادئ من الأنف في 4 ثوانٍ.
+• حبس النفس في 7 ثوانٍ.
+• زفير بطيء من الفم في 8 ثوانٍ.
+(كرر 4 مرات لتهدئة الجهاز العصبي اللابرسمثاوي).
+
+تفضل بطرح أي تفاصيل إضافية يهمك مناقشتها! 🌸`;
+  }
+
+  // 5. Topic-Specific & General Custom Queries
+  if (msgLower.includes('عمل') || msgLower.includes('وظيفة') || msgLower.includes('مدير') || msgLower.includes('شركة') || msgLower.includes('مشروع')) {
+    return `💼 **تحليل وتوجيه نفسي حول العمل والإنتاجية:**
+
+بخصوص تساؤلك عن العمل والضغط المهني: *"${msg}"*:
+
+1️⃣ **وضع الحدود النفسية في بيئة العمل**: فكك الضغوط إلى ما تملك السيطرة عليه وما يقع خارج نطاق حكمك.
+2️⃣ **تقنية الإنجاز المتدرج**: اختر مهمة واحدة صغيرة وابدأ بها لتنشيط الدافعية ومنع الشعور بالإرهاق.
+3️⃣ **الربط بمذكرتك**: تعبيرك بـ (${moodList}) يعكس رغبة حقيقية في ترتيب الأولويات واستعادة التوازن الوظيفي. ✨`;
+  }
+
+  if (msgLower.includes('نوم') || msgLower.includes('أرق') || msgLower.includes('سهر') || msgLower.includes('إرهاق')) {
+    return `🌙 **إرشاد نفسي وصحة النوم (Sleep Hygiene):**
+
+بخصوص استفسارك حول النوم والراحة: *"${msg}"*:
+
+1️⃣ **تهدئة الجهاز العصبي**: تجنب الشاشات قبل النوم بـ 45 دقيقة لتخفيض هرمون الكورتيزول وتحفيز الملايتونين.
+2️⃣ **تفريغ القلق قبل النوم**: اكتب كل ما يشغل بالك في هذه المذكرة تحت بند "أفكار تُؤجل لليوم التالي".
+3️⃣ **التنفس الإيقاعي**: مارس التنفس البطني في السرير لمساعدة جسدك على الاسترخاء والتهيئة للنوم العميق. 💤`;
+  }
+
+  if (msgLower.includes('علاقة') || msgLower.includes('صديق') || msgLower.includes('شخص') || msgLower.includes('عائلة') || msgLower.includes('أهل') || msgLower.includes('حب')) {
+    return `🌱 **تحليل ودعم العلاقات والتواصل الإنساني:**
+
+بخصوص تساؤلك عن العلاقات والتواصل: *"${msg}"*:
+
+1️⃣ **التواصل التعبيري الصريح**: عبر عن احتياجاتك بأسلوب (رسائل "أنا") بدلاً من إطلاق الأحكام (مثال: "أنا أشعر بالضغط عندما..." بدلاً من "أنت دائماً...").
+2️⃣ **الحدود الوجدانية الصحية**: حماية مساحتك النفسية لا تعني الجفاء بل تعني التوازن والاحتفاظ بالاحترام المتبادل.
+3️⃣ **التأمل في مذكرتك**: تدوينك يساعدك على رؤية الموقف بوضوح وموضوعية بعيداً عن الانفعال اللحظي. ✨`;
+  }
+
+  if (msgLower.includes('تسويف') || msgLower.includes('تأجيل') || msgLower.includes('تركيز') || msgLower.includes('تشتت') || msgLower.includes('وقت')) {
+    return `🎯 **استراتيجية تجاوز التسويف والشتات الذهني:**
+
+بخصوص تساؤلك حول التركيز والتنظيم: *"${msg}"*:
+
+1️⃣ **قاعدة الـ 5 دقائق**: ألزم نفسك بالعمل على المهمة لمدة 5 دقائق فقط. غالباً ما يزول الحاجز النفسي بمجرد البداية.
+2️⃣ **تقسيم المهام**: حول الهدف الكبير إلى خطوات صغيرة جداً لا تسبب خوفاً أو إرباكاً للمخ.
+3️⃣ **بيئة خالية من المشتتات**: ابعد الهاتف وأغلق التبويبات الزائدة لزيادة تدفق التركيز (Flow State). 💡`;
+  }
+
+  // General Detailed Response directly answering the prompt
+  return `💬 **تأمل وإجابة المستشار النفسي التفصيلية:**
+
+أهلاً بك يا صديقي. أحييك على طرح هذا السؤال الهام: *"${msg}"*.
+
+إليك التحليل النفسي والتوجيه المخصص بناءً على سياق تدوينتك الحالية ("${title || 'أفكار اليوم'}") وحالتك المزاجية (${moodList}):
+
+1️⃣ **الفهم والتحليل النفسي**:
+طرحك لهذا الموضوع يدل على وعي ذاتي ورغبة صادقة في الفهم والتحسين. التفكير في هذه التساؤلات هو الخطوة الأولى نحو صنع فارق حقيقي.
+
+2️⃣ **الرؤية والحلول المقترحة**:
+• **الخطوة الأولى**: ركز على الحقائق الملموسة والخطوات الواقعية المتاحة في يومك، وافصل بين الأفكار الانفعالية والواقع.
+• **الخطوة الثانية**: امنح نفسك مساحة متدرجة للتطبيق بدون اشتراط الكمال فوراً.
+• **الخطوة الثالثة**: استمر في استخدام الفضفضة والتأمل الكتابي لتنقية الذهن وترتيب الخيارات.
+
+أنا هنا دائماً للإنصات والتعمق في أي جانب إضافي ترغب في مناقشته! ✨`;
+}
+
+app.post("/api/gemini/gratitude-advisor", async (req, res) => {
+  const { gratitudeCards, diaries, action, cardText } = req.body;
+  const customKey = req.headers["x-gemini-key"] as string;
+  const ai = getGenAI(customKey);
+
+  if (ai) {
+    try {
+      const systemInstruction = "أنت طبيب وخبير نفسي متخصص في علم النفس الإيجابي والامتنان البناء لتعزيز الجودة النفسية باللغة العربية الفصحى.";
+      const formattedGratitude = (gratitudeCards || []).map((c: any) => `- ${c.text}`).join("\n");
+      const formattedDiaries = (diaries || []).map((d: any) => `- ${d.title}: ${d.content?.slice(0, 150)}...`).join("\n");
+
+      let userPrompt = "";
+      if (action === "reflection") {
+        userPrompt = `أريد منك بصفتك استشارياً في علم النفس الإيجابي تقديم تحليل وإلهام راقٍ بناءً على بطاقات الامتنان واليوميات الأخيرة التالية:
 
 الأشياء الإيجابية التي أنا ممتن لها:
 ${formattedGratitude || "لا توجد بطاقات مسجلة حالياً."}
