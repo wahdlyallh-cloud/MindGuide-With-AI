@@ -29,6 +29,7 @@ import { TasksChecklistSection } from './components/TasksChecklistSection';
 import { CBTExercisesSection } from './components/CBTExercisesSection';
 import IntegratedTherapyReport from './components/IntegratedTherapyReport';
 import WeeklyHabitsMoodChart from './components/WeeklyHabitsMoodChart';
+import SleepMoodCorrelationChart from './components/SleepMoodCorrelationChart';
 import SmartRemindersModal from './components/SmartRemindersModal';
 import { AuthModal } from './components/AuthModal';
 
@@ -1549,6 +1550,7 @@ export default function App() {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
+  const lastRecordedHtmlRef = useRef<string>('');
 
   // Keep editor content in sync with editingDiary state when needed
   useEffect(() => {
@@ -1560,12 +1562,27 @@ export default function App() {
           editorRef.current.innerHTML = targetContent;
         }
       }
+      if (!lastRecordedHtmlRef.current) {
+        lastRecordedHtmlRef.current = targetContent;
+      }
     }
   }, [editingDiary?.id, editingDiary?.content]);
+
+  // Record snapshot for custom undo/redo history stack
+  const recordUndoSnapshot = (currentHtml?: string) => {
+    const htmlToSave = currentHtml !== undefined ? currentHtml : (editorRef.current?.innerHTML || editingDiary?.content || '');
+    setUndoStack(prev => {
+      if (prev.length > 0 && prev[prev.length - 1] === htmlToSave) return prev;
+      return [...prev.slice(-40), htmlToSave];
+    });
+    setRedoStack([]);
+    lastRecordedHtmlRef.current = htmlToSave;
+  };
 
   const applyRichFormat = (command: string, value: string | null = null) => {
     if (editorRef.current) {
       editorRef.current.focus();
+      recordUndoSnapshot();
       document.execCommand(command, false, value || undefined);
       const html = editorRef.current.innerHTML;
       setEditingDiary(prev => prev ? { ...prev, content: html } : null);
@@ -1576,11 +1593,49 @@ export default function App() {
   };
 
   const handleUndo = () => {
-    applyRichFormat('undo');
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+    if (undoStack.length > 0) {
+      const currentHtml = editorRef.current?.innerHTML || editingDiary?.content || '';
+      const prevHtml = undoStack[undoStack.length - 1];
+      
+      setRedoStack(r => [...r, currentHtml]);
+      setUndoStack(u => u.slice(0, -1));
+      
+      if (editorRef.current) editorRef.current.innerHTML = prevHtml;
+      setEditingDiary(prev => prev ? { ...prev, content: prevHtml } : null);
+      lastRecordedHtmlRef.current = prevHtml;
+    } else {
+      document.execCommand('undo', false);
+      if (editorRef.current) {
+        const html = editorRef.current.innerHTML;
+        setEditingDiary(prev => prev ? { ...prev, content: html } : null);
+      }
+    }
   };
 
   const handleRedo = () => {
-    applyRichFormat('redo');
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+    if (redoStack.length > 0) {
+      const currentHtml = editorRef.current?.innerHTML || editingDiary?.content || '';
+      const nextHtml = redoStack[redoStack.length - 1];
+      
+      setUndoStack(u => [...u, currentHtml]);
+      setRedoStack(r => r.slice(0, -1));
+      
+      if (editorRef.current) editorRef.current.innerHTML = nextHtml;
+      setEditingDiary(prev => prev ? { ...prev, content: nextHtml } : null);
+      lastRecordedHtmlRef.current = nextHtml;
+    } else {
+      document.execCommand('redo', false);
+      if (editorRef.current) {
+        const html = editorRef.current.innerHTML;
+        setEditingDiary(prev => prev ? { ...prev, content: html } : null);
+      }
+    }
   };
 
   const insertFormatting = (prefix: string, suffix: string = '') => {
@@ -4501,27 +4556,17 @@ export default function App() {
                   <div className="bg-[#F4F1EA] border border-[#E2DCC8] border-b-0 rounded-t-2xl p-2 flex flex-wrap items-center gap-1.5 text-xs">
                     <button
                       type="button"
-                      title="تراجع"
+                      title="تراجع (Undo)"
                       onClick={handleUndo}
-                      disabled={undoStack.length === 0}
-                      className={`p-1.5 rounded-lg border font-bold cursor-pointer transition-all ${
-                        undoStack.length > 0 
-                          ? 'bg-white hover:bg-[#EAE5D9] border-[#E2DCC8] text-[#5A5A40]' 
-                          : 'bg-gray-100 border-gray-200 text-gray-300 opacity-50 cursor-not-allowed'
-                      }`}
+                      className="p-1.5 bg-white hover:bg-[#EAE5D9] active:bg-[#D0C8B0] border border-[#E2DCC8] rounded-lg font-bold text-[#3A3A3A] cursor-pointer transition-all flex items-center justify-center text-sm shadow-3xs"
                     >
                       ↩️
                     </button>
                     <button
                       type="button"
-                      title="إعادة"
+                      title="إعادة (Redo)"
                       onClick={handleRedo}
-                      disabled={redoStack.length === 0}
-                      className={`p-1.5 rounded-lg border font-bold cursor-pointer transition-all ${
-                        redoStack.length > 0 
-                          ? 'bg-white hover:bg-[#EAE5D9] border-[#E2DCC8] text-[#5A5A40]' 
-                          : 'bg-gray-100 border-gray-200 text-gray-300 opacity-50 cursor-not-allowed'
-                      }`}
+                      className="p-1.5 bg-white hover:bg-[#EAE5D9] active:bg-[#D0C8B0] border border-[#E2DCC8] rounded-lg font-bold text-[#3A3A3A] cursor-pointer transition-all flex items-center justify-center text-sm shadow-3xs"
                     >
                       ↪️
                     </button>
@@ -4647,6 +4692,10 @@ export default function App() {
                     data-placeholder="اكتب هنا كل ما يدور بخلدك من أفكار، مخاوف، آمال، أو أحداث حدثت لك اليوم... (يمكنك تظليل أي كلمة واستخدام الأزرار أعلاه لـ: العريض B، التحته خط U، المائل I، العناوين، والألوان بسهولة!)"
                     onInput={(e) => {
                       const html = e.currentTarget.innerHTML;
+                      const prevRecorded = lastRecordedHtmlRef.current || '';
+                      if (Math.abs(html.length - prevRecorded.length) > 5 || html.endsWith(' ') || html.endsWith('&nbsp;')) {
+                        recordUndoSnapshot(prevRecorded);
+                      }
                       setEditingDiary(prev => prev ? { ...prev, content: html } : null);
                     }}
                     onBlur={(e) => {
@@ -6656,6 +6705,9 @@ export default function App() {
                     يتم استخلاص هذه البيانات تلقائياً من المذكرات وعدادات النوم والرياضة لرصد الترابط السلوكي لمساعدتك في معالجة القلق والتوتر.
                   </p>
                 </div>
+
+                {/* New Feature: Sleep vs Fast Mood Score Correlation Chart (Past Month) */}
+                <SleepMoodCorrelationChart diaries={diaries} />
 
                 {/* Chart 3: Weekly Habit Completion vs Mood Stability Chart */}
                 <WeeklyHabitsMoodChart habits={habits} diaries={diaries} />

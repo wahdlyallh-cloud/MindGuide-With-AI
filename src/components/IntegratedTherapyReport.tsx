@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Calendar, Brain, FileText, AlertTriangle, Sparkles, Printer, Download } from 'lucide-react';
+import { Calendar, Brain, FileText, AlertTriangle, Sparkles, Printer, Download, FileCheck2 } from 'lucide-react';
 import { DiaryEntry } from '../types';
 import SmartAdvisor from './SmartAdvisor';
+import MonthlyMentalHealthPDFReportModal from './MonthlyMentalHealthPDFReportModal';
 
 interface IntegratedTherapyReportProps {
   diaries: DiaryEntry[];
@@ -12,6 +13,7 @@ interface IntegratedTherapyReportProps {
 }
 
 export default function IntegratedTherapyReport({ diaries, habits = [], gratitudeCards = [], books = [], userApiKey }: IntegratedTherapyReportProps) {
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 14); // default 2 weeks ago
@@ -136,17 +138,28 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
 
   return (
     <div className="space-y-6 font-sans text-right" dir="rtl" id="therapy-report-panel">
-      {/* 🎓 Therapist Session Banner */}
-      <div className="bg-gradient-to-l from-[#5A5A40] to-[#8B9D83] text-white p-6 rounded-3xl shadow-sm border border-[#E2DCC8]/40">
+      {/* 🎓 Therapist Session Banner & Monthly PDF Export */}
+      <div className="bg-gradient-to-l from-[#5A5A40] via-[#6B7C62] to-[#8B9D83] text-white p-5 sm:p-6 rounded-3xl shadow-sm border border-[#E2DCC8]/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-3.5 space-x-reverse">
-          <div className="p-3 bg-white/10 rounded-2xl">
+          <div className="p-3 bg-white/10 rounded-2xl border border-white/10 shrink-0">
             <FileText className="w-6.5 h-6.5 text-[#FEFAE0]" />
           </div>
           <div>
-            <h3 className="text-lg font-extrabold text-white">🎓 تحضير جلسة العلاج النفسي والتقرير السريري</h3>
+            <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+              <span>🎓 تحضير جلسة العلاج النفسي والتقرير السريري</span>
+            </h3>
             <p className="text-xs text-[#E2DCC8]/90 font-medium mt-1">توليد تقرير شامل ومنظم يقدم لمعالجك النفسي لرصد المشاعر والسلوكيات بدقة عيادية متكاملة.</p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsPdfModalOpen(true)}
+          className="px-4 py-2.5 bg-[#FEFAE0] hover:bg-white text-[#5A5A40] rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer shrink-0 hover:scale-102 active:scale-98"
+        >
+          <FileCheck2 className="w-4 h-4 text-[#5A5A40]" />
+          <span>تصدير تقرير الصحة النفسية (PDF) 📄</span>
+        </button>
       </div>
 
       {/* Date Range Selection & Local Stats */}
@@ -246,7 +259,15 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
             </div>
             
             {/* Actions for Report */}
-            <div className="p-3 bg-[#F0EDE4]/60 border-t border-[#E2DCC8] flex items-center justify-end space-x-2 space-x-reverse">
+            <div className="p-3 bg-[#F0EDE4]/60 border-t border-[#E2DCC8] flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPdfModalOpen(true)}
+                className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#8B9D83] hover:bg-[#5A5A40] text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-3xs"
+              >
+                <FileCheck2 className="w-3.5 h-3.5 text-[#FEFAE0]" />
+                <span>تصدير كملف PDF منظم 📄</span>
+              </button>
               <button
                 onClick={handleDownload}
                 className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-white border border-[#E2DCC8] hover:bg-[#F9F7F2] text-gray-700 rounded-xl text-xs font-extrabold transition-all cursor-pointer shadow-3xs"
@@ -277,6 +298,17 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
         </div>
         <SmartAdvisor diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={userApiKey} />
       </div>
+
+      {/* Monthly Mental Health PDF Report Modal */}
+      <MonthlyMentalHealthPDFReportModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        diaries={diaries}
+        habits={habits}
+        gratitudeCards={gratitudeCards}
+        books={books}
+        userApiKey={userApiKey}
+      />
     </div>
   );
 }
