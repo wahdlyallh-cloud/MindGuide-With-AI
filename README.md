@@ -32,6 +32,7 @@
 - **Frontend:** React 18+, TypeScript, Tailwind CSS, Lucide Icons, Framer Motion.
 - **Backend:** Node.js, Express.js (Full-stack architecture).
 - **AI Integration:** Google GenAI SDK (`@google/genai`) مع نموذج `gemini-2.5-flash`.
+- 
 - **Bundler & Build Tool:** Vite + esbuild.
 
 ---
