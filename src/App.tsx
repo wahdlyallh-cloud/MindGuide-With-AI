@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { 
-  Plus, Search, Calendar, Heart, BookOpen, Brain, 
+  Plus, Search, Calendar, Heart, BookOpen, Brain, Scale,
   Settings as SettingsIcon, Sparkles, LogOut, CheckSquare, 
   Trash2, Edit3, Trash, Star, Image, Paperclip, Mic, MicOff, 
   Smile, ShieldCheck, Download, Upload, Activity, Moon, Pill,
@@ -32,6 +32,8 @@ import WeeklyHabitsMoodChart from './components/WeeklyHabitsMoodChart';
 import SleepMoodCorrelationChart from './components/SleepMoodCorrelationChart';
 import SmartRemindersModal from './components/SmartRemindersModal';
 import { AuthModal } from './components/AuthModal';
+import DailyProsConsModal from './components/DailyProsConsModal';
+import ProsConsHistoryLog from './components/ProsConsHistoryLog';
 
 // Recharts components for gorgeous analytics
 import { 
@@ -454,10 +456,23 @@ export default function App() {
   });
 
   const [activeDiariesSubTab, setActiveDiariesSubTab] = useState<'journal' | 'gratitude' | 'cbt' | 'tasks'>('journal');
-  const [analyticsSubTab, setAnalyticsSubTab] = useState<'report' | 'charts'>('report');
+  const [analyticsSubTab, setAnalyticsSubTab] = useState<'report' | 'charts' | 'pros_cons'>('report');
   const [diaryTypeFilter, setDiaryTypeFilter] = useState<'all' | 'diary' | 'thought'>('all');
   const [diaryChatMessage, setDiaryChatMessage] = useState('');
   const [diaryChatLoading, setDiaryChatLoading] = useState(false);
+
+  // States for Daily Pros & Cons Modal (الإيجابيات والسلبيات)
+  const [isProsConsModalOpen, setIsProsConsModalOpen] = useState(false);
+  const [prosConsDayKey, setProsConsDayKey] = useState('');
+  const [prosConsDisplayDate, setProsConsDisplayDate] = useState('');
+  const [prosConsDayDiaries, setProsConsDayDiaries] = useState<DiaryEntry[]>([]);
+
+  const handleOpenProsConsForDay = (dayKey: string, displayDate: string, dayDiaries: DiaryEntry[]) => {
+    setProsConsDayKey(dayKey);
+    setProsConsDisplayDate(displayDate);
+    setProsConsDayDiaries(dayDiaries);
+    setIsProsConsModalOpen(true);
+  };
 
   // Daily Psychological Inspiration quote state
   const [dailyQuote, setDailyQuote] = useState<{ quote: string; author: string }>(() => {
@@ -1178,7 +1193,7 @@ export default function App() {
   interface NavState {
     activeTab: 'dashboard' | 'diaries' | 'advisor' | 'analytics' | 'settings';
     activeDiariesSubTab: 'journal' | 'gratitude' | 'cbt' | 'tasks';
-    analyticsSubTab: 'report' | 'charts';
+    analyticsSubTab: 'report' | 'charts' | 'pros_cons';
     editingDiaryId: string | null;
     diaryTypeFilter: 'all' | 'diary' | 'thought';
   }
@@ -6699,14 +6714,26 @@ export default function App() {
                           <div key={dayKey} className="bg-white border border-[#E2DCC8] rounded-3xl p-6 shadow-xs space-y-5">
                             {/* Large parent Day header */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2DCC8]/50 pb-3 gap-2">
-                              <div className="flex items-center space-x-2.5 space-x-reverse">
-                                <div className="p-2 bg-[#8B9D83]/10 text-[#8B9D83] rounded-2xl">
+                              <div className="flex items-center space-x-2.5 space-x-reverse flex-wrap gap-2">
+                                <div className="p-2 bg-[#8B9D83]/10 text-[#8B9D83] rounded-2xl shrink-0">
                                   <Calendar className="w-5 h-5" />
                                 </div>
                                 <h3 className="font-extrabold text-[#3A3A3A] text-sm md:text-base">
                                   {formattedDayLabel}
                                 </h3>
+
+                                {/* NEW: Pros & Cons Button (الإيجابيات والسلبيات) */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenProsConsForDay(dayKey, formattedDayLabel, dayEntries)}
+                                  className="px-3 py-1.5 bg-gradient-to-r from-[#2B3E50] via-[#3B5066] to-[#5A5A40] hover:from-[#3B5066] hover:to-[#8B9D83] text-white rounded-xl text-xs font-black shadow-3xs flex items-center gap-1.5 cursor-pointer transition-all hover:scale-103 active:scale-97 border border-white/20 shrink-0"
+                                  title="استعراض وتدوين الإيجابيات والسلبيات لهذا اليوم"
+                                >
+                                  <Scale className="w-3.5 h-3.5 text-[#FEFAE0]" />
+                                  <span>⚖️ الإيجابيات والسلبيات</span>
+                                </button>
                               </div>
+
                               <span className="text-[10px] md:text-xs font-bold text-[#5A5A40] bg-[#F9F7F2] border border-[#E2DCC8]/60 px-3 py-1 rounded-xl self-start sm:self-auto">
                                 {dayEntries.length} {dayEntries.length === 1 ? 'مذكرة فرعية' : 'مذكرات فرعية'}
                               </span>
@@ -6934,7 +6961,7 @@ export default function App() {
           <div className="space-y-6">
             
             {/* Analytics & Therapy Sub-Tab Swapper */}
-            <div className="flex bg-[#F0EDE4] p-1.5 rounded-2xl border border-[#E2DCC8]/60 max-w-md mx-auto sm:mx-0 shadow-3xs" id="analytics-subtab-selector">
+            <div className="flex bg-[#F0EDE4] p-1.5 rounded-2xl border border-[#E2DCC8]/60 max-w-xl mx-auto sm:mx-0 shadow-3xs flex-wrap gap-1" id="analytics-subtab-selector">
               <button
                 onClick={() => setAnalyticsSubTab('report')}
                 className={`flex-grow flex items-center justify-center space-x-1.5 space-x-reverse py-2.5 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
@@ -6957,10 +6984,23 @@ export default function App() {
                 <span>📊</span>
                 <span>الرسوم البيانية ومتابعة التقدم</span>
               </button>
+              <button
+                onClick={() => setAnalyticsSubTab('pros_cons')}
+                className={`flex-grow flex items-center justify-center space-x-1.5 space-x-reverse py-2.5 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                  analyticsSubTab === 'pros_cons'
+                    ? 'bg-[#2B3E50] text-white shadow-sm font-black animate-fade-in'
+                    : 'text-gray-600 hover:text-[#2B3E50]'
+                }`}
+              >
+                <span>⚖️</span>
+                <span>سجل الإيجابيات والسلبيات</span>
+              </button>
             </div>
 
             {analyticsSubTab === 'report' ? (
               <IntegratedTherapyReport diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
+            ) : analyticsSubTab === 'pros_cons' ? (
+              <ProsConsHistoryLog diaries={diaries} userApiKey={settings.userApiKey} />
             ) : (
               <div className="space-y-6">
                 {/* Visual Intro card */}
@@ -9803,6 +9843,16 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Daily Pros & Cons Modal Instance (الإيجابيات والسلبيات) */}
+      <DailyProsConsModal
+        isOpen={isProsConsModalOpen}
+        onClose={() => setIsProsConsModalOpen(false)}
+        dayKey={prosConsDayKey}
+        displayDate={prosConsDisplayDate}
+        dayDiaries={prosConsDayDiaries}
+        userApiKey={settings.userApiKey}
+      />
 
     </div>
   );
