@@ -9767,13 +9767,13 @@ export default function App() {
             )}
 
             {/* Attachments if any */}
-            {(viewArchivedDiary.images.length > 0 || (viewArchivedDiary.recordings || []).length > 0) && (
+            {(viewArchivedDiary.images.length > 0 || ((viewArchivedDiary as any).recordings || []).length > 0) && (
               <div className="space-y-3 pt-2 border-t border-[#E2DCC8]/40">
                 <span className="text-xs font-bold text-[#5A5A40] block">المرفقات والصوتيات:</span>
                 {viewArchivedDiary.images.map((img, idx) => (
                   <img key={idx} src={img} alt="مرفق" className="max-h-48 rounded-xl border border-gray-200 object-cover" />
                 ))}
-                {(viewArchivedDiary.recordings || []).map(rec => (
+                {((viewArchivedDiary as any).recordings || []).map((rec: any) => (
                   <audio key={rec.id} controls src={rec.dataUrl || rec.blobUrl} className="w-full h-8" />
                 ))}
               </div>
