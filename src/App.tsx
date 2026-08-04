@@ -6,7 +6,7 @@ import {
   Settings as SettingsIcon, Sparkles, LogOut, CheckSquare, 
   Trash2, Edit3, Trash, Star, Image, Paperclip, Mic, MicOff, 
   Smile, ShieldCheck, Download, Upload, Activity, Moon, Pill,
-  User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key,
+  User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key, Archive, RotateCcw,
   Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -1159,6 +1159,21 @@ export default function App() {
   const [isSendingEmailBackup, setIsSendingEmailBackup] = useState(false);
   const [emailBackupStatus, setEmailBackupStatus] = useState<string | null>(null);
 
+  // --- Archive Management States ---
+  const [archivedSearchQuery, setArchivedSearchQuery] = useState('');
+  const [archivedTypeFilter, setArchivedTypeFilter] = useState<'all' | 'diary' | 'thought'>('all');
+  const [viewArchivedDiary, setViewArchivedDiary] = useState<DiaryEntry | null>(null);
+  const [archiveToast, setArchiveToast] = useState<{ message: string; diaryId: string; action: 'archived' | 'unarchived' } | null>(null);
+
+  useEffect(() => {
+    if (archiveToast) {
+      const timer = setTimeout(() => {
+        setArchiveToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [archiveToast]);
+
   // --- Universal Navigation History & Back Handler ---
   interface NavState {
     activeTab: 'dashboard' | 'diaries' | 'advisor' | 'analytics' | 'settings';
@@ -2050,9 +2065,23 @@ export default function App() {
     }
   };
 
-  // --- Toggle Archive ---
+  // --- Toggle Archive with Toast & Undo Support ---
   const toggleArchiveDiary = (id: string) => {
-    setDiaries(prev => prev.map(d => d.id === id ? { ...d, isArchived: !d.isArchived } : d));
+    const target = diaries.find(d => d.id === id);
+    if (!target) return;
+    const willBeArchived = !target.isArchived;
+
+    setDiaries(prev => prev.map(d => d.id === id ? { ...d, isArchived: willBeArchived } : d));
+
+    const noteTitle = target.title ? `"${target.title}"` : (target.diaryType === 'thought' ? 'الخاطرة' : 'المذكرة');
+    
+    setArchiveToast({
+      message: willBeArchived 
+        ? `تم أرشفة ${noteTitle} بنجاح 📥 ويمكنك العثور عليها في أرشيف الإعدادات` 
+        : `تم استرجاع ${noteTitle} من الأرشيف بنجاح 📤`,
+      diaryId: id,
+      action: willBeArchived ? 'archived' : 'unarchived'
+    });
   };
 
   // --- Image Base64 File Uploader ---
@@ -4557,20 +4586,39 @@ export default function App() {
               <div className="bg-white border border-[#E2DCC8] rounded-3xl p-6 shadow-xs space-y-6">
                 
                 {/* Editor Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-[#E2DCC8]/55">
+                <div className="flex items-center justify-between pb-4 border-b border-[#E2DCC8]/55 flex-wrap gap-2">
                   <h3 className="font-bold text-[#3A3A3A] text-base">
                     {isNewEntry ? '✍️ تدوين مذكرات يومية جديدة' : '✏️ تعديل مذكرتك الشخصية'}
                   </h3>
-                  <button
-                    onClick={() => {
-                      setEditingDiary(null);
-                      setIsNewEntry(false);
-                      setDiaryAiAnswer('');
-                    }}
-                    className="text-xs font-semibold text-[#5A5A40] hover:text-[#3A3A3A] bg-[#F0EDE4] px-3 py-1.5 rounded-lg cursor-pointer"
-                  >
-                    إلغاء وحفظ المسودة
-                  </button>
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    {!isNewEntry && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toggleArchiveDiary(editingDiary.id);
+                          const nextState = !editingDiary.isArchived;
+                          setEditingDiary(prev => prev ? { ...prev, isArchived: nextState } : null);
+                          if (nextState) {
+                            setEditingDiary(null);
+                          }
+                        }}
+                        className="text-xs font-black text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1 space-x-reverse"
+                      >
+                        <Archive className="w-3.5 h-3.5 text-amber-700" />
+                        <span>{editingDiary.isArchived ? 'استرجاع من الأرشيف' : 'أرشفة هذه المذكرة 📥'}</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setEditingDiary(null);
+                        setIsNewEntry(false);
+                        setDiaryAiAnswer('');
+                      }}
+                      className="text-xs font-semibold text-[#5A5A40] hover:text-[#3A3A3A] bg-[#F0EDE4] px-3 py-1.5 rounded-lg cursor-pointer"
+                    >
+                      إلغاء وحفظ المسودة
+                    </button>
+                  </div>
                 </div>
 
                 {/* Title & Star Rating Input */}
@@ -6367,6 +6415,24 @@ export default function App() {
                   </button>
 
                   <div className="flex items-center space-x-2 space-x-reverse">
+                    {!isNewEntry && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toggleArchiveDiary(editingDiary.id);
+                          const nextState = !editingDiary.isArchived;
+                          setEditingDiary(prev => prev ? { ...prev, isArchived: nextState } : null);
+                          if (nextState) {
+                            setEditingDiary(null);
+                          }
+                        }}
+                        className="px-3.5 py-2 text-xs font-black text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 space-x-reverse"
+                      >
+                        <Archive className="w-4 h-4 text-amber-700" />
+                        <span>{editingDiary.isArchived ? 'استرجاع من الأرشيف' : 'أرشفة المذكرة 📥'}</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => {
@@ -6661,14 +6727,15 @@ export default function App() {
                                         {/* Archive Button */}
                                         <button
                                           type="button"
-                                          title={isEn ? "Archive Note" : "أرشفة المذكرة"}
+                                          title={isEn ? "Archive Note" : "أرشفة المذكرة أو الخاطرة"}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             toggleArchiveDiary(diary.id);
                                           }}
-                                          className="p-1.5 bg-white/90 hover:bg-amber-50 text-gray-500 hover:text-amber-600 rounded-lg border border-gray-100/50 hover:shadow-2xs transition-all cursor-pointer"
+                                          className="px-2.5 py-1 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/80 rounded-xl text-[10px] font-black shadow-3xs hover:shadow-2xs transition-all cursor-pointer flex items-center space-x-1 space-x-reverse group/arch hover:scale-105 active:scale-95"
                                         >
-                                          📥
+                                          <Archive className="w-3.5 h-3.5 text-amber-700 group-hover/arch:rotate-12 transition-transform" />
+                                          <span>أرشفة 📥</span>
                                         </button>
 
                                         {/* Move to Trash Button */}
@@ -7268,31 +7335,180 @@ export default function App() {
                 </div>
 
                 {expandedSettingsCard === 'archive' && (
-                  <div className="p-5 border-t border-[#E2DCC8]/60 bg-[#FAF8F5]/40 space-y-3">
-                    {diaries.filter(d => d.isArchived && !d.isTrash).length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-4 font-bold">
-                        {isEn ? "Your diary archive is completely empty." : "أرشيف مذكراتك فارغ حالياً."}
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {diaries.filter(d => d.isArchived && !d.isTrash).map(diary => (
-                          <div key={diary.id} className="flex items-center justify-between bg-white border border-[#E2DCC8]/60 p-3 rounded-xl hover:border-[#8B9D83]/40 transition-colors">
-                            <div className="truncate pr-2">
-                              <span className="text-xs font-black text-[#2B3E50] block truncate">{diary.title || 'بدون عنوان'}</span>
-                              <span className="text-[10px] text-gray-400 font-bold">{diary.createdAt.split('T')[0]}</span>
+                  <div className="p-5 border-t border-[#E2DCC8]/60 bg-[#FAF8F5]/60 space-y-4" dir="rtl">
+                    {/* Filter and Search Bar inside Archive */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      {/* Search Input */}
+                      <div className="relative flex-grow">
+                        <input
+                          type="text"
+                          value={archivedSearchQuery}
+                          onChange={(e) => setArchivedSearchQuery(e.target.value)}
+                          placeholder="ابحث في اليوميات والخواطر المؤرشفة..."
+                          className="w-full bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:outline-none rounded-2xl py-2 pr-9 pl-3 text-xs text-[#3A3A3A] shadow-3xs"
+                        />
+                        <Search className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
+                        {archivedSearchQuery && (
+                          <button 
+                            type="button" 
+                            onClick={() => setArchivedSearchQuery('')}
+                            className="absolute left-3 top-2 text-xs text-gray-400 hover:text-gray-600 font-bold"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Type Filter Pills */}
+                      <div className="flex items-center space-x-1.5 space-x-reverse shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setArchivedTypeFilter('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            archivedTypeFilter === 'all'
+                              ? 'bg-[#8B9D83] text-white shadow-3xs'
+                              : 'bg-white text-gray-600 border border-[#E2DCC8] hover:bg-gray-50'
+                          }`}
+                        >
+                          الكل ({diaries.filter(d => d.isArchived && !d.isTrash).length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setArchivedTypeFilter('diary')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            archivedTypeFilter === 'diary'
+                              ? 'bg-[#8B9D83] text-white shadow-3xs'
+                              : 'bg-white text-gray-600 border border-[#E2DCC8] hover:bg-gray-50'
+                          }`}
+                        >
+                          📖 اليوميات ({diaries.filter(d => d.isArchived && !d.isTrash && (d.diaryType || 'diary') === 'diary').length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setArchivedTypeFilter('thought')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            archivedTypeFilter === 'thought'
+                              ? 'bg-[#8B9D83] text-white shadow-3xs'
+                              : 'bg-white text-gray-600 border border-[#E2DCC8] hover:bg-gray-50'
+                          }`}
+                        >
+                          ✍️ الخواطر ({diaries.filter(d => d.isArchived && !d.isTrash && d.diaryType === 'thought').length})
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Filtered Archived List */}
+                    {(() => {
+                      const archivedList = diaries.filter(d => {
+                        if (!d.isArchived || d.isTrash) return false;
+                        if (archivedTypeFilter === 'diary' && (d.diaryType || 'diary') !== 'diary') return false;
+                        if (archivedTypeFilter === 'thought' && d.diaryType !== 'thought') return false;
+                        if (archivedSearchQuery.trim()) {
+                          const q = archivedSearchQuery.toLowerCase();
+                          const titleMatch = (d.title || '').toLowerCase().includes(q);
+                          const contentMatch = (d.content || '').toLowerCase().includes(q);
+                          const tagMatch = (d.tags || []).some(t => t.toLowerCase().includes(q));
+                          return titleMatch || contentMatch || tagMatch;
+                        }
+                        return true;
+                      });
+
+                      if (archivedList.length === 0) {
+                        return (
+                          <div className="bg-white border border-[#E2DCC8]/80 rounded-2xl p-8 text-center space-y-3">
+                            <div className="w-12 h-12 mx-auto rounded-full bg-amber-50 text-amber-700 flex items-center justify-center text-xl shadow-2xs">
+                              📦
                             </div>
+                            <p className="text-xs font-bold text-[#3A3A3A]">
+                              {archivedSearchQuery ? 'لا توجد نتائج مطابقة في هذا الأرشيف.' : 'أرشيف المذكرات والخواطر فارغ حالياً.'}
+                            </p>
+                            <p className="text-[11px] text-gray-400 max-w-sm mx-auto leading-relaxed">
+                              يمكنك أرشفة أي يومية أو خاطرة من قسم "اليوميات والفضفضة" بحرية لحفظها هنا برقي وبعيداً عن القائمة الرئيسية.
+                            </p>
                             <button
+                              type="button"
                               onClick={() => {
-                                setDiaries(prev => prev.map(d => d.id === diary.id ? { ...d, isArchived: false } : d));
+                                setActiveTab('diaries');
+                                setActiveDiariesSubTab('journal');
                               }}
-                              className="px-3.5 py-1.5 bg-[#8B9D83]/10 hover:bg-[#8B9D83] text-[#8B9D83] hover:text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shrink-0"
+                              className="inline-flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs font-black rounded-xl transition-all shadow-3xs cursor-pointer"
                             >
-                              {isEn ? "Unarchive" : "استرجاع من الأرشيف"}
+                              <span>الانتقال لليوميات لأرشفة عنصر ✍️</span>
                             </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {archivedList.map(diary => (
+                            <div 
+                              key={diary.id}
+                              className="bg-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-2xl p-4 transition-all shadow-3xs hover:shadow-xs space-y-3 flex flex-col justify-between"
+                            >
+                              <div className="space-y-2">
+                                {/* Top Badge & Date */}
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-[10px] px-2.5 py-0.5 rounded-lg font-black ${
+                                    diary.diaryType === 'thought' 
+                                      ? 'bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4]' 
+                                      : 'bg-[#EEF1EB] text-[#556E4F] border border-[#DCE4D8]'
+                                  }`}>
+                                    {diary.diaryType === 'thought' ? '✍️ خاطرة' : '📓 يومية'}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
+                                    <span>📅</span>
+                                    <span>{diary.createdAt.split('T')[0]}</span>
+                                  </span>
+                                </div>
+
+                                {/* Title */}
+                                <h5 className="font-extrabold text-[#2B3E50] text-xs line-clamp-1">
+                                  {diary.title || 'بدون عنوان'}
+                                </h5>
+
+                                {/* Content Preview Snippet */}
+                                <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">
+                                  {diary.content || <em className="text-gray-400">مرفقات وسائط وصوتيات فقط</em>}
+                                </p>
+                              </div>
+
+                              {/* Action Buttons Bar */}
+                              <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => setViewArchivedDiary(diary)}
+                                  className="px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center space-x-1 space-x-reverse"
+                                >
+                                  <Eye className="w-3 h-3 text-indigo-600" />
+                                  <span>معاينة وقراءة</span>
+                                </button>
+
+                                <div className="flex items-center space-x-1 space-x-reverse">
+                                  <button
+                                    type="button"
+                                    title="استرجاع من الأرشيف"
+                                    onClick={() => toggleArchiveDiary(diary.id)}
+                                    className="px-3 py-1.5 bg-[#8B9D83]/15 hover:bg-[#8B9D83] text-[#556E4F] hover:text-white rounded-lg text-[10px] font-black transition-all cursor-pointer flex items-center space-x-1 space-x-reverse"
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                    <span>استرجاع</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="نقل لسلة المهملات"
+                                    onClick={() => handleDeleteDiary(diary.id)}
+                                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -9437,6 +9653,130 @@ export default function App() {
           إغلاق/قفل الشاشة 🔌
         </span>
       </div>
+
+      {/* 📥 Archive Action Toast Notification */}
+      {archiveToast && (
+        <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] sm:w-auto bg-[#2B3E50] text-white p-4 rounded-2xl shadow-2xl border border-[#8B9D83]/40 flex items-center justify-between space-x-3 space-x-reverse animate-slideUp transition-all" dir="rtl">
+          <div className="flex items-center space-x-3 space-x-reverse min-w-0">
+            <div className="p-2 bg-[#8B9D83] text-white rounded-xl text-lg shrink-0">
+              {archiveToast.action === 'archived' ? '📥' : '📤'}
+            </div>
+            <span className="text-xs font-bold leading-relaxed truncate">
+              {archiveToast.message}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2 space-x-reverse shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                toggleArchiveDiary(archiveToast.diaryId);
+                setArchiveToast(null);
+              }}
+              className="px-3 py-1.5 bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs font-black rounded-xl transition-all shadow-xs cursor-pointer"
+            >
+              تراجع (Undo)
+            </button>
+            <button
+              type="button"
+              onClick={() => setArchiveToast(null)}
+              className="text-gray-400 hover:text-white text-xs p-1 font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 👁️ Modal to Preview Archived Diary/Thought */}
+      {viewArchivedDiary && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn" dir="rtl">
+          <div className="bg-white w-full max-w-2xl rounded-3xl p-6 space-y-5 shadow-2xl border border-[#E2DCC8] max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#E2DCC8]/60 pb-3">
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <span className={`text-xs px-2.5 py-1 rounded-xl font-black ${
+                  viewArchivedDiary.diaryType === 'thought' 
+                    ? 'bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4]' 
+                    : 'bg-[#EEF1EB] text-[#556E4F] border border-[#DCE4D8]'
+                }`}>
+                  {viewArchivedDiary.diaryType === 'thought' ? '✍️ خاطرة مؤرشفة' : '📓 يومية مؤرشفة'}
+                </span>
+                <span className="text-xs font-bold text-gray-400">
+                  📅 {viewArchivedDiary.createdAt.split('T')[0]}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewArchivedDiary(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-lg font-extrabold text-[#3A3A3A]">
+              {viewArchivedDiary.title || 'مذكرة بدون عنوان'}
+            </h3>
+
+            {/* Content */}
+            <div className="bg-[#F9F7F2] border border-[#E2DCC8]/60 p-4 rounded-2xl text-xs leading-relaxed text-[#3A3A3A] whitespace-pre-wrap font-medium">
+              {viewArchivedDiary.content || 'لا يوجد نص مكتوب (مرفقات فقط).'}
+            </div>
+
+            {/* Moods & Tags */}
+            {((viewArchivedDiary.moods || []).length > 0 || (viewArchivedDiary.tags || []).length > 0) && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {viewArchivedDiary.moods.map(m => (
+                  <span key={m} className="bg-[#8B9D83]/10 text-[#556E4F] text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                    😊 {m}
+                  </span>
+                ))}
+                {viewArchivedDiary.tags.map(t => (
+                  <span key={t} className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Attachments if any */}
+            {(viewArchivedDiary.images.length > 0 || (viewArchivedDiary.recordings || []).length > 0) && (
+              <div className="space-y-3 pt-2 border-t border-[#E2DCC8]/40">
+                <span className="text-xs font-bold text-[#5A5A40] block">المرفقات والصوتيات:</span>
+                {viewArchivedDiary.images.map((img, idx) => (
+                  <img key={idx} src={img} alt="مرفق" className="max-h-48 rounded-xl border border-gray-200 object-cover" />
+                ))}
+                {(viewArchivedDiary.recordings || []).map(rec => (
+                  <audio key={rec.id} controls src={rec.dataUrl || rec.blobUrl} className="w-full h-8" />
+                ))}
+              </div>
+            )}
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-between pt-4 border-t border-[#E2DCC8]/60">
+              <button
+                type="button"
+                onClick={() => {
+                  toggleArchiveDiary(viewArchivedDiary.id);
+                  setViewArchivedDiary(null);
+                }}
+                className="px-4 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs font-black rounded-xl shadow-xs transition-all cursor-pointer flex items-center space-x-1.5 space-x-reverse"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>استرجاع إلى اليوميات الرئيسية</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewArchivedDiary(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                إغلاق المعاينة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

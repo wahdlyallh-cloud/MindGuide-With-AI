@@ -23,9 +23,7 @@ export default function StaticNotification({ onAction, onBodyClick }: StaticNoti
           </div>
           <span className="text-sm font-black text-gray-700">يومياتي AI • نشط الآن</span>
         </div>
-        <span className="text-[10px] bg-[#E5E1D4] text-[#5A5A40] px-3 py-1 rounded-full font-bold">
-          إشعار مثبت بالأندرويد
-        </span>
+
       </div>
 
       {/* Main Body */}
