@@ -78,6 +78,7 @@ export default function DailyProsConsModal({
 
   const [copySuccess, setCopySuccess] = useState(false);
   const [isCapturingImage, setIsCapturingImage] = useState(false);
+  const [generatedImageModalUrl, setGeneratedImageModalUrl] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -700,49 +701,69 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
     showToast('جاري تحويل التقرير إلى صورة عالية الدقة... 📸');
 
     try {
-      await new Promise(r => setTimeout(r, 200));
-      const element = document.getElementById('pros-cons-modal-printable-card');
+      await new Promise(r => setTimeout(r, 250));
+      const element = document.getElementById('pros-cons-clean-export-card');
       if (!element) {
-        throw new Error('Report element not found');
+        throw new Error('Export element not found');
       }
 
+      // Convert clean offscreen DOM element to crisp canvas
       const canvas = await html2canvas(element, {
-        scale: 2, // High resolution (2x Retina DPI)
+        scale: 2, // High DPI resolution (2x)
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#FAF8F5',
         logging: false,
-        onclone: (_clonedDoc, clonedElement) => {
-          // Expand scrollable region so full report is captured without clipping
-          const scrollArea = clonedElement.querySelector('.overflow-y-auto') as HTMLElement;
-          if (scrollArea) {
-            scrollArea.style.overflow = 'visible';
-            scrollArea.style.maxHeight = 'none';
-            scrollArea.style.height = 'auto';
-          }
-          clonedElement.style.maxHeight = 'none';
-          clonedElement.style.height = 'auto';
-          clonedElement.style.overflow = 'visible';
-          clonedElement.style.borderRadius = '24px';
-
-          // Hide modal UI controls and bottom action bar in the exported graphic
-          const hideItems = clonedElement.querySelectorAll('.no-print-capture');
-          hideItems.forEach((el) => {
-            (el as HTMLElement).style.display = 'none';
-          });
-        }
       });
 
-      const image = canvas.toDataURL('image/png', 1.0);
-      const link = document.createElement('a');
-      link.href = image;
-      link.download = `تقرير_الإيجابيات_والسلبيات_${dayKey}.png`;
-      link.click();
-      showToast('تم حفظ التقرير كـ صورة PNG عالية الدقة بنجاح 🖼️');
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          showToast('حدث خطأ أثناء معالجة بيانات الصورة');
+          setIsCapturingImage(false);
+          return;
+        }
+
+        const fileName = `تقرير_الإيجابيات_والسلبيات_${dayKey}.png`;
+        const file = new File([blob], fileName, { type: 'image/png' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        // 1. Try Mobile Web Share API first (Ideal for mobile iOS / Android share sheet)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: 'تقرير الإيجابيات والسلبيات اليومية',
+              text: `تقرير الإيجابيات والسلبيات - ${displayDate}`,
+            });
+            showToast('تمت مشاركة/حفظ الصورة بنجاح 🖼️');
+            setIsCapturingImage(false);
+            return;
+          } catch (shareErr) {
+            console.log('Mobile share dismissed or uncompleted, falling back to download/preview');
+          }
+        }
+
+        // 2. Trigger Blob URL Download
+        try {
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (downloadErr) {
+          console.error('Download link error:', downloadErr);
+        }
+
+        // 3. Open Preview & Direct Download Modal so user can long-press to save on any device
+        setGeneratedImageModalUrl(blobUrl);
+        showToast('تمت معالجة الصورة بنجاح! يمكنك حفظها أو استعراضها 🖼️');
+        setIsCapturingImage(false);
+      }, 'image/png', 1.0);
+
     } catch (err) {
       console.error('Error saving report image:', err);
       showToast('حدث خطأ أثناء حفظ الصورة، يرجى إعادة المحاولة');
-    } finally {
       setIsCapturingImage(false);
     }
   };
@@ -1082,9 +1103,201 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
 
       </div>
 
+      {/* Hidden Dedicated Render Card for High-Res HTML2Canvas Capture */}
+      <div 
+        id="pros-cons-clean-export-card" 
+        className="fixed top-[-9999px] right-[-9999px] w-[800px] bg-[#FAF8F5] border-2 border-[#E2DCC8] rounded-3xl p-6 shadow-none text-right font-sans leading-relaxed text-[#2D3748] pointer-events-none z-[-100]" 
+        dir="rtl"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#2B3E50] via-[#3B5066] to-[#5A5A40] text-white p-5 rounded-2xl flex items-center justify-between mb-6 border border-[#E2DCC8]/30">
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <div className="p-3 bg-white/15 rounded-2xl border border-white/20 text-2xl">
+              ⚖️
+            </div>
+            <div>
+              <h1 className="text-lg font-black text-white flex items-center gap-2">
+                <span>تقرير الإيجابيات والسلبيات اليومية</span>
+                <span className="bg-[#8B9D83] text-white text-[11px] px-2.5 py-0.5 rounded-full font-extrabold">
+                  توليد ذكي + يدوي
+                </span>
+              </h1>
+              <div className="text-xs text-[#E2DCC8] font-bold mt-1 flex items-center gap-1">
+                <span>📅 {displayDate}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="space-y-6">
+          {/* Section 1: AI Generated */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b-2 border-[#E2DCC8] pb-2">
+              <h2 className="text-sm font-black text-[#2B3E50] flex items-center gap-1.5">
+                <span>أولاً: الإيجابيات والسلبيات المولدة بالذكاء الاصطناعي 🧠</span>
+              </h2>
+              <span className="text-xs text-gray-500 font-bold">مستخلصة تلقائياً من المذكرات</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* AI Positives (Right) */}
+              <div className="bg-[#F2F7F2] border-2 border-[#C2DCBE] rounded-2xl p-4">
+                <div className="flex items-center justify-between border-b border-[#C2DCBE] pb-2 mb-3">
+                  <span className="text-xs font-black text-[#2D5A27] flex items-center gap-1">
+                    <span>🟢 الإيجابيات المولدة بالذكاء الاصطناعي (يمين):</span>
+                  </span>
+                  <span className="text-[10px] bg-[#D1E7DD] text-[#0F5132] px-2 py-0.5 rounded-md font-extrabold">
+                    {aiPositives.length} نقاط
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {aiPositives.length > 0 ? aiPositives.map((pos, idx) => (
+                    <div key={idx} className="bg-white border border-[#C2DCBE] rounded-xl p-2.5 text-xs text-[#1A365D] font-medium leading-relaxed">
+                      🟢 {renderFormattedText(pos)}
+                    </div>
+                  )) : (
+                    <div className="text-xs text-gray-400 text-center py-2">لا توجد نقاط إيجابية مسجلة لليوم</div>
+                  )}
+                </div>
+              </div>
+
+              {/* AI Negatives (Left) */}
+              <div className="bg-[#FDF3F2] border-2 border-[#F5C6C3] rounded-2xl p-4">
+                <div className="flex items-center justify-between border-b border-[#F5C6C3] pb-2 mb-3">
+                  <span className="text-xs font-black text-[#902923] flex items-center gap-1">
+                    <span>🔴 السلبيات والتحديات المولدة بالذكاء الاصطناعي (يسار):</span>
+                  </span>
+                  <span className="text-[10px] bg-[#F8D7DA] text-[#842029] px-2 py-0.5 rounded-md font-extrabold">
+                    {aiNegatives.length} نقاط
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {aiNegatives.length > 0 ? aiNegatives.map((neg, idx) => (
+                    <div key={idx} className="bg-white border border-[#F5C6C3] rounded-xl p-2.5 text-xs text-[#1A365D] font-medium leading-relaxed">
+                      🔴 {renderFormattedText(neg)}
+                    </div>
+                  )) : (
+                    <div className="text-xs text-gray-400 text-center py-2">لا توجد سلبيات مسجلة لليوم</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: User Manual */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b-2 border-[#E2DCC8] pb-2">
+              <h2 className="text-sm font-black text-[#2B3E50] flex items-center gap-1.5">
+                <span>ثانياً: الإيجابيات والسلبيات المدخلة يدوياً بواسطة المستخدم ✍️</span>
+              </h2>
+              <span className="text-xs text-gray-500 font-bold">إدخال واسترسال شخصي</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Manual Positives */}
+              <div className="bg-white border-2 border-[#E2DCC8] rounded-2xl p-4">
+                <div className="flex items-center justify-between border-b border-[#F0EDE4] pb-2 mb-3">
+                  <span className="text-xs font-black text-[#5A5A40]">
+                    إيجابيات اليوم (مدخلة يدوياً):
+                  </span>
+                  <span className="text-[10px] bg-[#F0EDE4] text-gray-700 px-2 py-0.5 rounded-md font-extrabold">
+                    {userPositives.length} نقاط
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {userPositives.length > 0 ? userPositives.map((pos, idx) => (
+                    <div key={idx} className="bg-[#FAF8F5] border border-[#E2DCC8] rounded-xl p-2.5 text-xs text-[#2D3748] font-medium leading-relaxed">
+                      • {renderFormattedText(pos)}
+                    </div>
+                  )) : (
+                    <div className="text-xs text-gray-400 text-center py-2">لم يتم إدخال نقاط خاصة</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Manual Negatives */}
+              <div className="bg-white border-2 border-[#E2DCC8] rounded-2xl p-4">
+                <div className="flex items-center justify-between border-b border-[#F0EDE4] pb-2 mb-3">
+                  <span className="text-xs font-black text-[#5A5A40]">
+                    سلبيات وتحديات اليوم (مدخلة يدوياً):
+                  </span>
+                  <span className="text-[10px] bg-[#F0EDE4] text-gray-700 px-2 py-0.5 rounded-md font-extrabold">
+                    {userNegatives.length} نقاط
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {userNegatives.length > 0 ? userNegatives.map((neg, idx) => (
+                    <div key={idx} className="bg-[#FAF8F5] border border-[#E2DCC8] rounded-xl p-2.5 text-xs text-[#2D3748] font-medium leading-relaxed">
+                      • {renderFormattedText(neg)}
+                    </div>
+                  )) : (
+                    <div className="text-xs text-gray-400 text-center py-2">لم يتم إدخال نقاط خاصة</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 pt-3 border-t border-[#E2DCC8] text-[11px] text-[#5A5A40] flex items-center justify-between font-bold">
+          <span>منصة يومياتي AI - تقرير الإيجابيات والسلبيات اليومية</span>
+          <span>سرية تامة وتشفير محلي 🌿</span>
+        </div>
+      </div>
+
+      {/* Generated Image Preview & Direct Mobile Download Modal */}
+      {generatedImageModalUrl && (
+        <div className="fixed inset-0 z-70 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="bg-white border-2 border-[#E2DCC8] rounded-3xl p-5 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="font-extrabold text-[#2B3E50] text-sm md:text-base flex items-center gap-2">
+                <span>🖼️ تم استخراج التقرير كصورة بنجاح</span>
+              </h3>
+              <button
+                onClick={() => setGeneratedImageModalUrl(null)}
+                className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-[#FAF8F5] border border-[#E2DCC8] p-2 rounded-2xl overflow-y-auto max-h-[60vh] flex flex-col items-center justify-center">
+              <img 
+                src={generatedImageModalUrl} 
+                alt="تقرير الإيجابيات والسلبيات" 
+                className="max-w-full h-auto rounded-xl shadow-md border border-gray-200 object-contain"
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-amber-800 text-xs font-medium text-center">
+              💡 <strong>تلميح لمستخدمي الهواتف:</strong> يمكنك الضغط مطولاً على الصورة أعلاه واختيار <strong>"حفظ الصورة"</strong> أو <strong>"تنزيل الصورة"</strong> ليتم حفظها مباشرة في استوديو أو ملفات الهاتف!
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <a
+                href={generatedImageModalUrl}
+                download={`تقرير_الإيجابيات_والسلبيات_${dayKey}.png`}
+                className="px-4 py-2.5 bg-[#2B3E50] hover:bg-[#3B5066] text-white text-xs font-black rounded-xl flex items-center gap-2 cursor-pointer shadow-md transition-all active:scale-95"
+              >
+                <Download className="w-4 h-4" />
+                <span>تحميل الصورة كـ PNG</span>
+              </a>
+              <button
+                onClick={() => setGeneratedImageModalUrl(null)}
+                className="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-bold rounded-xl cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-70 bg-[#2B3E50] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-80 bg-[#2B3E50] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
