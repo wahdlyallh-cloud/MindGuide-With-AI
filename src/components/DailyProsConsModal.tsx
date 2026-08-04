@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Scale, Brain, Sparkles, Plus, Trash2, Download, Printer, Copy, Check, 
-  X, RefreshCw, FileText, CheckCircle2, XCircle, Edit3, Save, FileCheck2, Clock, Calendar
+  X, RefreshCw, FileText, CheckCircle2, XCircle, Edit3, Save, FileCheck2, Clock, Calendar,
+  Image as ImageIcon
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 import { DiaryEntry } from '../types';
 
 export interface DailyProsConsEntry {
@@ -75,6 +77,7 @@ export default function DailyProsConsModal({
   const [newAiNegative, setNewAiNegative] = useState('');
 
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isCapturingImage, setIsCapturingImage] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -317,10 +320,431 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
     showToast('تم تحميل التقرير كـ مستند Word 📝');
   };
 
-  // Trigger Print for PDF export
+  // Helper to render formatted markdown text with **bold**
+  const renderFormattedText = (text: string) => {
+    if (!text) return '';
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-extrabold text-[#1E293B]">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  // Trigger Print / Save PDF with exact layout match
   const handlePrintPdf = () => {
     handleSave();
-    window.print();
+
+    const existingFrame = document.getElementById('yawmiyati-proscons-print-iframe');
+    if (existingFrame) {
+      existingFrame.remove();
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'yawmiyati-proscons-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    const formatBold = (str: string) => {
+      return str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    };
+
+    const aiPosHtml = aiPositives.length > 0 ? aiPositives.map(p => `
+      <div class="item-card">
+        <span class="bullet-dot">🟢</span>
+        ${formatBold(p)}
+      </div>
+    `).join('') : '<div class="empty-msg">لا توجد نقاط إيجابية مسجلة لليوم</div>';
+
+    const aiNegHtml = aiNegatives.length > 0 ? aiNegatives.map(n => `
+      <div class="item-card">
+        <span class="bullet-dot">🔴</span>
+        ${formatBold(n)}
+      </div>
+    `).join('') : '<div class="empty-msg">لا توجد سلبيات مسجلة لليوم</div>';
+
+    const userPosHtml = userPositives.length > 0 ? userPositives.map(p => `
+      <div class="manual-item-card">
+        • ${formatBold(p)}
+      </div>
+    `).join('') : '<div class="empty-msg">لم يتم إدخال نقاط خاصة</div>';
+
+    const userNegHtml = userNegatives.length > 0 ? userNegatives.map(n => `
+      <div class="manual-item-card">
+        • ${formatBold(n)}
+      </div>
+    `).join('') : '<div class="empty-msg">لم يتم إدخال نقاط خاصة</div>';
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <title>تقرير الإيجابيات والسلبيات اليومية - ${displayDate}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+            background-color: #ffffff;
+            color: #2D3748;
+            direction: rtl;
+            text-align: right;
+            padding: 15px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          @page { size: A4 portrait; margin: 8mm; }
+          .report-container {
+            max-width: 820px;
+            margin: 0 auto;
+            border: 2px solid #E2DCC8;
+            border-radius: 20px;
+            overflow: hidden;
+            background-color: #FAF8F5;
+          }
+          .report-header {
+            background: linear-gradient(135deg, #2B3E50 0%, #3B5066 50%, #5A5A40 100%);
+            color: #ffffff;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #E2DCC8;
+          }
+          .header-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .icon-box {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 22px;
+          }
+          .header-text h1 {
+            font-size: 17px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+          }
+          .badge-tag {
+            background-color: #8B9D83;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 10px;
+          }
+          .header-date {
+            font-size: 12px;
+            color: #E2DCC8;
+            font-weight: 600;
+          }
+          .report-body {
+            padding: 20px;
+          }
+          .section-title-container {
+            border-bottom: 2px solid #E2DCC8;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .section-title {
+            font-size: 13.5px;
+            font-weight: 900;
+            color: #2B3E50;
+          }
+          .section-subtitle {
+            font-size: 11px;
+            color: #718096;
+            font-weight: 700;
+          }
+          .two-columns {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 20px;
+          }
+          .column-box {
+            flex: 1;
+            width: 50%;
+            border-radius: 16px;
+            padding: 14px;
+            border: 2px solid;
+          }
+          .positives-box {
+            background-color: #F2F7F2;
+            border-color: #C2DCBE;
+          }
+          .negatives-box {
+            background-color: #FDF3F2;
+            border-color: #F5C6C3;
+          }
+          .box-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+          }
+          .positives-box .box-header { border-color: #C2DCBE; }
+          .negatives-box .box-header { border-color: #F5C6C3; }
+          .box-header-title {
+            font-size: 12px;
+            font-weight: 900;
+          }
+          .positives-box .box-header-title { color: #2D5A27; }
+          .negatives-box .box-header-title { color: #902923; }
+          .count-badge {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 6px;
+          }
+          .positives-box .count-badge { background-color: #D1E7DD; color: #0F5132; }
+          .negatives-box .count-badge { background-color: #F8D7DA; color: #842029; }
+          .item-cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .item-card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 9px 11px;
+            font-size: 11.5px;
+            line-height: 1.6;
+            border: 1px solid;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+          }
+          .positives-box .item-card { border-color: #C2DCBE; color: #1A365D; }
+          .negatives-box .item-card { border-color: #F5C6C3; color: #1A365D; }
+          .bullet-dot { margin-left: 4px; }
+          .manual-box {
+            background-color: #ffffff;
+            border: 2px solid #E2DCC8;
+          }
+          .manual-box .box-header { border-color: #F0EDE4; }
+          .manual-box .box-header-title { color: #5A5A40; }
+          .manual-box .count-badge { background-color: #F0EDE4; color: #4A5568; }
+          .manual-item-card {
+            background-color: #FAF8F5;
+            border: 1px solid #E2DCC8;
+            border-radius: 10px;
+            padding: 8px 11px;
+            font-size: 11.5px;
+            color: #2D3748;
+            line-height: 1.5;
+          }
+          .empty-msg {
+            font-size: 11px;
+            color: #A0AEC0;
+            text-align: center;
+            padding: 8px;
+          }
+          .report-footer {
+            border-top: 1px solid #E2DCC8;
+            padding: 10px 18px;
+            background-color: #F0EDE4;
+            font-size: 10.5px;
+            color: #5A5A40;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="report-container">
+          <div class="report-header">
+            <div class="header-title-group">
+              <div class="icon-box">⚖️</div>
+              <div class="header-text">
+                <h1>
+                  <span>تقرير الإيجابيات والسلبيات اليومية</span>
+                  <span class="badge-tag">توليد ذكي + يدوي</span>
+                </h1>
+                <div class="header-date">📅 ${displayDate}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-body">
+            <!-- Section 1: AI Generated -->
+            <div class="section-title-container">
+              <div class="section-title">أولاً: الإيجابيات والسلبيات المولدة بالذكاء الاصطناعي 🧠</div>
+              <div class="section-subtitle">مستخلصة تلقائياً من المذكرات</div>
+            </div>
+
+            <div class="two-columns">
+              <!-- AI Positives (Right Column in RTL) -->
+              <div class="column-box positives-box">
+                <div class="box-header">
+                  <div class="box-header-title">
+                    <span>🟢 الإيجابيات المولدة بالذكاء الاصطناعي (يمين):</span>
+                  </div>
+                  <span class="count-badge">${aiPositives.length} نقاط</span>
+                </div>
+                <div class="item-cards-list">
+                  ${aiPosHtml}
+                </div>
+              </div>
+
+              <!-- AI Negatives (Left Column in RTL) -->
+              <div class="column-box negatives-box">
+                <div class="box-header">
+                  <div class="box-header-title">
+                    <span>🔴 السلبيات والتحديات المولدة بالذكاء الاصطناعي (يسار):</span>
+                  </div>
+                  <span class="count-badge">${aiNegatives.length} نقاط</span>
+                </div>
+                <div class="item-cards-list">
+                  ${aiNegHtml}
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: User Manual Inputs -->
+            <div class="section-title-container">
+              <div class="section-title">ثانياً: الإيجابيات والسلبيات المدخلة يدوياً بواسطة المستخدم ✍️</div>
+              <div class="section-subtitle">إدخال واسترسال شخصي</div>
+            </div>
+
+            <div class="two-columns">
+              <!-- Manual Positives (Right Column) -->
+              <div class="column-box manual-box">
+                <div class="box-header">
+                  <div class="box-header-title">
+                    <span>إيجابيات اليوم (مدخلة يدوياً):</span>
+                  </div>
+                  <span class="count-badge">${userPositives.length} نقاط</span>
+                </div>
+                <div class="item-cards-list">
+                  ${userPosHtml}
+                </div>
+              </div>
+
+              <!-- Manual Negatives (Left Column) -->
+              <div class="column-box manual-box">
+                <div class="box-header">
+                  <div class="box-header-title">
+                    <span>سلبيات وتحديات اليوم (مدخلة يدوياً):</span>
+                  </div>
+                  <span class="count-badge">${userNegatives.length} نقاط</span>
+                </div>
+                <div class="item-cards-list">
+                  ${userNegHtml}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="report-footer">
+            <span>منصة يومياتي AI - تقرير الإيجابيات والسلبيات اليومية</span>
+            <span>سرية تامة وتشفير محلي 🌿</span>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.focus();
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    doc.open();
+    doc.write(printContent);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        window.print();
+      }
+    }, 400);
+  };
+
+  // Export report as high-resolution PNG image
+  const handleSaveAsImage = async () => {
+    handleSave();
+    setIsCapturingImage(true);
+    showToast('جاري تحويل التقرير إلى صورة عالية الدقة... 📸');
+
+    try {
+      await new Promise(r => setTimeout(r, 200));
+      const element = document.getElementById('pros-cons-modal-printable-card');
+      if (!element) {
+        throw new Error('Report element not found');
+      }
+
+      const canvas = await html2canvas(element, {
+        scale: 2, // High resolution (2x Retina DPI)
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#FAF8F5',
+        logging: false,
+        onclone: (_clonedDoc, clonedElement) => {
+          // Expand scrollable region so full report is captured without clipping
+          const scrollArea = clonedElement.querySelector('.overflow-y-auto') as HTMLElement;
+          if (scrollArea) {
+            scrollArea.style.overflow = 'visible';
+            scrollArea.style.maxHeight = 'none';
+            scrollArea.style.height = 'auto';
+          }
+          clonedElement.style.maxHeight = 'none';
+          clonedElement.style.height = 'auto';
+          clonedElement.style.overflow = 'visible';
+          clonedElement.style.borderRadius = '24px';
+
+          // Hide modal UI controls and bottom action bar in the exported graphic
+          const hideItems = clonedElement.querySelectorAll('.no-print-capture');
+          hideItems.forEach((el) => {
+            (el as HTMLElement).style.display = 'none';
+          });
+        }
+      });
+
+      const image = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `تقرير_الإيجابيات_والسلبيات_${dayKey}.png`;
+      link.click();
+      showToast('تم حفظ التقرير كـ صورة PNG عالية الدقة بنجاح 🖼️');
+    } catch (err) {
+      console.error('Error saving report image:', err);
+      showToast('حدث خطأ أثناء حفظ الصورة، يرجى إعادة المحاولة');
+    } finally {
+      setIsCapturingImage(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -329,7 +753,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
     <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
       
       {/* Printable Area Wrapper */}
-      <div className="bg-[#FAF8F5] border-2 border-[#E2DCC8] rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-right font-sans my-auto" dir="rtl">
+      <div id="pros-cons-modal-printable-card" className="bg-[#FAF8F5] border-2 border-[#E2DCC8] rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-right font-sans my-auto" dir="rtl">
         
         {/* Modal Top Header Bar */}
         <div className="bg-gradient-to-r from-[#2B3E50] via-[#3B5066] to-[#5A5A40] text-white p-4 sm:p-5 flex items-center justify-between border-b border-[#E2DCC8]/30 shrink-0">
@@ -353,7 +777,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
 
           <button
             onClick={onClose}
-            className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
+            className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer no-print-capture"
           >
             <X className="w-5 h-5" />
           </button>
@@ -407,7 +831,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                 <ul className="space-y-2">
                   {aiPositives.map((pos, idx) => (
                     <li key={idx} className="bg-white border border-[#C2DCBE] p-2.5 rounded-xl text-xs text-gray-800 font-medium flex items-start justify-between gap-2 shadow-3xs group">
-                      <span className="leading-relaxed">🟢 {pos}</span>
+                      <span className="leading-relaxed">🟢 {renderFormattedText(pos)}</span>
                       <button
                         onClick={() => setAiPositives(prev => prev.filter((_, i) => i !== idx))}
                         className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
@@ -452,7 +876,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                 <ul className="space-y-2">
                   {aiNegatives.map((neg, idx) => (
                     <li key={idx} className="bg-white border border-[#F5C6C3] p-2.5 rounded-xl text-xs text-gray-800 font-medium flex items-start justify-between gap-2 shadow-3xs group">
-                      <span className="leading-relaxed">🔴 {neg}</span>
+                      <span className="leading-relaxed">🔴 {renderFormattedText(neg)}</span>
                       <button
                         onClick={() => setAiNegatives(prev => prev.filter((_, i) => i !== idx))}
                         className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
@@ -593,13 +1017,13 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
         </div>
 
         {/* Modal Bottom Footer Actions & Exports */}
-        <div className="p-4 bg-[#F0EDE4] border-t border-[#E2DCC8] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        <div className="p-4 bg-[#F0EDE4] border-t border-[#E2DCC8] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 no-print-capture">
           
           {/* Quick Exports */}
           <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <button
               onClick={handleCopy}
-              className="px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-3xs"
+              className="px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-3xs transition-all active:scale-95"
             >
               {copySuccess ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copySuccess ? 'تم النسخ!' : 'نسخ النص'}</span>
@@ -607,7 +1031,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
 
             <button
               onClick={handleDownloadWord}
-              className="px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-3xs"
+              className="px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-3xs transition-all active:scale-95"
             >
               <FileText className="w-3.5 h-3.5 text-blue-600" />
               <span>Word (.doc)</span>
@@ -615,10 +1039,24 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
 
             <button
               onClick={handlePrintPdf}
-              className="px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-3xs"
+              className="px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-3xs transition-all active:scale-95"
             >
               <Printer className="w-3.5 h-3.5 text-[#5A5A40]" />
               <span>طباعة / حفظ PDF</span>
+            </button>
+
+            <button
+              onClick={handleSaveAsImage}
+              disabled={isCapturingImage}
+              className="px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-3xs disabled:opacity-50 transition-all active:scale-95"
+              title="حفظ التقرير كـ صورة PNG عالية الدقة"
+            >
+              {isCapturingImage ? (
+                <RefreshCw className="w-3.5 h-3.5 text-purple-600 animate-spin" />
+              ) : (
+                <ImageIcon className="w-3.5 h-3.5 text-purple-600" />
+              )}
+              <span>{isCapturingImage ? 'جاري الحفظ...' : 'حفظ كصورة'}</span>
             </button>
           </div>
 

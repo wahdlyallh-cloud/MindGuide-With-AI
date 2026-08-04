@@ -75,6 +75,18 @@ export default function ProsConsHistoryLog({ diaries, userApiKey }: ProsConsHist
     ? Math.round((totalGlobalPositives / (totalGlobalPositives + totalGlobalNegatives)) * 100)
     : 50;
 
+  // Helper to render formatted markdown text with **bold**
+  const renderFormattedText = (text: string) => {
+    if (!text) return '';
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-extrabold text-[#1E293B]">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   // Open Edit Modal for a specific day
   const handleOpenEdit = (entry: DailyProsConsEntry) => {
     // Find matching diaries for that dayKey
@@ -340,13 +352,13 @@ export default function ProsConsHistoryLog({ diaries, userApiKey }: ProsConsHist
                       {entry.aiPositives?.map((pos, idx) => (
                         <li key={'ai-'+idx} className="text-xs text-gray-800 leading-relaxed flex items-start gap-1.5">
                           <span className="text-emerald-700 font-bold">🧠</span>
-                          <span>{pos}</span>
+                          <span>{renderFormattedText(pos)}</span>
                         </li>
                       ))}
                       {entry.userPositives?.map((pos, idx) => (
                         <li key={'usr-'+idx} className="text-xs text-gray-800 leading-relaxed flex items-start gap-1.5">
                           <span className="text-emerald-700 font-bold">✍️</span>
-                          <span>{pos}</span>
+                          <span>{renderFormattedText(pos)}</span>
                         </li>
                       ))}
                       {allPositives.length === 0 && (
@@ -368,13 +380,13 @@ export default function ProsConsHistoryLog({ diaries, userApiKey }: ProsConsHist
                       {entry.aiNegatives?.map((neg, idx) => (
                         <li key={'ai-'+idx} className="text-xs text-gray-800 leading-relaxed flex items-start gap-1.5">
                           <span className="text-rose-700 font-bold">🧠</span>
-                          <span>{neg}</span>
+                          <span>{renderFormattedText(neg)}</span>
                         </li>
                       ))}
                       {entry.userNegatives?.map((neg, idx) => (
                         <li key={'usr-'+idx} className="text-xs text-gray-800 leading-relaxed flex items-start gap-1.5">
                           <span className="text-rose-700 font-bold">✍️</span>
-                          <span>{neg}</span>
+                          <span>{renderFormattedText(neg)}</span>
                         </li>
                       ))}
                       {allNegatives.length === 0 && (
