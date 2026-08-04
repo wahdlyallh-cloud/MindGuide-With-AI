@@ -310,27 +310,39 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
 
   return (
     <div className="space-y-6 font-sans text-right" dir="rtl" id="therapy-report-panel">
-      {/* 🎓 Therapist Session Banner & Monthly PDF Export */}
-      <div className="bg-gradient-to-l from-[#5A5A40] via-[#6B7C62] to-[#8B9D83] text-white p-5 sm:p-6 rounded-3xl shadow-sm border border-[#E2DCC8]/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5 space-x-reverse">
-          <div className="p-3 bg-white/10 rounded-2xl border border-white/10 shrink-0">
-            <FileText className="w-6.5 h-6.5 text-[#FEFAE0]" />
+      {/* 🎓 Therapist Session Banner & Master AI Clinical Report Button */}
+      <div className="bg-gradient-to-l from-[#2B3E50] via-[#3B5066] to-[#5A5A40] text-white p-5 sm:p-6 rounded-3xl shadow-md border border-[#E2DCC8]/30 flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+        
+        {/* Subtle Background Accent Glow */}
+        <div className="absolute -top-12 -left-12 w-48 h-48 bg-[#8B9D83]/20 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div className="flex items-center space-x-4 space-x-reverse relative z-10">
+          <div className="p-3.5 bg-white/10 rounded-2xl border border-white/15 shrink-0 shadow-inner">
+            <Brain className="w-7 h-7 text-[#FEFAE0] animate-pulse" />
           </div>
           <div>
-            <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-              <span>🎓 تحضير جلسة العلاج النفسي والتقرير السريري</span>
-            </h3>
-            <p className="text-xs text-[#E2DCC8]/90 font-medium mt-1">توليد تقرير شامل ومنظم يقدم لمعالجك النفسي لرصد المشاعر والسلوكيات بدقة عيادية متكاملة.</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-lg font-black text-white">
+                🎓 تحضير جلسة العلاج النفسي والتقرير السريري الشامل
+              </h3>
+              <span className="bg-[#8B9D83] text-white px-2.5 py-0.5 rounded-full text-[10px] font-black border border-white/20">
+                مدعوم بالذكاء الاصطناعي 🧠
+              </span>
+            </div>
+            <p className="text-xs text-[#E2DCC8]/90 font-medium mt-1 leading-relaxed max-w-xl">
+              نظام تحليلي متكامل يرصد المشاعر والسلوكيات، ويولد تقريراً سريرياً فورياً بـ PDF جاهز للتسليم للمعالج النفسي وللحفظ التلقائي في سجل التقييمات.
+            </p>
           </div>
         </div>
 
+        {/* Master Single Unified Button */}
         <button
           type="button"
           onClick={() => setIsPdfModalOpen(true)}
-          className="px-4 py-2.5 bg-[#FEFAE0] hover:bg-white text-[#5A5A40] rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer shrink-0 hover:scale-102 active:scale-98"
+          className="relative z-10 px-5 py-3.5 bg-gradient-to-r from-[#FEFAE0] to-[#E2DCC8] hover:from-white hover:to-[#FEFAE0] text-[#2B3E50] rounded-2xl font-black text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer shrink-0 hover:scale-102 active:scale-98 border border-white/40 group"
         >
-          <FileCheck2 className="w-4 h-4 text-[#5A5A40]" />
-          <span>تصدير تقرير الصحة النفسية (PDF) 📄</span>
+          <Sparkles className="w-4 h-4 text-[#8B9D83] group-hover:rotate-12 transition-transform" />
+          <span>توليد واستعراض التقرير السريري الشامل بالذكاء الاصطناعي (PDF) 📄</span>
         </button>
       </div>
 
@@ -379,22 +391,12 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
           </div>
         </div>
 
-        {/* Action Button */}
-        {filteredDiaries.length === 0 ? (
+        {/* No Diaries Alert */}
+        {filteredDiaries.length === 0 && (
           <div className="bg-[#FAEDCD]/40 border border-[#D4A373]/30 rounded-2xl p-4 text-center text-[#D4A373] text-xs flex items-center justify-center space-x-2 space-x-reverse font-bold">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>لا توجد مذكرات مدونة في الفترة المحددة. يرجى تدوين مذكرات أو تعديل نطاق التاريخ أولاً!</span>
           </div>
-        ) : (
-          !reportText && !loading && (
-            <button
-              onClick={generateReport}
-              className="w-full py-3.5 px-4 bg-gradient-to-tr from-[#5A5A40] to-[#8B9D83] hover:from-[#5A5A40]/95 hover:to-[#8B9D83]/95 text-white rounded-2xl font-bold text-sm shadow-sm transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer group active:scale-99"
-            >
-              <Brain className="w-4.5 h-4.5 animate-pulse text-[#FEFAE0]" />
-              <span>تحليل البيانات وتوليد التقرير السريري الفوري بالذكاء الاصطناعي 🧠</span>
-            </button>
-          )
         )}
 
         {/* Loading Indicator */}
@@ -484,7 +486,7 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
       {/* 📜 Generated Reports History Log Section (سجل تقارير الصحة النفسية وجلسات العلاج المولدة) */}
       <div className="space-y-4 pt-4 border-t border-[#E2DCC8]">
         
-        {/* Section Title & Add Action Header */}
+        {/* Section Title & Header */}
         <div className="bg-gradient-to-r from-[#2B3E50] via-[#3B5066] to-[#5A5A40] text-white p-5 rounded-3xl shadow-sm border border-[#2B3E50]/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3 space-x-reverse">
             <div className="p-3 bg-white/10 rounded-2xl border border-white/10 shrink-0">
@@ -502,15 +504,6 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsPdfModalOpen(true)}
-            className="px-4 py-2.5 bg-[#8B9D83] hover:bg-[#5A5A40] text-white rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer shrink-0 hover:scale-102 active:scale-98 border border-white/20"
-          >
-            <Plus className="w-4 h-4 text-[#FEFAE0]" />
-            <span>توليد تقرير جديد في السجل (PDF) 📄</span>
-          </button>
         </div>
 
         {/* Search & Filter Bar */}
