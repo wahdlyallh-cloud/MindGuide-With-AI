@@ -1,7 +1,8 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { 
   FileText, Calendar, Brain, Download, Printer, X, Sparkles, 
-  Moon, Smile, Activity, CheckCircle2, TrendingUp, AlertCircle, ShieldCheck, FileCheck2, Zap, Clock
+  Moon, Smile, Activity, CheckCircle2, TrendingUp, AlertCircle, ShieldCheck, FileCheck2, Zap, Clock,
+  Copy, Check, FileCode
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -47,6 +48,7 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiAnalysisText, setAiAnalysisText] = useState<string>('');
   const [patientNotes, setPatientNotes] = useState<string>('');
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Calculate Start & End Date and Report Title based on selected period
   const { startDateStr, endDateStr, periodTitle, periodLabel } = useMemo(() => {
@@ -327,6 +329,71 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
     }
   };
 
+  // Copy text report directly to clipboard
+  const handleCopyText = async () => {
+    try {
+      const fullText = `🎓 ${periodTitle}\nمنصة يومياتي AI | الفترة: ${periodLabel}\n\n📊 الإحصائيات السريعة:\n- عدد المذكرات: ${stats.totalDiaries}\n- متوسط النوم: ${stats.avgSleep} ساعة/ليلة\n- معدل المزاج: ${stats.avgMood} / 10\n- وقت الرياضة: ${stats.totalSportsMinutes} دقيقة\n\n📋 التقرير والتحليل السريري للمستشار الذكي:\n${aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي والنوم.'}\n\n${patientNotes ? `📝 ملاحظات وأسئلة المعالج:\n${patientNotes}\n\n` : ''}تم إنشاء التقرير عبر منصة يومياتي AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}`;
+      await navigator.clipboard.writeText(fullText);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 3000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Download plain text report (.txt UTF-8 BOM)
+  const handleDownloadTxt = () => {
+    const fullText = `\uFEFF🎓 ${periodTitle}\nمنصة يومياتي AI | الفترة: ${periodLabel}\n\n📊 الإحصائيات السريعة:\n- عدد المذكرات: ${stats.totalDiaries}\n- متوسط النوم: ${stats.avgSleep} ساعة/ليلة\n- معدل المزاج: ${stats.avgMood} / 10\n- وقت الرياضة: ${stats.totalSportsMinutes} دقيقة\n\n📋 التقرير والتحليل السريري للمستشار الذكي:\n${aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي والنوم.'}\n\n${patientNotes ? `📝 ملاحظات وأسئلة المعالج:\n${patientNotes}\n\n` : ''}تم إنشاء التقرير عبر منصة يومياتي AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}`;
+    const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `تقرير_الصحة_النفسية_${periodType}_${new Date().toISOString().split('T')[0]}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Download formatted Word document (.doc)
+  const handleDownloadDoc = () => {
+    const htmlDocContent = `\uFEFF<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>${periodTitle}</title>
+  <style>
+    body { font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; padding: 25px; line-height: 1.8; color: #2B3E50; direction: rtl; text-align: right; }
+    h1 { color: #5A5A40; border-bottom: 2px solid #E2DCC8; padding-bottom: 8px; font-size: 20px; text-align: center; }
+    .meta { background-color: #F9F7F2; padding: 16px; border-radius: 12px; border: 1px solid #E2DCC8; margin-bottom: 20px; font-size: 13px; }
+    .report-body { background: #FAF8F5; padding: 16px; border-radius: 12px; border: 1px solid #E2DCC8; font-size: 14px; white-space: pre-wrap; line-height: 1.8; margin-top: 15px; }
+    .footer { text-align: center; margin-top: 30px; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🎓 ${periodTitle}</h1>
+  <div class="meta">
+    <p><strong>الفترة الزمنية:</strong> ${periodLabel}</p>
+    <p><strong>عدد المذكرات:</strong> ${stats.totalDiaries} | <strong>متوسط ساعات النوم:</strong> ${stats.avgSleep} ساعة | <strong>معدل المزاج:</strong> ${stats.avgMood}/10 | <strong>وقت التمارين:</strong> ${stats.totalSportsMinutes} دقيقة</p>
+  </div>
+  <h3>📋 التقرير والتحليل السريري للمستشار الذكي</h3>
+  <div class="report-body">
+    ${(aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي والنوم.').replace(/\n/g, '<br/>')}
+  </div>
+  ${patientNotes ? `
+    <h3>📝 ملاحظات وأسئلة موجهة للمعالج</h3>
+    <div class="report-body">${patientNotes.replace(/\n/g, '<br/>')}</div>
+  ` : ''}
+  <div class="footer">تم إنشاء هذا التقرير تلقائياً وبسرية تامة عبر يومياتي AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}</div>
+</body>
+</html>`;
+    const blob = new Blob([htmlDocContent], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `تقرير_الصحة_النفسية_${periodType}_${new Date().toISOString().split('T')[0]}.doc`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Download PDF using html2canvas + jsPDF with smart fallback
   const handleDownloadPdf = async () => {
     if (!reportRef.current) return;
@@ -334,11 +401,11 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
 
     try {
       // Small pause to allow DOM and charts to stabilize
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       const element = reportRef.current;
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#FFFFFF',
@@ -393,8 +460,8 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
       const fileName = `تقرير_الصحة_النفسية_${periodType}_${periodLabel.replace(/[\s\(\)\/]/g, '_')}.pdf`;
       pdf.save(fileName);
     } catch (err) {
-      console.error('PDF canvas export error, switching to browser print fallback:', err);
-      // Fallback to iframe printing seamlessly without throwing scary alert errors
+      console.error('PDF canvas export error, switching seamlessly to print fallback:', err);
+      // Fallback to iframe printing seamlessly without showing scary alert errors
       handlePrintPdf();
     } finally {
       setIsExportingPdf(false);
@@ -654,7 +721,7 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center space-x-2 space-x-reverse">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {!aiAnalysisText && (
                 <button
                   type="button"
@@ -669,11 +736,38 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
 
               <button
                 type="button"
+                onClick={handleCopyText}
+                className="px-3 py-1.5 bg-white border border-[#E2DCC8] hover:bg-[#F0EDE4] text-gray-700 text-xs font-bold rounded-xl transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+              >
+                {copySuccess ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#5A5A40]" />}
+                <span>{copySuccess ? 'تم النسخ!' : 'نسخ النص'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadDoc}
+                className="px-3 py-1.5 bg-white border border-[#E2DCC8] hover:bg-[#F0EDE4] text-[#2B3E50] text-xs font-bold rounded-xl transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileCode className="w-3.5 h-3.5 text-blue-600" />
+                <span>Word (.doc)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadTxt}
+                className="px-3 py-1.5 bg-white border border-[#E2DCC8] hover:bg-[#F0EDE4] text-gray-700 text-xs font-bold rounded-xl transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-[#5A5A40]" />
+                <span>نصي (UTF-8)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handlePrintPdf}
                 className="px-3 py-1.5 bg-white border border-[#E2DCC8] hover:bg-[#F0EDE4] text-gray-700 text-xs font-bold rounded-xl transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5 text-[#5A5A40]" />
-                <span>طباعة</span>
+                <span>طباعة / حفظ PDF 🖨️</span>
               </button>
 
               <button
