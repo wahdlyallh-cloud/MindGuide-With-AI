@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Brain, FileText, CheckCircle, AlertTriangle, Sparkles, Printer, ArrowRight, Download } from 'lucide-react';
+import { Calendar, Brain, FileText, CheckCircle, AlertTriangle, Sparkles, Printer, ArrowRight, Download, Copy, Check, FileCode } from 'lucide-react';
 import { DiaryEntry } from '../types';
 
 interface TherapistReportModalProps {
@@ -22,6 +22,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
   const [loading, setLoading] = useState(false);
   const [reportText, setReportText] = useState<string>('');
   const [reportSource, setReportSource] = useState<string>('');
+  const [copySuccess, setCopySuccess] = useState(false);
 
   if (!isOpen) return null;
 
@@ -129,13 +130,60 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
     printWindow.document.close();
   };
 
-  const handleDownload = () => {
-    const textContent = `تقرير مجهز لجلسة العلاج النفسي - يومياتي AI\nالفترة: من ${startDate} إلى ${endDate}\n\nإحصائيات مكملة:\n- عدد المذكرات: ${totalEntries}\n- متوسط النوم: ${averageSleep} ساعة\n- وقت الرياضة: ${totalSports} دقيقة\n\nالتقرير التحليلي:\n${reportText}`;
+  const handleCopyText = async () => {
+    try {
+      const textToCopy = `تقرير مجهز لجلسة العلاج النفسي - يومياتي AI\nالفترة: من ${startDate} إلى ${endDate}\n\nإحصائيات مكملة:\n- عدد المذكرات: ${totalEntries}\n- متوسط النوم: ${averageSleep} ساعة\n- وقت الرياضة: ${totalSports} دقيقة\n\nالتقرير التحليلي:\n${reportText}`;
+      await navigator.clipboard.writeText(textToCopy);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 3000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDownloadTxt = () => {
+    // UTF-8 BOM (\uFEFF) ensures proper Arabic rendering in all text viewers
+    const textContent = `\uFEFFتقرير مجهز لجلسة العلاج النفسي - يومياتي AI\nالفترة: من ${startDate} إلى ${endDate}\n\nإحصائيات مكملة:\n- عدد المذكرات: ${totalEntries}\n- متوسط النوم: ${averageSleep} ساعة\n- وقت الرياضة: ${totalSports} دقيقة\n\nالتقرير التحليلي:\n${reportText}`;
     const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `تقرير_العلاج_النفسي_${startDate}_إلى_${endDate}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadDoc = () => {
+    const htmlDocContent = `\uFEFF<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تقرير العلاج النفسي</title>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 25px; line-height: 1.8; color: #2B3E50; direction: rtl; text-align: right; }
+    h1 { color: #5A5A40; border-bottom: 2px solid #E2DCC8; padding-bottom: 8px; font-size: 20px; }
+    .meta { background-color: #F9F7F2; padding: 12px; border-radius: 8px; border: 1px solid #E2DCC8; margin-bottom: 16px; font-size: 13px; }
+    .report-body { font-size: 14px; white-space: pre-wrap; line-height: 1.8; }
+    .footer { text-align: center; margin-top: 30px; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🎓 تقرير جلسة العلاج النفسي - يومياتي AI</h1>
+  <div class="meta">
+    <p><strong>الفترة الزمنية:</strong> من ${startDate} إلى ${endDate}</p>
+    <p><strong>إحصائيات المذكرات:</strong> ${totalEntries} | <strong>متوسط ساعات النوم:</strong> ${averageSleep} ساعة | <strong>وقت التمارين:</strong> ${totalSports} دقيقة</p>
+  </div>
+  <div class="report-body">
+    ${reportText.replace(/\n/g, '<br/>')}
+  </div>
+  <div class="footer">تم إنشاء هذا التقرير تلقائياً وبسرية تامة عبر يومياتي AI</div>
+</body>
+</html>`;
+    const blob = new Blob([htmlDocContent], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `تقرير_العلاج_النفسي_${startDate}_إلى_${endDate}.doc`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -274,20 +322,41 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
             >
               إعادة توليد 🔄
             </button>
-            <div className="flex items-center space-x-2 space-x-reverse">
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={handleDownload}
-                className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-white border border-[#E2DCC8] hover:bg-[#F9F7F2] text-gray-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                type="button"
+                onClick={handleCopyText}
+                className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-[#F9F7F2] text-gray-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              >
+                {copySuccess ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#5A5A40]" />}
+                <span>{copySuccess ? 'تم النسخ!' : 'نسخ النص'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadDoc}
+                className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-[#F9F7F2] text-[#2B3E50] rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              >
+                <FileCode className="w-3.5 h-3.5 text-blue-600" />
+                <span>Word (.doc)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadTxt}
+                className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-[#F9F7F2] text-gray-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 text-[#5A5A40]" />
-                <span>تنزيل ملف نصي</span>
+                <span>ملف نصي (UTF-8)</span>
               </button>
+
               <button
+                type="button"
                 onClick={handlePrint}
                 className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#5A5A40] hover:bg-[#5A5A40]/90 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5 text-white" />
-                <span>طباعة التقرير للجلسة</span>
+                <span>طباعة التقرير</span>
               </button>
             </div>
           </div>

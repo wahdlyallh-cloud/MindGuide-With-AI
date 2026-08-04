@@ -1984,7 +1984,7 @@ export default function App() {
     setIsExportingPdf(true);
     try {
       // Small pause to let React cycle and fonts load completely
-      await new Promise(resolve => setTimeout(resolve, 350));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       const element = document.getElementById('diary-to-pdf');
       if (!element) {
@@ -1998,6 +1998,31 @@ export default function App() {
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        windowWidth: 1200,
+        windowHeight: 1600,
+        onclone: (_clonedDoc, clonedElement) => {
+          clonedElement.style.width = '800px';
+          clonedElement.style.maxWidth = 'none';
+          clonedElement.style.margin = '0 auto';
+          clonedElement.style.padding = '24px';
+
+          // Ensure SVGs have width and height
+          const svgs = clonedElement.querySelectorAll('svg');
+          svgs.forEach((svg) => {
+            const rect = svg.getBoundingClientRect();
+            const width = svg.getAttribute('width') || rect.width || 24;
+            const height = svg.getAttribute('height') || rect.height || 24;
+            svg.setAttribute('width', `${width}`);
+            svg.setAttribute('height', `${height}`);
+          });
+
+          const allElements = clonedElement.querySelectorAll('*');
+          allElements.forEach((el) => {
+            if (el instanceof HTMLElement) {
+              el.style.boxShadow = 'none';
+            }
+          });
+        }
       });
       
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -2032,7 +2057,8 @@ export default function App() {
       pdf.save(`${safeTitle || 'diary'}_${dateStr}.pdf`);
     } catch (err) {
       console.error('Error exporting PDF:', err);
-      alert(isEn ? 'Failed to export PDF.' : 'عذراً، حدث خطأ أثناء تصدير المذكرة كملف PDF. يرجى المحاولة لاحقاً.');
+      // Fallback print via iframe
+      window.print();
     } finally {
       setIsExportingPdf(false);
     }

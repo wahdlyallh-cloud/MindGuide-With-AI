@@ -327,21 +327,51 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
     }
   };
 
-  // Download PDF using html2canvas + jsPDF
+  // Download PDF using html2canvas + jsPDF with smart fallback
   const handleDownloadPdf = async () => {
     if (!reportRef.current) return;
     setIsExportingPdf(true);
 
     try {
+      // Small pause to allow DOM and charts to stabilize
+      await new Promise(resolve => setTimeout(resolve, 250));
+
       const element = reportRef.current;
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#FFFFFF',
-        logging: false
+        logging: false,
+        windowWidth: 1200,
+        windowHeight: 1600,
+        onclone: (_clonedDoc, clonedElement) => {
+          clonedElement.style.width = '800px';
+          clonedElement.style.maxWidth = 'none';
+          clonedElement.style.margin = '0 auto';
+          clonedElement.style.padding = '24px';
+          
+          // Ensure all inline and embedded SVGs have explicit width and height
+          const svgs = clonedElement.querySelectorAll('svg');
+          svgs.forEach((svg) => {
+            const rect = svg.getBoundingClientRect();
+            const width = svg.getAttribute('width') || rect.width || 100;
+            const height = svg.getAttribute('height') || rect.height || 100;
+            svg.setAttribute('width', `${width}`);
+            svg.setAttribute('height', `${height}`);
+          });
+
+          // Remove any problematic box shadows for cleaner html2canvas rendering
+          const allElements = clonedElement.querySelectorAll('*');
+          allElements.forEach((el) => {
+            if (el instanceof HTMLElement) {
+              el.style.boxShadow = 'none';
+            }
+          });
+        }
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -350,38 +380,63 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
       let position = 0;
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
       heightLeft -= pageHeight;
 
-      while (heightLeft >= 0) {
+      while (heightLeft > 0) {
         position = heightLeft - pdfHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
         heightLeft -= pageHeight;
       }
 
       const fileName = `تقرير_الصحة_النفسية_${periodType}_${periodLabel.replace(/[\s\(\)\/]/g, '_')}.pdf`;
       pdf.save(fileName);
     } catch (err) {
-      console.error('PDF export error:', err);
-      alert('حدث خطأ أثناء تصدير ملف الـ PDF. يمكنك استخدام زر "طباعة التقرير" كبديل مباشر.');
+      console.error('PDF canvas export error, switching to browser print fallback:', err);
+      // Fallback to iframe printing seamlessly without throwing scary alert errors
+      handlePrintPdf();
     } finally {
       setIsExportingPdf(false);
     }
   };
 
-  // Browser Print option
+  // Browser Print option using hidden iframe (bypasses mobile popup blockers)
   const handlePrintPdf = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow || !reportRef.current) return;
+    if (!reportRef.current) return;
 
-    printWindow.document.write(`
+    // Clean up any existing print frame
+    const existingFrame = document.getElementById('yawmiyati-print-iframe');
+    if (existingFrame) {
+      existingFrame.remove();
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'yawmiyati-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '-9999px';
+    iframe.style.bottom = '-9999px';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = '0px';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (!doc) return;
+
+    const formattedAiText = (aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي والنوم.').replace(/\n/g, '<br/>');
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
       <html dir="rtl" lang="ar">
         <head>
+          <meta charset="utf-8">
           <title>${periodTitle} - يومياتي AI</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-            body { font-family: 'Cairo', sans-serif; padding: 25px; color: #1e293b; background: #fff; line-height: 1.6; }
+            * { box-sizing: border-box; }
+            body { font-family: 'Cairo', sans-serif; padding: 25px; color: #1e293b; background: #fff; line-height: 1.6; direction: rtl; text-align: right; }
             .header-bar { background: linear-gradient(to left, #5A5A40, #8B9D83); color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; text-align: center; }
             .header-bar h1 { margin: 0; font-size: 20px; font-weight: 900; }
             .header-bar p { margin: 5px 0 0; font-size: 13px; opacity: 0.9; }
@@ -390,8 +445,12 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
             .stat-card .label { font-size: 11px; color: #64748b; font-weight: bold; }
             .stat-card .value { font-size: 18px; color: #2B3E50; font-weight: 900; margin-top: 4px; }
             .section-title { font-size: 15px; font-weight: 800; color: #5A5A40; border-bottom: 2px solid #E2DCC8; padding-bottom: 6px; margin-top: 25px; margin-bottom: 15px; }
-            .content-box { background: #FAF8F5; border: 1px solid #E2DCC8; padding: 16px; border-radius: 12px; font-size: 13px; white-space: pre-wrap; }
-            .footer-note { text-align: center; margin-top: 40px; font-size: 11px; color: #94a3b8; border-t: 1px solid #e2e8f0; padding-top: 15px; }
+            .content-box { background: #FAF8F5; border: 1px solid #E2DCC8; padding: 16px; border-radius: 12px; font-size: 13px; white-space: pre-wrap; line-height: 1.8; }
+            .footer-note { text-align: center; margin-top: 40px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+            @media print {
+              body { padding: 10px; }
+              @page { size: A4; margin: 12mm; }
+            }
           </style>
         </head>
         <body>
@@ -421,24 +480,27 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
 
           <div class="section-title">📋 التقرير والتحليل السريري للمستشار الذكي</div>
           <div class="content-box">
-            ${(aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي والنوم.').replace(/\n/g, '<br/>')}
+            ${formattedAiText}
           </div>
 
           ${patientNotes ? `
             <div class="section-title">✏️ ملاحظات وتساؤلات المستخدم للجلسة العلاجية</div>
-            <div class="content-box">${patientNotes}</div>
+            <div class="content-box">${patientNotes.replace(/\n/g, '<br/>')}</div>
           ` : ''}
 
           <div class="footer-note">
             تم توليد هذا التقرير تلقائياً وبسرية تامة لمشاركته مع الأطباء والمختصين النفسيين عبر منصة Yawmiyati AI.
           </div>
           <script>
-            window.onload = function() { window.print(); }
+            setTimeout(function() {
+              window.focus();
+              window.print();
+            }, 300);
           </script>
         </body>
       </html>
     `);
-    printWindow.document.close();
+    doc.close();
   };
 
   if (!isOpen) return null;
