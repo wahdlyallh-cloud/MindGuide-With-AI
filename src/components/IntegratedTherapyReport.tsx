@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { Calendar, Brain, FileText, AlertTriangle, Sparkles, Printer, Download, FileCheck2, Copy, Check, FileCode } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Calendar, Brain, FileText, AlertTriangle, Sparkles, Printer, Download, FileCheck2, Copy, Check, FileCode,
+  History, Search, Plus, Trash2, Edit3, ArrowRightLeft, Clock, CheckCircle2, Stethoscope, UserCheck,
+  BookOpen, Filter, Zap, RefreshCw, X, MessageSquare, ListTodo, ShieldCheck, ChevronDown, ChevronUp
+} from 'lucide-react';
 import { DiaryEntry } from '../types';
-import SmartAdvisor from './SmartAdvisor';
-import MonthlyMentalHealthPDFReportModal from './MonthlyMentalHealthPDFReportModal';
+import MonthlyMentalHealthPDFReportModal, { SavedPDFReport, INITIAL_SAVED_REPORTS } from './MonthlyMentalHealthPDFReportModal';
 
 interface IntegratedTherapyReportProps {
   diaries: DiaryEntry[];
@@ -14,6 +17,8 @@ interface IntegratedTherapyReportProps {
 
 export default function IntegratedTherapyReport({ diaries, habits = [], gratitudeCards = [], books = [], userApiKey }: IntegratedTherapyReportProps) {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [selectedReportForModal, setSelectedReportForModal] = useState<SavedPDFReport | null>(null);
+  
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 14); // default 2 weeks ago
@@ -27,6 +32,125 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
   const [reportText, setReportText] = useState<string>('');
   const [reportSource, setReportSource] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // Saved Reports History State
+  const [savedReports, setSavedReports] = useState<SavedPDFReport[]>(() => {
+    try {
+      const stored = localStorage.getItem('yawmiyati_mental_health_reports_history');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_SAVED_REPORTS;
+    } catch {
+      return INITIAL_SAVED_REPORTS;
+    }
+  });
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'weekly' | 'monthly' | 'edited'>('all');
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  const [editNotesText, setEditNotesText] = useState('');
+  const [editFeedbackText, setEditFeedbackText] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Sync with localStorage when component mounts or updates
+  const reloadReportsFromStorage = () => {
+    try {
+      const stored = localStorage.getItem('yawmiyati_mental_health_reports_history');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSavedReports(parsed);
+          return;
+        }
+      }
+      setSavedReports(INITIAL_SAVED_REPORTS);
+    } catch {
+      setSavedReports(INITIAL_SAVED_REPORTS);
+    }
+  };
+
+  useEffect(() => {
+    reloadReportsFromStorage();
+  }, [isPdfModalOpen]);
+
+  const saveReportsToStorage = (updated: SavedPDFReport[]) => {
+    setSavedReports(updated);
+    try {
+      localStorage.setItem('yawmiyati_mental_health_reports_history', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteReport = (id: string) => {
+    const updated = savedReports.filter(r => r.id !== id);
+    saveReportsToStorage(updated);
+    showToast('تم حذف التقرير من سجل التقارير 🗑️');
+  };
+
+  const handleStartInlineEdit = (report: SavedPDFReport) => {
+    setEditingReportId(report.id);
+    setEditNotesText(report.patientNotes || '');
+    setEditFeedbackText(report.therapistFeedback || '');
+  };
+
+  const handleSaveInlineEdit = (reportId: string) => {
+    const now = new Date();
+    const updatedDisplayDate = now.toLocaleDateString('ar-EG', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const updated = savedReports.map(rep => {
+      if (rep.id === reportId) {
+        return {
+          ...rep,
+          patientNotes: editNotesText,
+          therapistFeedback: editFeedbackText,
+          isEdited: true,
+          updatedAt: now.toISOString(),
+          updatedDisplayDate
+        };
+      }
+      return rep;
+    });
+
+    saveReportsToStorage(updated);
+    setEditingReportId(null);
+    showToast('تم حفظ تعديلات التقرير وتسجيل تاريخ التعديل ✍️');
+  };
+
+  // Filtered reports list
+  const filteredReports = useMemo(() => {
+    return savedReports.filter(report => {
+      // Type filter
+      if (filterType === 'edited' && !report.isEdited) return false;
+      if (filterType === 'weekly' && report.periodType !== 'weekly') return false;
+      if (filterType === 'monthly' && report.periodType !== 'monthly') return false;
+
+      // Search query filter
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        report.periodTitle.toLowerCase().includes(q) ||
+        report.displayDate.toLowerCase().includes(q) ||
+        (report.patientNotes && report.patientNotes.toLowerCase().includes(q)) ||
+        (report.therapistFeedback && report.therapistFeedback.toLowerCase().includes(q)) ||
+        (report.updatedDisplayDate && report.updatedDisplayDate.toLowerCase().includes(q))
+      );
+    });
+  }, [savedReports, searchQuery, filterType]);
 
   // Filter diaries in date range
   const filteredDiaries = diaries.filter(d => {
@@ -357,17 +481,352 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
         )}
       </div>
 
-      {/* 🧠 Smart Advisor Section (المستشار الذكي والفضفضة) */}
-      <div className="space-y-3">
-        <div className="bg-[#EEF1EB] border border-[#DCE4D8] p-4 rounded-3xl flex items-center space-x-3 space-x-reverse">
-          <span className="text-xl">💬</span>
-          <div>
-            <h4 className="font-extrabold text-sm text-[#556E4F]">مساعد الجلسة والتحليل النفسي</h4>
-            <p className="text-[10px] text-gray-500 font-medium">ابدأ حواراً استكشافياً مع المستشار الذكي حول هذا التقرير، أو اسأل عن استراتيجيات CBT مخصصة.</p>
+      {/* 📜 Generated Reports History Log Section (سجل تقارير الصحة النفسية وجلسات العلاج المولدة) */}
+      <div className="space-y-4 pt-4 border-t border-[#E2DCC8]">
+        
+        {/* Section Title & Add Action Header */}
+        <div className="bg-gradient-to-r from-[#2B3E50] via-[#3B5066] to-[#5A5A40] text-white p-5 rounded-3xl shadow-sm border border-[#2B3E50]/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <div className="p-3 bg-white/10 rounded-2xl border border-white/10 shrink-0">
+              <History className="w-6 h-6 text-[#FEFAE0]" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <span>📜 سجل تقارير الصحة النفسية وجلسات العلاج المولدة</span>
+                <span className="text-xs bg-[#8B9D83] text-white px-2.5 py-0.5 rounded-full font-extrabold shadow-3xs">
+                  {savedReports.length} تقارير محفوظة
+                </span>
+              </h3>
+              <p className="text-xs text-[#E2DCC8] mt-1 font-medium">
+                سجل متكامل ومؤرشف لكافة التقارير الطبية السابقة من حيث اليوم والتاريخ والوقت وحالة التعديل وتوصيات المعالج.
+              </p>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsPdfModalOpen(true)}
+            className="px-4 py-2.5 bg-[#8B9D83] hover:bg-[#5A5A40] text-white rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer shrink-0 hover:scale-102 active:scale-98 border border-white/20"
+          >
+            <Plus className="w-4 h-4 text-[#FEFAE0]" />
+            <span>توليد تقرير جديد في السجل (PDF) 📄</span>
+          </button>
         </div>
-        <SmartAdvisor diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={userApiKey} />
+
+        {/* Search & Filter Bar */}
+        <div className="bg-white border border-[#E2DCC8] rounded-2xl p-3 shadow-3xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          
+          {/* Search Box */}
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ابحث بالاسم، التاريخ، رد المعالج، أو الملاحظات..."
+              className="w-full bg-[#FAF8F5] border border-[#E2DCC8] rounded-xl pr-9 pl-3 py-2 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#8B9D83]"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute left-3 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 shrink-0">
+            {[
+              { id: 'all', label: `الكل (${savedReports.length})` },
+              { id: 'weekly', label: 'أسبوعية 🗓️' },
+              { id: 'monthly', label: 'شهرية 📅' },
+              { id: 'edited', label: `المُعدّلة ✍️ (${savedReports.filter(r => r.isEdited).length})` },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setFilterType(tab.id as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  filterType === tab.id
+                    ? 'bg-[#5A5A40] text-white shadow-3xs'
+                    : 'bg-[#F0EDE4] text-gray-700 hover:bg-[#E2DCC8]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+        </div>
+
+        {/* Reports List / Cards */}
+        {filteredReports.length === 0 ? (
+          <div className="bg-white border-2 border-dashed border-[#E2DCC8] rounded-3xl p-8 text-center space-y-3">
+            <FileText className="w-12 h-12 text-gray-300 mx-auto" />
+            <p className="text-sm font-extrabold text-[#5A5A40]">لا توجد تقارير مطابقة لمعايير البحث في السجل حالياً</p>
+            <p className="text-xs text-gray-500 max-w-md mx-auto">
+              يمكنك تغيير فلتر البحث أو الضغط على "توليد تقرير جديد" لأرشفة تقريرك السريري وتتبع جلسات العلاج النفسي.
+            </p>
+            <button
+              onClick={() => { setSearchQuery(''); setFilterType('all'); }}
+              className="px-4 py-2 bg-[#F0EDE4] hover:bg-[#E2DCC8] text-[#5A5A40] rounded-xl text-xs font-bold transition-all cursor-pointer"
+            >
+              إعادة ضبط الفلاتر 🔄
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredReports.map((report) => {
+              const moodDiff = (report.postSessionMood ?? 80) - (report.preSessionMood ?? 40);
+              const isEditingThis = editingReportId === report.id;
+
+              return (
+                <div 
+                  key={report.id}
+                  className="bg-white border-2 border-[#E2DCC8] hover:border-[#8B9D83] rounded-3xl p-5 shadow-xs transition-all space-y-4 relative group"
+                >
+                  
+                  {/* Card Header Row: Title + Exact Date & Time + Modification Status */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#F0EDE4] pb-3 gap-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-black text-sm text-[#2B3E50] flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-[#8B9D83]" />
+                          <span>{report.periodTitle}</span>
+                        </h4>
+
+                        {/* Modification Badge */}
+                        {report.isEdited ? (
+                          <span className="bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-lg text-[10px] font-black flex items-center gap-1">
+                            <Edit3 className="w-3 h-3 text-amber-600" />
+                            <span>مُعدّل مؤخراً</span>
+                          </span>
+                        ) : (
+                          <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-lg text-[10px] font-black flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-blue-600" />
+                            <span>نسخة أصيلة (غير مُعدّلة)</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Period Label & Date Range */}
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2 flex-wrap">
+                        <span className="bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#E2DCC8] text-[11px] font-bold text-[#5A5A40]">
+                          {report.periodLabel}
+                        </span>
+                        <span>النطاق: من {report.startDateStr} ⬅️ {report.endDateStr}</span>
+                      </p>
+                    </div>
+
+                    {/* Exact Date, Day of Week & Time Badge */}
+                    <div className="flex flex-col items-end shrink-0 text-left md:text-right">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-[#5A5A40] bg-[#F7F5EE] px-3 py-1.5 rounded-xl border border-[#E2DCC8]">
+                        <Clock className="w-3.5 h-3.5 text-[#8B9D83]" />
+                        <span>{report.displayDate}</span>
+                      </div>
+                      {report.isEdited && report.updatedDisplayDate && (
+                        <span className="text-[10px] text-amber-700 font-bold mt-1">
+                          تاريخ آخر تعديل: {report.updatedDisplayDate}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mood Transition Progress Bar & Gains */}
+                  <div className="bg-[#FAF8F5] border border-[#E2DCC8] rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-around sm:justify-start">
+                      <div className="text-center sm:text-right">
+                        <span className="text-[10px] text-gray-500 block font-bold">قبل الجلسة</span>
+                        <span className="text-xs font-black text-[#5A5A40] bg-white px-2.5 py-1 rounded-lg border border-[#E2DCC8] inline-block mt-0.5">
+                          {report.preSessionMood}% {report.preSessionMoodLabel}
+                        </span>
+                      </div>
+
+                      <ArrowRightLeft className="w-4 h-4 text-[#8B9D83] shrink-0" />
+
+                      <div className="text-center sm:text-right">
+                        <span className="text-[10px] text-gray-500 block font-bold">بعد الجلسة</span>
+                        <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-block mt-0.5">
+                          {report.postSessionMood}% {report.postSessionMoodLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-[#E2DCC8] shadow-3xs text-xs font-bold shrink-0">
+                      <span className="text-gray-500">معدل التعافي المزاجي:</span>
+                      <span className={`font-black ${moodDiff >= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                        {moodDiff >= 0 ? `+${moodDiff}% 📈` : `${moodDiff}% 📉`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stats Snapshot Bar */}
+                  {report.statsSnapshot && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                      <div className="bg-white border border-[#E2DCC8] p-2 rounded-xl">
+                        <span className="text-[10px] text-gray-400 block">عدد المذكرات</span>
+                        <span className="font-extrabold text-[#5A5A40]">{report.statsSnapshot.totalDiaries} مذكرات</span>
+                      </div>
+                      <div className="bg-white border border-[#E2DCC8] p-2 rounded-xl">
+                        <span className="text-[10px] text-gray-400 block">متوسط النوم</span>
+                        <span className="font-extrabold text-[#8B9D83]">{report.statsSnapshot.avgSleep} ساعة</span>
+                      </div>
+                      <div className="bg-white border border-[#E2DCC8] p-2 rounded-xl">
+                        <span className="text-[10px] text-gray-400 block">وقت الرياضة</span>
+                        <span className="font-extrabold text-[#D4A373]">{report.statsSnapshot.totalSportsMinutes} دقيقة</span>
+                      </div>
+                      <div className="bg-white border border-[#E2DCC8] p-2 rounded-xl">
+                        <span className="text-[10px] text-gray-400 block">الالتزام بالعادات</span>
+                        <span className="font-extrabold text-emerald-600">{report.statsSnapshot.habitRate}%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Inline Editing Mode OR Display Details */}
+                  {isEditingThis ? (
+                    <div className="bg-[#F7F5EE] border-2 border-[#8B9D83] p-4 rounded-2xl space-y-3">
+                      <h5 className="text-xs font-extrabold text-[#5A5A40] flex items-center gap-1.5">
+                        <Edit3 className="w-4 h-4 text-[#8B9D83]" />
+                        <span>تعديل ملاحظات المريض وتوصيات المعالج النفسي لهذا التقرير:</span>
+                      </h5>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-gray-600">أسئلة وملاحظات المريض قبل الجلسة:</label>
+                        <textarea
+                          value={editNotesText}
+                          onChange={(e) => setEditNotesText(e.target.value)}
+                          rows={2}
+                          className="w-full bg-white border border-[#E2DCC8] rounded-xl p-2.5 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#8B9D83]"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-gray-600">رد وتوجيهات المعالج النفسي:</label>
+                        <textarea
+                          value={editFeedbackText}
+                          onChange={(e) => setEditFeedbackText(e.target.value)}
+                          rows={2}
+                          className="w-full bg-white border border-[#E2DCC8] rounded-xl p-2.5 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#8B9D83]"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditingReportId(null)}
+                          className="px-3 py-1.5 bg-white border border-[#E2DCC8] text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveInlineEdit(report.id)}
+                          className="px-4 py-1.5 bg-[#8B9D83] hover:bg-[#5A5A40] text-white text-xs font-black rounded-xl cursor-pointer shadow-3xs"
+                        >
+                          حفظ التغييرات 💾
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      {/* Patient Pre-Session Notes */}
+                      {report.patientNotes && (
+                        <div className="bg-[#FAF8F5] border border-[#E2DCC8] p-3 rounded-2xl space-y-1">
+                          <span className="font-extrabold text-[#5A5A40] block flex items-center gap-1 text-[11px]">
+                            <MessageSquare className="w-3.5 h-3.5 text-[#8B9D83]" />
+                            <span>ملاحظات وأسئلة قبل الجلسة:</span>
+                          </span>
+                          <p className="text-gray-700 text-xs leading-relaxed line-clamp-3 font-normal">
+                            {report.patientNotes}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Therapist Feedback & Instructions */}
+                      {report.therapistFeedback && (
+                        <div className="bg-[#F4F8F3] border border-[#C2DCBE] p-3 rounded-2xl space-y-1">
+                          <span className="font-extrabold text-[#2D5A27] block flex items-center gap-1 text-[11px]">
+                            <Stethoscope className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>رد المعالج النفسي والتوصيات:</span>
+                          </span>
+                          <p className="text-gray-800 text-xs leading-relaxed line-clamp-3 font-normal">
+                            {report.therapistFeedback}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Homework Items Checklist Preview */}
+                  {report.therapistHomework && report.therapistHomework.length > 0 && (
+                    <div className="space-y-1.5 bg-[#F9FBF8] border border-[#C2DCBE] p-3 rounded-2xl">
+                      <span className="text-[11px] font-extrabold text-[#2D5A27] flex items-center gap-1">
+                        <ListTodo className="w-3.5 h-3.5 text-[#5A5A40]" />
+                        <span>المهام والتوصيات المطلوبة من المعالج النفسي:</span>
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {report.therapistHomework.map((hw, idx) => (
+                          <span key={idx} className="bg-white border border-[#C2DCBE] px-2.5 py-1 rounded-xl text-[11px] text-gray-800 font-medium flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>{hw}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons Footer */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#F0EDE4] pt-3">
+                    <span className="text-[11px] text-gray-400 font-medium">
+                      رمز التقرير: #{report.id.slice(-6)}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleStartInlineEdit(report)}
+                        className="px-3 py-1.5 bg-[#F0EDE4] hover:bg-[#E2DCC8] text-[#5A5A40] text-xs font-bold rounded-xl flex items-center gap-1 cursor-pointer transition-all"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>تعديل الملاحظات ✏️</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteReport(report.id)}
+                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center gap-1 cursor-pointer border border-red-200 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>حذف</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsPdfModalOpen(true)}
+                        className="px-4 py-1.5 bg-[#8B9D83] hover:bg-[#5A5A40] text-white text-xs font-black rounded-xl flex items-center gap-1.5 cursor-pointer shadow-3xs transition-all"
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-[#FEFAE0]" />
+                        <span>استعراض وتصدير التقرير (PDF) 📄</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        )}
+
       </div>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-70 bg-[#2B3E50] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Monthly Mental Health PDF Report Modal */}
       <MonthlyMentalHealthPDFReportModal

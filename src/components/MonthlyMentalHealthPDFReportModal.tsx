@@ -14,6 +14,9 @@ export interface SavedPDFReport {
   id: string;
   createdAt: string;
   displayDate: string;
+  isEdited?: boolean;
+  updatedAt?: string;
+  updatedDisplayDate?: string;
   periodTitle: string;
   periodLabel: string;
   startDateStr: string;
@@ -40,6 +43,79 @@ export interface SavedPDFReport {
     habitRate: number;
   };
 }
+
+export const INITIAL_SAVED_REPORTS: SavedPDFReport[] = [
+  {
+    id: 'rep_sample_1',
+    createdAt: '2026-08-04T10:30:00.000Z',
+    displayDate: 'الثلاثاء، 4 أغسطس 2026 - 10:30 صباحاً',
+    isEdited: false,
+    periodTitle: 'تقرير الأسبوع الحالي - تحضيرات وجلسة المتابعة النفسية',
+    periodLabel: 'الأسبوع الحالي',
+    startDateStr: '2026-07-28',
+    endDateStr: '2026-08-04',
+    periodType: 'weekly',
+    preSessionMood: 40,
+    preSessionMoodLabel: 'قلق وتوتر',
+    postSessionMood: 85,
+    postSessionMoodLabel: 'استقرار واطمئنان مرتفع',
+    patientNotes: 'شعرت بتوتر عند بدء المهام الجديدة هذا الأسبوع، وأود مناقشة تنظيم الوقت والتعامل مع الأفكار التلقائية السلبية مع المعالج.',
+    sessionDateTime: '2026-08-04T10:30',
+    therapistFeedback: 'تمت مناقشة مسببات القلق وتفنيد التشوهات المعرفية (تضخيم المخاوف). أظهر المريض استجابة ممتازة لتمرين التنفس والتفنيد عقلانياً.',
+    therapistHomework: [
+      'التدرب على تمارين التنفس البطني العميق (4-7-8) مرتين يومياً',
+      'تدوين سجل الأفكار التلقائية والبدائل العقلانية فور حدوث الضغط النفسي'
+    ],
+    sessionSummaryBullets: [
+      'التركيز على مهارة Cognitive Reframing وإعادة التأطير المعرفي للأفكار السلبية',
+      'تطبيق تمرين اليقظة الذهنية والتركيز على الحاضر عند الارتفاع المفاجئ لمعدل القلق'
+    ],
+    aiAnalysisText: 'تقرير تحليلي سريري شامل أظهر تحسناً ملحوظاً في الانتظام بالنوم (8.1 ساعة) واستقرار المؤشرات السلوكية.',
+    statsSnapshot: {
+      totalDiaries: 16,
+      avgSleep: '8.1',
+      avgMood: '7.8',
+      totalSportsMinutes: 120,
+      habitRate: 85
+    }
+  },
+  {
+    id: 'rep_sample_2',
+    createdAt: '2026-07-21T17:45:00.000Z',
+    displayDate: 'الثلاثاء، 21 يوليو 2026 - 05:45 مساءً',
+    isEdited: true,
+    updatedAt: '2026-07-23T09:15:00.000Z',
+    updatedDisplayDate: 'الخميس، 23 يوليو 2026 - 09:15 صباحاً',
+    periodTitle: 'تقرير الأسبوع السابق - تقييم الضغوط والتوازن المزاجي',
+    periodLabel: 'الأسبوع السابق',
+    startDateStr: '2026-07-14',
+    endDateStr: '2026-07-21',
+    periodType: 'weekly',
+    preSessionMood: 30,
+    preSessionMoodLabel: 'شديد الاضطراب والقلق',
+    postSessionMood: 75,
+    postSessionMoodLabel: 'مطمئن ومرتاح',
+    patientNotes: 'اضطرابات خفيفة بالنوم وصعوبة التركيز في بداية الأسبوع بسبب ضغوط العمل والتفكير الزائد.',
+    sessionDateTime: '2026-07-21T17:45',
+    therapistFeedback: 'تم تحديد حدود الوقت الشخصي وفصل المهام العملية عن وقت الاسترخاء. نسبة التحسن المزاجي ارتفعت +45% بعد الجلسة.',
+    therapistHomework: [
+      'المشي السريع في الهواء الطلق لمدة 20 دقيقة يومياً',
+      'إغلاق الشاشات الإلكترونية قبل النوم بـ 45 دقيقة والقراءة في كتاب نفسي'
+    ],
+    sessionSummaryBullets: [
+      'تحديد الحدود النفسية لحماية الوقت الشخصي دون الشعور بالذنب',
+      'تعزيز الرفق بالذات والحد الأدنى المقبول من العادات'
+    ],
+    aiAnalysisText: 'تحليل السلوكيات أظهر وجود ارتباط مباشر بين النشاط الرياضي وانخفاض حدة التوتر.',
+    statsSnapshot: {
+      totalDiaries: 12,
+      avgSleep: '7.2',
+      avgMood: '6.5',
+      totalSportsMinutes: 90,
+      habitRate: 70
+    }
+  }
+];
 
 const MOOD_PRESETS = [
   { label: 'شديد الاضطراب', percentage: 20, emoji: '😫' },
@@ -274,9 +350,13 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
   const [savedReports, setSavedReports] = useState<SavedPDFReport[]>(() => {
     try {
       const stored = localStorage.getItem('yawmiyati_mental_health_reports_history');
-      return stored ? JSON.parse(stored) : [];
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_SAVED_REPORTS;
     } catch {
-      return [];
+      return INITIAL_SAVED_REPORTS;
     }
   });
   const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
