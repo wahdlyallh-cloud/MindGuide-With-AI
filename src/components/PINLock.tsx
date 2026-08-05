@@ -212,6 +212,11 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
             </p>
           </div>
 
+          {/* Spiritual Dhikr & Salawat Counter Card */}
+          <div className="max-w-md w-full mx-auto px-1">
+            <DhikrCounter />
+          </div>
+
           {/* Centered Notification Card (Direct Action Trigger with Biometric Lock) */}
           <div className="max-w-md w-full mx-auto px-1">
             <div className="transform scale-[0.98] sm:scale-100 hover:scale-[1.01] transition-transform duration-200">
@@ -220,11 +225,6 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
                 onBodyClick={() => handleNotificationActionClick('notes')} 
               />
             </div>
-          </div>
-
-          {/* Spiritual Dhikr & Salawat Counter Card */}
-          <div className="max-w-md w-full mx-auto px-1">
-            <DhikrCounter />
           </div>
 
           {/* Lock Screen Bottom Control Panels */}

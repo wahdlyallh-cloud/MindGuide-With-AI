@@ -936,361 +936,64 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
     }, 400);
   };
 
-  // Export report as high-resolution PNG image instantly via native Canvas 2D
+  // Export report as high-resolution PNG image identical to modal appearance on web
   const handleSaveAsImage = async () => {
     handleSave();
     setIsCapturingImage(true);
-    showToast('جاري إنشاء التقرير كصورة عالية الدقة... 📸');
+    showToast('جاري إنشاء التقرير كصورة مطابقة للموقع تماماً... 📸');
 
     try {
-      // Allow state save to complete synchronously
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 100));
 
-      const scale = 2; // High-DPI Retina resolution
-      const width = 840;
-      const colWidth = 370;
-      const fontSize = 13;
-      const font = `${fontSize}px Cairo, system-ui, -apple-system, sans-serif`;
-
-      const cleanMarkdown = (txt: string) => txt.replace(/\*\*/g, '');
-
-      // Create offscreen measurement canvas
-      const measureCanvas = document.createElement('canvas');
-      const measureCtx = measureCanvas.getContext('2d');
-      if (!measureCtx) throw new Error('Canvas not supported');
-
-      const wrapText = (text: string, maxWidth: number): string[] => {
-        measureCtx.font = font;
-        const cleaned = cleanMarkdown(text || '');
-        const paragraphs = cleaned.split('\n');
-        const lines: string[] = [];
-
-        for (const paragraph of paragraphs) {
-          if (!paragraph.trim()) continue;
-          const words = paragraph.split(' ');
-          let currentLine = '';
-
-          for (let i = 0; i < words.length; i++) {
-            const word = words[i];
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const metrics = measureCtx.measureText(testLine);
-            if (metrics.width > maxWidth && currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
-            } else {
-              currentLine = testLine;
-            }
-          }
-          if (currentLine) lines.push(currentLine);
-        }
-        return lines.length > 0 ? lines : [''];
-      };
-
-      // Measure AI Column Heights
-      let aiPosHeight = 44;
-      aiPositives.forEach(pos => {
-        const lines = wrapText('🟢 ' + pos, colWidth - 28);
-        aiPosHeight += Math.max(34, lines.length * 19 + 14);
-      });
-      if (aiPositives.length === 0) aiPosHeight += 34;
-
-      let aiNegHeight = 44;
-      aiNegatives.forEach(neg => {
-        const lines = wrapText('🔴 ' + neg, colWidth - 28);
-        aiNegHeight += Math.max(34, lines.length * 19 + 14);
-      });
-      if (aiNegatives.length === 0) aiNegHeight += 34;
-
-      const aiSectionHeight = Math.max(aiPosHeight, aiNegHeight) + 16;
-
-      // Measure User Column Heights
-      let userPosHeight = 44;
-      userPositives.forEach(pos => {
-        const lines = wrapText('• ' + pos, colWidth - 28);
-        userPosHeight += Math.max(34, lines.length * 19 + 14);
-      });
-      if (userPositives.length === 0) userPosHeight += 34;
-
-      let userNegHeight = 44;
-      userNegatives.forEach(neg => {
-        const lines = wrapText('• ' + neg, colWidth - 28);
-        userNegHeight += Math.max(34, lines.length * 19 + 14);
-      });
-      if (userNegatives.length === 0) userNegHeight += 34;
-
-      const userSectionHeight = Math.max(userPosHeight, userNegHeight) + 16;
-      const totalHeight = 120 + 44 + aiSectionHeight + 44 + userSectionHeight + 60;
-
-      // Prepare main canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = width * scale;
-      canvas.height = totalHeight * scale;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas context failed');
-
-      ctx.scale(scale, scale);
-      ctx.direction = 'rtl';
-      ctx.textAlign = 'right';
-
-      // Outer Card Background
-      ctx.fillStyle = '#FAF8F5';
-      drawRoundRect(ctx, 0, 0, width, totalHeight, 24);
-      ctx.fill();
-      ctx.strokeStyle = '#E2DCC8';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Top Header
-      const headerGrad = ctx.createLinearGradient(20, 20, width - 20, 20);
-      headerGrad.addColorStop(0, '#2B3E50');
-      headerGrad.addColorStop(0.5, '#3B5066');
-      headerGrad.addColorStop(1, '#5A5A40');
-
-      ctx.fillStyle = headerGrad;
-      drawRoundRect(ctx, 20, 20, width - 40, 80, 16);
-      ctx.fill();
-
-      // Header Text
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 18px Cairo, system-ui, sans-serif';
-      ctx.fillText('⚖️ تقرير الإيجابيات والسلبيات اليومية', width - 40, 52);
-
-      ctx.fillStyle = '#E2DCC8';
-      ctx.font = 'bold 12px Cairo, system-ui, sans-serif';
-      ctx.fillText(`📅 ${displayDate}`, width - 40, 78);
-
-      // Header Badge
-      ctx.fillStyle = '#8B9D83';
-      drawRoundRect(ctx, 36, 42, 115, 26, 13);
-      ctx.fill();
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 11px Cairo, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('توليد ذكي + يدوي', 93, 59);
-
-      ctx.textAlign = 'right';
-
-      let curY = 120;
-
-      const drawSectionHeader = (title: string, subtitle: string) => {
-        ctx.fillStyle = '#2B3E50';
-        ctx.font = 'bold 14px Cairo, system-ui, sans-serif';
-        ctx.fillText(title, width - 28, curY + 16);
-
-        ctx.fillStyle = '#718096';
-        ctx.font = 'bold 11px Cairo, system-ui, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(subtitle, 28, curY + 16);
-        ctx.textAlign = 'right';
-
-        ctx.strokeStyle = '#E2DCC8';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(28, curY + 26);
-        ctx.lineTo(width - 28, curY + 26);
-        ctx.stroke();
-
-        curY += 38;
-      };
-
-      // --- SECTION 1: AI Generated ---
-      drawSectionHeader(
-        'أولاً: الإيجابيات والسلبيات المولدة بالذكاء الاصطناعي 🧠',
-        'مستخلصة تلقائياً من المذكرات'
-      );
-
-      const sec1Y = curY;
-
-      // AI Positives Column (Right)
-      const aiRightX = width - 28;
-      ctx.fillStyle = '#F2F7F2';
-      drawRoundRect(ctx, width - 28 - colWidth, sec1Y, colWidth, aiPosHeight, 16);
-      ctx.fill();
-      ctx.strokeStyle = '#C2DCBE';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = '#2D5A27';
-      ctx.font = 'bold 12px Cairo, system-ui, sans-serif';
-      ctx.fillText('🟢 الإيجابيات (الذكاء الاصطناعي):', aiRightX - 12, sec1Y + 26);
-
-      let aiPosItemY = sec1Y + 38;
-      if (aiPositives.length === 0) {
-        ctx.fillStyle = '#A0AEC0';
-        ctx.font = '11px Cairo, system-ui, sans-serif';
-        ctx.fillText('لا توجد نقاط إيجابية مسجلة لليوم', aiRightX - 12, aiPosItemY + 16);
-      } else {
-        aiPositives.forEach(pos => {
-          const lines = wrapText('🟢 ' + pos, colWidth - 28);
-          const boxH = Math.max(32, lines.length * 19 + 12);
-
-          ctx.fillStyle = '#FFFFFF';
-          drawRoundRect(ctx, width - 28 - colWidth + 8, aiPosItemY, colWidth - 16, boxH, 10);
-          ctx.fill();
-          ctx.strokeStyle = '#C2DCBE';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          ctx.fillStyle = '#1A365D';
-          ctx.font = font;
-          lines.forEach((line, lIdx) => {
-            ctx.fillText(line, aiRightX - 16, aiPosItemY + 16 + lIdx * 19);
-          });
-
-          aiPosItemY += boxH + 8;
-        });
+      const modalElement = document.getElementById('pros-cons-modal-printable-card');
+      if (!modalElement) {
+        throw new Error('Modal element not found');
       }
 
-      // AI Negatives Column (Left)
-      const aiLeftX = 28 + colWidth;
-      ctx.fillStyle = '#FDF3F2';
-      drawRoundRect(ctx, 28, sec1Y, colWidth, aiNegHeight, 16);
-      ctx.fill();
-      ctx.strokeStyle = '#F5C6C3';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // Find inner scrollable area
+      const scrollArea = modalElement.querySelector('.overflow-y-auto') as HTMLElement;
 
-      ctx.fillStyle = '#902923';
-      ctx.font = 'bold 12px Cairo, system-ui, sans-serif';
-      ctx.fillText('🔴 السلبيات (الذكاء الاصطناعي):', aiLeftX - 12, sec1Y + 26);
+      // Save original styles
+      const origMaxHeight = modalElement.style.maxHeight;
+      const origOverflow = modalElement.style.overflow;
+      const origScrollMaxHeight = scrollArea ? scrollArea.style.maxHeight : '';
+      const origScrollOverflow = scrollArea ? scrollArea.style.overflow : '';
 
-      let aiNegItemY = sec1Y + 38;
-      if (aiNegatives.length === 0) {
-        ctx.fillStyle = '#A0AEC0';
-        ctx.font = '11px Cairo, system-ui, sans-serif';
-        ctx.fillText('لا توجد سلبيات مسجلة لليوم', aiLeftX - 12, aiNegItemY + 16);
-      } else {
-        aiNegatives.forEach(neg => {
-          const lines = wrapText('🔴 ' + neg, colWidth - 28);
-          const boxH = Math.max(32, lines.length * 19 + 12);
-
-          ctx.fillStyle = '#FFFFFF';
-          drawRoundRect(ctx, 36, aiNegItemY, colWidth - 16, boxH, 10);
-          ctx.fill();
-          ctx.strokeStyle = '#F5C6C3';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          ctx.fillStyle = '#1A365D';
-          ctx.font = font;
-          lines.forEach((line, lIdx) => {
-            ctx.fillText(line, aiLeftX - 16, aiNegItemY + 16 + lIdx * 19);
-          });
-
-          aiNegItemY += boxH + 8;
-        });
+      // Expand card to full unclipped height for pixel-perfect screenshot
+      modalElement.style.maxHeight = 'none';
+      modalElement.style.overflow = 'visible';
+      if (scrollArea) {
+        scrollArea.style.maxHeight = 'none';
+        scrollArea.style.overflow = 'visible';
       }
 
-      curY = sec1Y + aiSectionHeight + 12;
+      await new Promise(r => setTimeout(r, 120));
 
-      // --- SECTION 2: User Manual ---
-      drawSectionHeader(
-        'ثانياً: الإيجابيات والسلبيات المدخلة يدوياً بواسطة المستخدم ✍️',
-        'إدخال واسترسال شخصي'
-      );
+      const canvas = await html2canvas(modalElement, {
+        scale: 2, // High-DPI crisp capture
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#FAF8F5',
+        logging: false,
+        ignoreElements: (element) => {
+          return (
+            element.classList.contains('no-print-capture') ||
+            element.hasAttribute('data-html2canvas-ignore')
+          );
+        },
+      });
 
-      const sec2Y = curY;
-
-      // User Positives
-      ctx.fillStyle = '#FFFFFF';
-      drawRoundRect(ctx, width - 28 - colWidth, sec2Y, colWidth, userPosHeight, 16);
-      ctx.fill();
-      ctx.strokeStyle = '#E2DCC8';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = '#5A5A40';
-      ctx.font = 'bold 12px Cairo, system-ui, sans-serif';
-      ctx.fillText('إيجابيات اليوم (مدخلة يدوياً):', aiRightX - 12, sec2Y + 26);
-
-      let uPosItemY = sec2Y + 38;
-      if (userPositives.length === 0) {
-        ctx.fillStyle = '#A0AEC0';
-        ctx.font = '11px Cairo, system-ui, sans-serif';
-        ctx.fillText('لم يتم إدخال نقاط خاصة', aiRightX - 12, uPosItemY + 16);
-      } else {
-        userPositives.forEach(pos => {
-          const lines = wrapText('• ' + pos, colWidth - 28);
-          const boxH = Math.max(32, lines.length * 19 + 12);
-
-          ctx.fillStyle = '#FAF8F5';
-          drawRoundRect(ctx, width - 28 - colWidth + 8, uPosItemY, colWidth - 16, boxH, 10);
-          ctx.fill();
-          ctx.strokeStyle = '#E2DCC8';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          ctx.fillStyle = '#2D3748';
-          ctx.font = font;
-          lines.forEach((line, lIdx) => {
-            ctx.fillText(line, aiRightX - 16, uPosItemY + 16 + lIdx * 19);
-          });
-
-          uPosItemY += boxH + 8;
-        });
+      // Restore original container styles
+      modalElement.style.maxHeight = origMaxHeight;
+      modalElement.style.overflow = origOverflow;
+      if (scrollArea) {
+        scrollArea.style.maxHeight = origScrollMaxHeight;
+        scrollArea.style.overflow = origScrollOverflow;
       }
 
-      // User Negatives
-      ctx.fillStyle = '#FFFFFF';
-      drawRoundRect(ctx, 28, sec2Y, colWidth, userNegHeight, 16);
-      ctx.fill();
-      ctx.strokeStyle = '#E2DCC8';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = '#5A5A40';
-      ctx.font = 'bold 12px Cairo, system-ui, sans-serif';
-      ctx.fillText('سلبيات وتحديات اليوم (مدخلة يدوياً):', aiLeftX - 12, sec2Y + 26);
-
-      let uNegItemY = sec2Y + 38;
-      if (userNegatives.length === 0) {
-        ctx.fillStyle = '#A0AEC0';
-        ctx.font = '11px Cairo, system-ui, sans-serif';
-        ctx.fillText('لم يتم إدخال نقاط خاصة', aiLeftX - 12, uNegItemY + 16);
-      } else {
-        userNegatives.forEach(neg => {
-          const lines = wrapText('• ' + neg, colWidth - 28);
-          const boxH = Math.max(32, lines.length * 19 + 12);
-
-          ctx.fillStyle = '#FAF8F5';
-          drawRoundRect(ctx, 36, uNegItemY, colWidth - 16, boxH, 10);
-          ctx.fill();
-          ctx.strokeStyle = '#E2DCC8';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          ctx.fillStyle = '#2D3748';
-          ctx.font = font;
-          lines.forEach((line, lIdx) => {
-            ctx.fillText(line, aiLeftX - 16, uNegItemY + 16 + lIdx * 19);
-          });
-
-          uNegItemY += boxH + 8;
-        });
-      }
-
-      curY = sec2Y + userSectionHeight + 16;
-
-      // Footer
-      ctx.strokeStyle = '#E2DCC8';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(28, curY);
-      ctx.lineTo(width - 28, curY);
-      ctx.stroke();
-
-      ctx.fillStyle = '#5A5A40';
-      ctx.font = 'bold 11px Cairo, system-ui, sans-serif';
-      ctx.fillText('منصة يومياتي AI - تقرير الإيجابيات والسلبيات اليومية', width - 28, curY + 22);
-
-      ctx.textAlign = 'left';
-      ctx.fillText('سرية تامة وتشفير محلي 🌿', 28, curY + 22);
-
-      // Fast synchronous export via DataURL
       const dataUrl = canvas.toDataURL('image/png', 1.0);
       const fileName = `تقرير_الإيجابيات_والسلبيات_${dayKey}.png`;
 
-      // Trigger instantaneous download
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = fileName;
@@ -1298,7 +1001,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
       link.click();
       document.body.removeChild(link);
 
-      showToast('تم حفظ الصورة في ملفات جهازك بنجاح! 🖼️');
+      showToast('تم حفظ الصورة في ملفات جهازك مطابقة تماماً للموقع! 🖼️');
     } catch (err) {
       console.error('Error rendering report image:', err);
       showToast('حدث خطأ أثناء حفظ الصورة، يرجى إعادة المحاولة');
@@ -1347,7 +1050,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
         <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 text-gray-800">
 
           {/* Quick Action Bar (Regenerate AI + Quick Stats) */}
-          <div className="bg-white border border-[#E2DCC8] rounded-2xl p-3 shadow-3xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div data-html2canvas-ignore="true" className="bg-white border border-[#E2DCC8] rounded-2xl p-3 shadow-3xs flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs text-[#5A5A40] font-extrabold">
               <Brain className="w-4 h-4 text-[#8B9D83]" />
               <span>تحليل شامل لجميع تفاصيل اليوم (مذكرات، عادات، مهام، CBT، أدوية، امتنان وقراءة):</span>
@@ -1394,6 +1097,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                       <span className="leading-relaxed flex-1">🟢 {renderFormattedText(pos)}</span>
                       <button
                         type="button"
+                        data-html2canvas-ignore="true"
                         onClick={() => setAiPositives(prev => prev.filter((_, i) => i !== idx))}
                         className="text-gray-400 hover:text-red-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer shrink-0"
                         title="حذف هذه النقطة"
@@ -1406,7 +1110,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                 </ul>
 
                 {/* Add Custom AI Point */}
-                <div className="flex gap-1.5 pt-1">
+                <div data-html2canvas-ignore="true" className="flex gap-1.5 pt-1">
                   <input
                     type="text"
                     value={newAiPositive}
@@ -1442,6 +1146,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                       <span className="leading-relaxed flex-1">🔴 {renderFormattedText(neg)}</span>
                       <button
                         type="button"
+                        data-html2canvas-ignore="true"
                         onClick={() => setAiNegatives(prev => prev.filter((_, i) => i !== idx))}
                         className="text-gray-400 hover:text-red-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer shrink-0"
                         title="حذف هذه النقطة"
@@ -1454,7 +1159,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                 </ul>
 
                 {/* Add Custom AI Point */}
-                <div className="flex gap-1.5 pt-1">
+                <div data-html2canvas-ignore="true" className="flex gap-1.5 pt-1">
                   <input
                     type="text"
                     value={newAiNegative}
@@ -1505,6 +1210,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                       <span className="flex-1">• {pos}</span>
                       <button
                         type="button"
+                        data-html2canvas-ignore="true"
                         onClick={() => setUserPositives(prev => prev.filter((_, i) => i !== idx))}
                         className="text-gray-400 hover:text-red-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer shrink-0"
                         title="حذف هذه النقطة"
@@ -1516,7 +1222,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                   ))}
                 </div>
 
-                <div className="flex gap-1.5 pt-1">
+                <div data-html2canvas-ignore="true" className="flex gap-1.5 pt-1">
                   <input
                     type="text"
                     value={newUserPositive}
@@ -1553,6 +1259,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                       <span className="flex-1">• {neg}</span>
                       <button
                         type="button"
+                        data-html2canvas-ignore="true"
                         onClick={() => setUserNegatives(prev => prev.filter((_, i) => i !== idx))}
                         className="text-gray-400 hover:text-red-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer shrink-0"
                         title="حذف هذه النقطة"
@@ -1564,7 +1271,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                   ))}
                 </div>
 
-                <div className="flex gap-1.5 pt-1">
+                <div data-html2canvas-ignore="true" className="flex gap-1.5 pt-1">
                   <input
                     type="text"
                     value={newUserNegative}
@@ -1584,6 +1291,12 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
               </div>
 
             </div>
+          </div>
+
+          {/* Clean Footer inside the export card */}
+          <div className="pt-2 border-t border-[#E2DCC8] flex items-center justify-between text-[11px] text-[#5A5A40] font-bold">
+            <span>منصة يومياتي AI - تقرير الإيجابيات والسلبيات اليومية</span>
+            <span>سرية تامة وتشفير محلي 🌿</span>
           </div>
 
         </div>
