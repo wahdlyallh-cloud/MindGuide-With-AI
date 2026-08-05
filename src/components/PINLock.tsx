@@ -105,12 +105,12 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
               setBiometricStatus('success');
               setTimeout(() => {
                 setShowBiometricModal(false);
-                if (cameraStream) {
-                  cameraStream.getTracks().forEach(t => t.stop());
+                if (streamRef) {
+                  streamRef.getTracks().forEach(t => t.stop());
                 }
                 executeUnlock(pendingAction);
               }, 700);
-            }, 2000);
+            }, 1800);
           })
           .catch((err) => {
             console.warn('Camera permission or availability issue:', err);
@@ -378,7 +378,13 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
                 biometricType === 'faceid' ? (
                   <div className="relative w-36 h-48 bg-black rounded-[2.5rem] overflow-hidden border-4 border-emerald-500 shadow-2xl flex items-center justify-center">
                     <video
-                      ref={videoRef}
+                      ref={(el) => {
+                        videoRef.current = el;
+                        if (el && cameraStream && el.srcObject !== cameraStream) {
+                          el.srcObject = cameraStream;
+                          el.play().catch(() => {});
+                        }
+                      }}
                       autoPlay
                       playsInline
                       muted
