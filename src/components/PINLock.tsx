@@ -53,13 +53,11 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
   const executeUnlock = (action: 'new_note' | 'voice' | 'mood' | 'ai' | 'task' | 'photo' | 'notes' | null) => {
     setSuccess(true);
-    setTimeout(() => {
-      if (action && onQuickAction) {
-        onQuickAction(action);
-      } else {
-        onUnlocked();
-      }
-    }, 400);
+    if (action && onQuickAction) {
+      onQuickAction(action);
+    } else {
+      onUnlocked();
+    }
   };
 
   const handleNumberClick = (num: number) => {
@@ -141,6 +139,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
   // Real Hardware Biometric Trigger (Fingerprint & Face ID)
   const handleTriggerBiometrics = async (type: 'fingerprint' | 'faceid' = 'fingerprint', actionToPerform: 'new_note' | 'voice' | 'mood' | 'ai' | 'task' | 'photo' | 'notes' | null = null) => {
+    const targetAction = actionToPerform || pendingAction;
     if (actionToPerform) {
       setPendingAction(actionToPerform);
     }
@@ -156,24 +155,25 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
     }
 
     setBiometricType(type);
-    setShowBiometricModal(true);
-    setBiometricStatus('scanning');
-    setBiometricErrorMessage('');
 
     if (type === 'fingerprint') {
-      // Trigger REAL WebAuthn Platform Hardware Verification
+      // Trigger REAL WebAuthn Platform Hardware Verification directly (Device Fingerprint/Passkey prompt)
       const res = await verifyBiometrics(savedCredId || undefined);
 
       if (res.success) {
-        setBiometricStatus('success');
-        setTimeout(() => {
-          setShowBiometricModal(false);
-          executeUnlock(actionToPerform || pendingAction);
-        }, 600);
+        // Unlocked instantly!
+        executeUnlock(targetAction);
       } else {
+        // If failed or cancelled, show error modal so user can retry or use PIN
+        setShowBiometricModal(true);
         setBiometricStatus('failed');
         setBiometricErrorMessage(res.error || 'فشل التحقق من البصمة أو تم إلغاؤها.');
       }
+    } else {
+      // Face ID Camera mode
+      setShowBiometricModal(true);
+      setBiometricStatus('scanning');
+      setBiometricErrorMessage('');
     }
   };
 

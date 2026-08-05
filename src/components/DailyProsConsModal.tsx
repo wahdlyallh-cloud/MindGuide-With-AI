@@ -936,60 +936,146 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
     }, 400);
   };
 
-  // Export report as high-resolution PNG image identical to modal appearance on web
+  // Export report as high-resolution PNG image identical to report layout on all devices
   const handleSaveAsImage = async () => {
     handleSave();
     setIsCapturingImage(true);
     showToast('جاري إنشاء التقرير كصورة مطابقة للموقع تماماً... 📸');
 
+    let container: HTMLDivElement | null = null;
+
     try {
       await new Promise(r => setTimeout(r, 100));
 
-      const modalElement = document.getElementById('pros-cons-modal-printable-card');
-      if (!modalElement) {
-        throw new Error('Modal element not found');
-      }
+      // Create a fixed 800px-wide offscreen container for consistent 2-column layout on all mobile/desktop devices
+      container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0px';
+      container.style.width = '840px';
+      container.style.backgroundColor = '#FAF8F5';
+      container.style.direction = 'rtl';
+      container.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+      container.style.color = '#2D3748';
 
-      // Find inner scrollable area
-      const scrollArea = modalElement.querySelector('.overflow-y-auto') as HTMLElement;
+      const formatBoldHtml = (str: string) => {
+        return str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      };
 
-      // Save original styles
-      const origMaxHeight = modalElement.style.maxHeight;
-      const origOverflow = modalElement.style.overflow;
-      const origScrollMaxHeight = scrollArea ? scrollArea.style.maxHeight : '';
-      const origScrollOverflow = scrollArea ? scrollArea.style.overflow : '';
+      const aiPosHtml = aiPositives.length > 0 ? aiPositives.map(p => `
+        <div style="background-color: #ffffff; border: 1px solid #C2DCBE; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.6; color: #1E293B;">
+          <span style="margin-left: 6px;">🟢</span>${formatBoldHtml(p)}
+        </div>
+      `).join('') : '<div style="font-size: 12px; color: #A0AEC0; text-align: center; padding: 12px;">لا توجد نقاط إيجابية مسجلة لليوم</div>';
 
-      // Expand card to full unclipped height for pixel-perfect screenshot
-      modalElement.style.maxHeight = 'none';
-      modalElement.style.overflow = 'visible';
-      if (scrollArea) {
-        scrollArea.style.maxHeight = 'none';
-        scrollArea.style.overflow = 'visible';
-      }
+      const aiNegHtml = aiNegatives.length > 0 ? aiNegatives.map(n => `
+        <div style="background-color: #ffffff; border: 1px solid #F5C6C3; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.6; color: #1E293B;">
+          <span style="margin-left: 6px;">🔴</span>${formatBoldHtml(n)}
+        </div>
+      `).join('') : '<div style="font-size: 12px; color: #A0AEC0; text-align: center; padding: 12px;">لا توجد سلبيات مسجلة لليوم</div>';
 
-      await new Promise(r => setTimeout(r, 120));
+      const userPosHtml = userPositives.length > 0 ? userPositives.map(p => `
+        <div style="background-color: #FAF8F5; border: 1px solid #E2DCC8; border-radius: 10px; padding: 9px 12px; margin-bottom: 8px; font-size: 13px; color: #2D3748; line-height: 1.5;">
+          • ${formatBoldHtml(p)}
+        </div>
+      `).join('') : '<div style="font-size: 12px; color: #A0AEC0; text-align: center; padding: 12px;">لم يتم إدخال نقاط خاصة</div>';
 
-      const canvas = await html2canvas(modalElement, {
-        scale: 2, // High-DPI crisp capture
+      const userNegHtml = userNegatives.length > 0 ? userNegatives.map(n => `
+        <div style="background-color: #FAF8F5; border: 1px solid #E2DCC8; border-radius: 10px; padding: 9px 12px; margin-bottom: 8px; font-size: 13px; color: #2D3748; line-height: 1.5;">
+          • ${formatBoldHtml(n)}
+        </div>
+      `).join('') : '<div style="font-size: 12px; color: #A0AEC0; text-align: center; padding: 12px;">لم يتم إدخال نقاط خاصة</div>';
+
+      container.innerHTML = `
+        <div style="border: 2px solid #E2DCC8; border-radius: 24px; overflow: hidden; background-color: #FAF8F5; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #2B3E50 0%, #3B5066 50%, #5A5A40 100%); color: #ffffff; padding: 22px 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #E2DCC8;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 16px; padding: 10px 14px; font-size: 26px;">⚖️</div>
+              <div>
+                <div style="font-size: 19px; font-weight: 900; display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                  <span>تقرير الإيجابيات والسلبيات اليومية</span>
+                  <span style="background-color: #8B9D83; color: #ffffff; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 12px;">توليد ذكي + يدوي</span>
+                </div>
+                <div style="font-size: 13px; color: #E2DCC8; font-weight: 600;">📅 ${displayDate}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div style="padding: 24px;">
+            <!-- Section 1: AI Generated -->
+            <div style="border-bottom: 2px solid #E2DCC8; padding-bottom: 10px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="font-size: 15px; font-weight: 900; color: #2B3E50;">أولاً: الإيجابيات والسلبيات المولدة بالذكاء الاصطناعي 🧠</div>
+              <div style="font-size: 12px; color: #718096; font-weight: 700;">مستخلصة تلقائياً من المذكرات</div>
+            </div>
+
+            <div style="display: flex; gap: 16px; margin-bottom: 24px;">
+              <!-- Right: Positives -->
+              <div style="flex: 1; background-color: #F2F7F2; border: 2px solid #C2DCBE; border-radius: 18px; padding: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #C2DCBE; padding-bottom: 10px; margin-bottom: 12px;">
+                  <span style="font-size: 13px; font-weight: 900; color: #2D5A27;">🟢 الإيجابيات المولدة بالذكاء الاصطناعي (يمين):</span>
+                  <span style="font-size: 11px; font-weight: 800; background-color: #D1E7DD; color: #0F5132; padding: 3px 10px; border-radius: 8px;">${aiPositives.length} نقاط</span>
+                </div>
+                ${aiPosHtml}
+              </div>
+
+              <!-- Left: Negatives -->
+              <div style="flex: 1; background-color: #FDF3F2; border: 2px solid #F5C6C3; border-radius: 18px; padding: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #F5C6C3; padding-bottom: 10px; margin-bottom: 12px;">
+                  <span style="font-size: 13px; font-weight: 900; color: #902923;">🔴 السلبيات والتحديات المولدة بالذكاء الاصطناعي (يسار):</span>
+                  <span style="font-size: 11px; font-weight: 800; background-color: #F8D7DA; color: #842029; padding: 3px 10px; border-radius: 8px;">${aiNegatives.length} نقاط</span>
+                </div>
+                ${aiNegHtml}
+              </div>
+            </div>
+
+            <!-- Section 2: User Manual -->
+            <div style="border-bottom: 2px solid #E2DCC8; padding-bottom: 10px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="font-size: 15px; font-weight: 900; color: #2B3E50;">ثانياً: الإيجابيات والسلبيات المدخلة يدوياً بواسطة المستخدم ✍️</div>
+              <div style="font-size: 12px; color: #718096; font-weight: 700;">إدخال واسترسال شخصي</div>
+            </div>
+
+            <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+              <!-- Right: Manual Positives -->
+              <div style="flex: 1; background-color: #ffffff; border: 2px solid #E2DCC8; border-radius: 18px; padding: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #F0EDE4; padding-bottom: 10px; margin-bottom: 12px;">
+                  <span style="font-size: 13px; font-weight: 900; color: #5A5A40;">إيجابيات اليوم (مدخلة يدوياً):</span>
+                  <span style="font-size: 11px; font-weight: 800; background-color: #F0EDE4; color: #4A5568; padding: 3px 10px; border-radius: 8px;">${userPositives.length} نقاط</span>
+                </div>
+                ${userPosHtml}
+              </div>
+
+              <!-- Left: Manual Negatives -->
+              <div style="flex: 1; background-color: #ffffff; border: 2px solid #E2DCC8; border-radius: 18px; padding: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #F0EDE4; padding-bottom: 10px; margin-bottom: 12px;">
+                  <span style="font-size: 13px; font-weight: 900; color: #5A5A40;">سلبيات وتحديات اليوم (مدخلة يدوياً):</span>
+                  <span style="font-size: 11px; font-weight: 800; background-color: #F0EDE4; color: #4A5568; padding: 3px 10px; border-radius: 8px;">${userNegatives.length} نقاط</span>
+                </div>
+                ${userNegHtml}
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="border-top: 2px solid #E2DCC8; padding: 14px 24px; background-color: #F0EDE4; font-size: 12px; color: #5A5A40; display: flex; align-items: center; justify-content: space-between; font-weight: 800;">
+            <span>منصة يومياتي AI - تقرير الإيجابيات والسلبيات اليومية</span>
+            <span>سرية تامة وتشفير محلي 🌿</span>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(container);
+
+      await new Promise(r => setTimeout(r, 150));
+
+      const canvas = await html2canvas(container, {
+        scale: 2, // Ultra Crisp High DPI
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#FAF8F5',
-        logging: false,
-        ignoreElements: (element) => {
-          return (
-            element.classList.contains('no-print-capture') ||
-            element.hasAttribute('data-html2canvas-ignore')
-          );
-        },
+        logging: false
       });
-
-      // Restore original container styles
-      modalElement.style.maxHeight = origMaxHeight;
-      modalElement.style.overflow = origOverflow;
-      if (scrollArea) {
-        scrollArea.style.maxHeight = origScrollMaxHeight;
-        scrollArea.style.overflow = origScrollOverflow;
-      }
 
       const dataUrl = canvas.toDataURL('image/png', 1.0);
       const fileName = `تقرير_الإيجابيات_والسلبيات_${dayKey}.png`;
@@ -1006,6 +1092,9 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
       console.error('Error rendering report image:', err);
       showToast('حدث خطأ أثناء حفظ الصورة، يرجى إعادة المحاولة');
     } finally {
+      if (container && document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
       setIsCapturingImage(false);
     }
   };

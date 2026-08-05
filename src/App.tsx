@@ -533,27 +533,41 @@ export default function App() {
     localStorage.setItem('yawmiyati_active_tab', activeTab);
   }, [activeTab]);
 
-  // Comprehensive Auto-Save to localStorage whenever any state changes (with try/catch to prevent QuotaExceededError crashes)
+  const diariesSaveDebounceRef = useRef<any>(null);
+
+  // Debounced Auto-Save for diaries to prevent main-thread lag during typing/editing
   useEffect(() => {
-    try {
-      const safeDiaries = (diaries || []).map(d => ({
-        ...d,
-        audioRecordings: (d.audioRecordings || []).map(r => ({
-          ...r,
-          dataUrl: (r.dataUrl && r.dataUrl.length > 5000000) ? '#' : r.dataUrl
-        })),
-        images: (d.images || []).map(img => (img && img.length > 3000000) ? '' : img).filter(Boolean),
-        files: (d.files || []).map(f => ({
-          ...f,
-          dataUrl: (f.dataUrl && f.dataUrl.length > 5000000) ? '#' : f.dataUrl
-        })),
-        videos: (d.videos || []).map(v => (v && v.length > 5000000) ? '#' : v).filter(Boolean)
-      }));
-      localStorage.setItem('yawmiyati_diaries', JSON.stringify(safeDiaries));
-      triggerAutoSaveFeedback();
-    } catch (e) {
-      console.warn('LocalStorage save error:', e);
+    if (diariesSaveDebounceRef.current) {
+      clearTimeout(diariesSaveDebounceRef.current);
     }
+
+    diariesSaveDebounceRef.current = setTimeout(() => {
+      try {
+        const safeDiaries = (diaries || []).map(d => ({
+          ...d,
+          audioRecordings: (d.audioRecordings || []).map(r => ({
+            ...r,
+            dataUrl: (r.dataUrl && r.dataUrl.length > 5000000) ? '#' : r.dataUrl
+          })),
+          images: (d.images || []).map(img => (img && img.length > 3000000) ? '' : img).filter(Boolean),
+          files: (d.files || []).map(f => ({
+            ...f,
+            dataUrl: (f.dataUrl && f.dataUrl.length > 5000000) ? '#' : f.dataUrl
+          })),
+          videos: (d.videos || []).map(v => (v && v.length > 5000000) ? '#' : v).filter(Boolean)
+        }));
+        localStorage.setItem('yawmiyati_diaries', JSON.stringify(safeDiaries));
+        triggerAutoSaveFeedback();
+      } catch (e) {
+        console.warn('LocalStorage save error:', e);
+      }
+    }, 1200);
+
+    return () => {
+      if (diariesSaveDebounceRef.current) {
+        clearTimeout(diariesSaveDebounceRef.current);
+      }
+    };
   }, [diaries]);
 
   useEffect(() => {
@@ -608,7 +622,7 @@ export default function App() {
     } catch (e) { console.warn(e); }
   }, [dailyQuote]);
 
-  // Window beforeunload & periodic 10-second fail-safe auto-saver
+  // Window beforeunload fail-safe auto-saver
   useEffect(() => {
     const performFullSave = () => {
       try {
@@ -635,11 +649,9 @@ export default function App() {
       }
     };
 
-    const interval = setInterval(performFullSave, 10000);
     window.addEventListener('beforeunload', performFullSave);
 
     return () => {
-      clearInterval(interval);
       window.removeEventListener('beforeunload', performFullSave);
     };
   }, [diaries, settings, habits, gratitudeCards, dailyQuote]);
@@ -3645,9 +3657,27 @@ export default function App() {
           </div>
 
           {/* Quick Action Badges matching the requested screenshot EXACTLY 'balmilli' */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-start sm:justify-end">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full w-full sm:w-auto justify-start sm:justify-end pb-1.5 sm:pb-0">
             
-            {/* 1. Habits and Tasks Button (المهام اليومية) with red circular badge containing incomplete count on the left */}
+            {/* 1. Dhikr / Azkar Button (الأذكار 📿) */}
+            <button
+              onClick={() => {
+                setActiveTab('dashboard');
+                setTimeout(() => {
+                  const el = document.getElementById('dhikr-counter');
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }, 100);
+              }}
+              className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-black shadow-3xs hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer shrink-0"
+              title="الأذكار والتسبيح"
+            >
+              <span>الأذكار</span>
+              <span className="text-sm">📿</span>
+            </button>
+
+            {/* 2. Habits and Tasks Button (المهام اليومية) with red circular badge containing incomplete count on the left */}
             <button
               onClick={() => {
                 setActiveTab('diaries');
@@ -3662,7 +3692,7 @@ export default function App() {
               <span>المهام اليومية</span>
             </button>
 
-            {/* 2. My Diary Thoughts Button (خواطري ✍️) with light orange/yellow background and border */}
+            {/* 3. My Diary Thoughts Button (خواطري ✍️) with light orange/yellow background and border */}
             <button
               onClick={() => {
                 setActiveTab('diaries');
@@ -3676,7 +3706,7 @@ export default function App() {
               <span className="text-sm">✍️</span>
             </button>
 
-            {/* 3. Therapist Session Button (جلسة العلاج 🎓) with dark slate/green background and white text */}
+            {/* 4. Therapist Session Button (جلسة العلاج 🎓) with dark slate/green background and white text */}
             <button
               onClick={() => {
                 setActiveTab('analytics');
@@ -3693,7 +3723,7 @@ export default function App() {
               </span>
             </button>
 
-            {/* 4. Personal Account & Cloud Sync Login Button */}
+            {/* 5. Personal Account & Cloud Sync Login Button */}
             <button
               onClick={() => setIsAuthModalOpen(true)}
               className={`flex items-center space-x-1.5 space-x-reverse px-3 py-2 border rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0 ${
@@ -3716,7 +3746,7 @@ export default function App() {
               )}
             </button>
 
-            {/* 5. Lock Button (🔒) with grey-brown background and border */}
+            {/* 6. Lock Button (🔒) with grey-brown background and border */}
             <button
               onClick={() => setSettings(prev => ({ ...prev, isAppLocked: true }))}
               className="p-2.5 bg-[#EEECDF] border border-[#D1CCBA] text-[#5A5A40] rounded-xl hover:bg-[#DDD8C3] active:scale-95 transition-all cursor-pointer shadow-3xs shrink-0 flex items-center justify-center"
@@ -3765,7 +3795,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 pt-6 pb-28 md:pb-12 space-y-6">
         
         {/* Mock Android Notification Widget at the top of the Home Dashboard for simulation */}
         {activeTab === 'dashboard' && (
@@ -4059,7 +4089,9 @@ export default function App() {
             </div>
 
             {/* 📿 Spiritual Dhikr & Salawat Counter Widget */}
-            <DhikrCounter className="shadow-sm" />
+            <div id="dhikr-counter">
+              <DhikrCounter className="shadow-sm" />
+            </div>
 
             {/* 🎯 Interactive Rapid Mood, Water & Symptoms Tracker Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -6481,17 +6513,17 @@ export default function App() {
                 </div>
 
                 {/* Editor Bottom Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-[#E2DCC8]/55">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-[#E2DCC8]/55">
                   <button
                     type="button"
                     onClick={() => handleDeleteDiary(editingDiary.id)}
-                    className="flex items-center space-x-1 space-x-reverse px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                    className="flex items-center justify-center space-x-1 space-x-reverse px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-red-200 sm:border-transparent"
                   >
                     <Trash className="w-4 h-4" />
                     <span>حذف المذكرة نهائياً</span>
                   </button>
 
-                  <div className="flex items-center space-x-2 space-x-reverse">
+                  <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
                     {!isNewEntry && (
                       <button
                         type="button"
@@ -6503,10 +6535,10 @@ export default function App() {
                             setEditingDiary(null);
                           }
                         }}
-                        className="px-3.5 py-2 text-xs font-black text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 space-x-reverse"
+                        className="flex-1 sm:flex-initial px-3.5 py-2 text-xs font-black text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-1.5 space-x-reverse"
                       >
                         <Archive className="w-4 h-4 text-amber-700" />
-                        <span>{editingDiary.isArchived ? 'استرجاع من الأرشيف' : 'أرشفة المذكرة 📥'}</span>
+                        <span>{editingDiary.isArchived ? 'استرجاع' : 'أرشفة 📥'}</span>
                       </button>
                     )}
 
@@ -6517,7 +6549,7 @@ export default function App() {
                         setIsNewEntry(false);
                         setDiaryAiAnswer('');
                       }}
-                      className="px-4 py-2 text-xs font-bold text-[#5A5A40] hover:bg-[#F0EDE4] rounded-xl transition-colors cursor-pointer"
+                      className="flex-1 sm:flex-initial px-4 py-2 text-xs font-bold text-[#5A5A40] hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl transition-colors cursor-pointer text-center"
                     >
                       إلغاء
                     </button>
@@ -6526,17 +6558,17 @@ export default function App() {
                       type="button"
                       disabled={isExportingPdf}
                       onClick={handleExportPDF}
-                      className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#D4A373] hover:bg-[#B58554] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                      className="flex-1 sm:flex-initial flex items-center justify-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#D4A373] hover:bg-[#B58554] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isExportingPdf ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>جاري التصدير...</span>
+                          <span>جاري...</span>
                         </>
                       ) : (
                         <>
                           <Printer className="w-4 h-4" />
-                          <span>تصدير كملف PDF</span>
+                          <span>تصدير PDF</span>
                         </>
                       )}
                     </button>
@@ -6544,7 +6576,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={handleSaveDiary}
-                      className="flex items-center space-x-1.5 space-x-reverse px-5 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+                      className="w-full sm:w-auto flex items-center justify-center space-x-1.5 space-x-reverse px-5 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
                     >
                       <span>حفظ المذكرة بنجاح ✓</span>
                     </button>
@@ -6798,11 +6830,11 @@ export default function App() {
                                     }`}
                                   >
                                     {/* Top Corner: precise entry time, edit flag, and ratings aligned with the screenshot */}
-                                    <div className="flex items-center justify-between text-[11px] text-gray-500 w-full" dir="rtl">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500 w-full" dir="rtl">
                                       {/* Star Ratings & Actions on the Right in RTL */}
-                                      <div className="flex items-center space-x-1.5 space-x-reverse">
+                                      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                                         {/* Importance Rating Stars */}
-                                        <div className="flex items-center space-x-0.5 space-x-reverse">
+                                        <div className="flex items-center space-x-0.5 space-x-reverse shrink-0">
                                           {[1, 2, 3, 4, 5].map((s) => (
                                             <Star 
                                               key={s} 
