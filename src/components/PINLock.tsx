@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lock, ShieldCheck, ShieldAlert, Fingerprint, Keyboard, ArrowRight, ScanFace, CheckCircle2, XCircle, Camera } from 'lucide-react';
 import StaticNotification from './StaticNotification';
+import DhikrCounter from './DhikrCounter';
 import { verifyBiometrics } from '../lib/biometrics';
 
 interface PINLockProps {
@@ -183,7 +184,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-[#5A5A40] via-[#8B9D83] to-[#FEFAE0] text-[#3A3A3A] z-50 flex flex-col justify-between p-6 font-sans select-none overflow-hidden" dir="rtl">
+    <div className="fixed inset-0 bg-gradient-to-b from-[#5A5A40] via-[#8B9D83] to-[#FEFAE0] text-[#3A3A3A] z-50 flex flex-col justify-between p-4 sm:p-6 font-sans select-none overflow-y-auto" dir="rtl">
       {/* Simulated Device Status Bar */}
       <div className="w-full flex items-center justify-between text-white/90 text-xs px-3 pt-2">
         <span className="font-semibold font-mono tracking-wider">{timeString}</span>
@@ -197,28 +198,33 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
       {viewMode === 'lockscreen' ? (
         /* ==================== 📱 LOCK SCREEN MODE ==================== */
-        <div className="flex-1 flex flex-col justify-between py-6 animate-fade-in">
+        <div className="flex-1 flex flex-col justify-between py-4 sm:py-6 animate-fade-in space-y-4">
           {/* Lock Screen Time and Date */}
-          <div className="flex flex-col items-center text-center mt-4 space-y-2">
-            <div className="p-3 bg-white/15 backdrop-blur-md rounded-full border border-white/30 text-white shadow-md">
-              <Lock className="w-6 h-6 animate-pulse" />
+          <div className="flex flex-col items-center text-center mt-2 space-y-1">
+            <div className="p-2.5 bg-white/15 backdrop-blur-md rounded-full border border-white/30 text-white shadow-md">
+              <Lock className="w-5 h-5 animate-pulse" />
             </div>
-            <h1 className="text-5xl font-black text-white font-mono tracking-tight drop-shadow-md">
+            <h1 className="text-4xl sm:text-5xl font-black text-white font-mono tracking-tight drop-shadow-md">
               {timeString}
             </h1>
-            <p className="text-sm font-extrabold text-[#FEFAE0] drop-shadow-xs">
+            <p className="text-xs sm:text-sm font-extrabold text-[#FEFAE0] drop-shadow-xs">
               {dateString}
             </p>
           </div>
 
           {/* Centered Notification Card (Direct Action Trigger with Biometric Lock) */}
-          <div className="my-auto max-w-md w-full mx-auto px-1">
+          <div className="max-w-md w-full mx-auto px-1">
             <div className="transform scale-[0.98] sm:scale-100 hover:scale-[1.01] transition-transform duration-200">
               <StaticNotification 
                 onAction={handleNotificationActionClick} 
                 onBodyClick={() => handleNotificationActionClick('notes')} 
               />
             </div>
+          </div>
+
+          {/* Spiritual Dhikr & Salawat Counter Card */}
+          <div className="max-w-md w-full mx-auto px-1">
+            <DhikrCounter />
           </div>
 
           {/* Lock Screen Bottom Control Panels */}

@@ -35,6 +35,7 @@ import SmartRemindersModal from './components/SmartRemindersModal';
 import { AuthModal } from './components/AuthModal';
 import DailyProsConsModal from './components/DailyProsConsModal';
 import ProsConsHistoryLog from './components/ProsConsHistoryLog';
+import DhikrCounter from './components/DhikrCounter';
 
 // Recharts components for gorgeous analytics
 import { 
@@ -4057,6 +4058,9 @@ export default function App() {
               </div>
             </div>
 
+            {/* 📿 Spiritual Dhikr & Salawat Counter Widget */}
+            <DhikrCounter className="shadow-sm" />
+
             {/* 🎯 Interactive Rapid Mood, Water & Symptoms Tracker Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               
@@ -7032,7 +7036,7 @@ export default function App() {
             {analyticsSubTab === 'report' ? (
               <IntegratedTherapyReport diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
             ) : analyticsSubTab === 'pros_cons' ? (
-              <ProsConsHistoryLog diaries={diaries} userApiKey={settings.userApiKey} />
+              <ProsConsHistoryLog diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
             ) : (
               <div className="space-y-6">
                 {/* Visual Intro card */}
@@ -9949,6 +9953,10 @@ export default function App() {
         dayKey={prosConsDayKey}
         displayDate={prosConsDisplayDate}
         dayDiaries={prosConsDayDiaries}
+        allHabits={habits}
+        allGratitudeCards={gratitudeCards}
+        allBooks={books}
+        allDiaries={diaries}
         userApiKey={settings.userApiKey}
       />
 

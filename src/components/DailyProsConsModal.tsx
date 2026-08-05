@@ -5,7 +5,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import { DiaryEntry } from '../types';
+import { DiaryEntry, Habit, GratitudeCard, Book } from '../types';
 
 export interface DailyProsConsEntry {
   dayKey: string; // 'YYYY-MM-DD'
@@ -49,6 +49,10 @@ interface DailyProsConsModalProps {
   dayKey: string;
   displayDate: string;
   dayDiaries: DiaryEntry[];
+  allHabits?: Habit[];
+  allGratitudeCards?: GratitudeCard[];
+  allBooks?: Book[];
+  allDiaries?: DiaryEntry[];
   userApiKey?: string;
   onSaveSuccess?: () => void;
 }
@@ -85,6 +89,10 @@ export default function DailyProsConsModal({
   dayKey,
   displayDate,
   dayDiaries,
+  allHabits,
+  allGratitudeCards,
+  allBooks,
+  allDiaries,
   userApiKey,
   onSaveSuccess
 }: DailyProsConsModalProps) {
@@ -111,6 +119,184 @@ export default function DailyProsConsModal({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Comprehensive Data Gatherer across ALL app modules for dayKey
+  const compileFullDayData = (): string => {
+    const contextLines: string[] = [];
+
+    // Source A: Diaries & Thoughts
+    const targetDiaries = (allDiaries && allDiaries.length > 0)
+      ? allDiaries.filter(d => {
+          const entryDate = d.createdAt ? d.createdAt.split('T')[0] : '';
+          return entryDate === dayKey || (dayDiaries && dayDiaries.some(dd => dd.id === d.id));
+        })
+      : dayDiaries;
+
+    if (targetDiaries && targetDiaries.length > 0) {
+      contextLines.push(`=== 1) المذكرات والخواطر والفضفضة (${targetDiaries.length} مذكرات) ===`);
+      targetDiaries.forEach((d, idx) => {
+        contextLines.push(`[مذكرة #${idx + 1}]`);
+        contextLines.push(`- النوع: ${d.diaryType === 'thought' ? 'خاطرة' : 'مذكرة يومية'}`);
+        contextLines.push(`- العنوان: ${d.title || 'بدون عنوان'}`);
+        contextLines.push(`- المحتوى: ${d.content || 'لا يوجد نص'}`);
+        
+        if (d.moods && d.moods.length > 0) {
+          contextLines.push(`- المزاج المدون: ${d.moods.join(', ')}`);
+        }
+        if (d.aiMoodAnalysis && d.aiMoodAnalysis.length > 0) {
+          contextLines.push(`- تحليل المشاعر الذكي: ${d.aiMoodAnalysis.map(m => `${m.mood} (${m.percentage}%)`).join(', ')}`);
+        }
+        if (d.fastMoodScore) {
+          contextLines.push(`- تقييم المزاج السريع: ${d.fastMoodScore}/10`);
+        }
+        if (d.tags && d.tags.length > 0) {
+          contextLines.push(`- الوسوم والأنشطة: ${d.tags.join(', ')}`);
+        }
+
+        // Audio Transcriptions & Vocal Emotions
+        if (d.audioRecordings && d.audioRecordings.length > 0) {
+          d.audioRecordings.forEach((aud, aIdx) => {
+            if (aud.transcription) {
+              contextLines.push(`- تفريغ تسجيل صوتي #${aIdx + 1}: "${aud.transcription}"`);
+            }
+            if (aud.speechEmotion) {
+              contextLines.push(`- تحليل نبرة الصوت والمشاعر الصوتية: ${aud.speechEmotion.primaryEmotion} (شدة: ${aud.speechEmotion.intensity}) ${aud.speechEmotion.vocalToneDetails || ''}`);
+            }
+          });
+        }
+
+        // Tasks inside Diary
+        if (d.tasks && d.tasks.length > 0) {
+          const doneTasks = d.tasks.filter(t => t.completed).map(t => t.text);
+          const pendingTasks = d.tasks.filter(t => !t.completed).map(t => t.text);
+          if (doneTasks.length > 0) {
+            contextLines.push(`- المهام المكتملة في المذكرة: ${doneTasks.join(' | ')} ✅`);
+          }
+          if (pendingTasks.length > 0) {
+            contextLines.push(`- المهام المتبقية في المذكرة: ${pendingTasks.join(' | ')} ⏳`);
+          }
+        }
+
+        // CBT Worksheets inside Diary
+        if (d.cbtWorksheets && d.cbtWorksheets.length > 0) {
+          d.cbtWorksheets.forEach((cbt, cIdx) => {
+            contextLines.push(`- تمرين تفنيد الأفكار CBT #${cIdx + 1}:`);
+            contextLines.push(`  * الحدث المثبت: ${cbt.triggerEvent}`);
+            contextLines.push(`  * الفكرة التلقائية السلبية: ${cbt.negativeThoughts}`);
+            contextLines.push(`  * التشوه المعرفي: ${cbt.cognitiveDistortion}`);
+            contextLines.push(`  * البديل العقلاني المنطقي: ${cbt.rationalAlternative}`);
+            contextLines.push(`  * مستوى الانفعال العاطفي: قبل (${cbt.emotionBefore}/10) -> بعد (${cbt.emotionAfter}/10)`);
+          });
+        }
+
+        // Health, Sleep, Sports, Water, Symptoms
+        const healthDetails: string[] = [];
+        if (d.sleepHours) healthDetails.push(`النوم: ${d.sleepHours} ساعة`);
+        if (d.sportsDuration) healthDetails.push(`الرياضة: ${d.sportsDuration} دقيقة`);
+        if (d.waterCups) healthDetails.push(`شرب الماء: ${d.waterCups} كوب`);
+        if (d.symptomsChecklist && d.symptomsChecklist.length > 0) healthDetails.push(`الأعراض الجسدية/النفسية: ${d.symptomsChecklist.join(', ')}`);
+        
+        if (healthDetails.length > 0) {
+          contextLines.push(`- المؤشرات الصحية والبدنية: ${healthDetails.join(' | ')}`);
+        }
+
+        if (d.medications && d.medications.length > 0) {
+          const medStr = d.medications.map(m => `${m.name} (${m.time}) -> ${m.taken ? 'تم التناول ✅' : 'لم يتم التناول ❌'}`).join(', ');
+          contextLines.push(`- متابعة الأدوية والعلاجات: ${medStr}`);
+        }
+
+        if (d.customHabits && d.customHabits.length > 0) {
+          const habStr = d.customHabits.map(h => `${h.name}: ${h.completed ? 'مكتملة ✅' : 'غير مكتملة ❌'}`).join(', ');
+          contextLines.push(`- العادات المرفقة بالمذكرة: ${habStr}`);
+        }
+      });
+    }
+
+    // Source B: Habit Tracker Section
+    const resolvedHabits = allHabits || (() => {
+      try {
+        const saved = localStorage.getItem('yawmiyati_habits');
+        return saved ? JSON.parse(saved) : [];
+      } catch (e) { return []; }
+    })();
+
+    if (resolvedHabits && resolvedHabits.length > 0) {
+      const dayHabitsCompleted: string[] = [];
+      const dayHabitsMissed: string[] = [];
+
+      resolvedHabits.forEach((h: Habit) => {
+        if (h.history && h.history[dayKey] !== undefined) {
+          const val = h.history[dayKey];
+          if (val === true || (typeof val === 'object' && (val as any).completed)) {
+            dayHabitsCompleted.push(`${h.name} ${h.icon || ''}`);
+          } else if (typeof val === 'number') {
+            dayHabitsCompleted.push(`${h.name} (المقدار المسجل: ${val} ${h.unit || ''})`);
+          } else if (val === false || (typeof val === 'object' && (val as any).completed === false)) {
+            dayHabitsMissed.push(`${h.name}`);
+          }
+        }
+      });
+
+      if (dayHabitsCompleted.length > 0 || dayHabitsMissed.length > 0) {
+        contextLines.push(`=== 2) متابعة العادات اليومية من قسم العادات ===`);
+        if (dayHabitsCompleted.length > 0) {
+          contextLines.push(`- العادات الناجحة والمكتملة اليوم: ${dayHabitsCompleted.join(', ')} ✅`);
+        }
+        if (dayHabitsMissed.length > 0) {
+          contextLines.push(`- العادات غير المكتملة أو المتروكة اليوم: ${dayHabitsMissed.join(', ')} ❌`);
+        }
+      }
+    }
+
+    // Source C: Gratitude Cards
+    const resolvedGratitude = allGratitudeCards || (() => {
+      try {
+        const saved = localStorage.getItem('yawmiyati_gratitude_cards');
+        return saved ? JSON.parse(saved) : [];
+      } catch (e) { return []; }
+    })();
+
+    const dayGratitude = resolvedGratitude.filter((g: GratitudeCard) => g.createdAt && g.createdAt.startsWith(dayKey));
+    if (dayGratitude.length > 0) {
+      contextLines.push(`=== 3) مفكرة الامتنان والخواطر الإيجابية (${dayGratitude.length} بطاقات) ===`);
+      dayGratitude.forEach((g: GratitudeCard, i: number) => {
+        contextLines.push(`- بطاقة امتنان #${i + 1}: "${g.text}" 🌸`);
+      });
+    }
+
+    // Source D: Books & Reading
+    const resolvedBooks = allBooks || (() => {
+      try {
+        const saved = localStorage.getItem('yawmiyati_books');
+        return saved ? JSON.parse(saved) : [];
+      } catch (e) { return []; }
+    })();
+
+    const dayBooks = resolvedBooks.filter((b: Book) => b.createdAt && b.createdAt.startsWith(dayKey));
+    if (dayBooks.length > 0) {
+      contextLines.push(`=== 4) الكتب والقراءة والملخصات (${dayBooks.length} كتب) ===`);
+      dayBooks.forEach((b: Book, i: number) => {
+        contextLines.push(`- كتاب #${i + 1}: "${b.title}" (التقييم: ${b.rating || 5}/5) - ملاحظات: ${b.notes || 'لا يوجد'}`);
+      });
+    }
+
+    // Source E: Standalone CBT Coping Cards
+    try {
+      const copingCardsRaw = localStorage.getItem('app_custom_coping_cards');
+      if (copingCardsRaw) {
+        const cards = JSON.parse(copingCardsRaw);
+        const dayCards = Array.isArray(cards) ? cards.filter((c: any) => c.createdAt && c.createdAt.startsWith(dayKey)) : [];
+        if (dayCards.length > 0) {
+          contextLines.push(`=== 5) بطاقات التكيف والتفكير الإيجابي CBT ===`);
+          dayCards.forEach((c: any) => {
+            contextLines.push(`- بطاقة تكيف: [${c.title || 'بطاقة موجهة'}] - النص: ${c.content || c.text || ''}`);
+          });
+        }
+      }
+    } catch (e) { console.warn(e); }
+
+    return contextLines.join('\n');
+  };
+
   // Load existing record for dayKey or generate default
   useEffect(() => {
     if (!isOpen || !dayKey) return;
@@ -127,36 +313,46 @@ export default function DailyProsConsModal({
       // Auto trigger AI generation if no existing record
       setUserPositives([]);
       setUserNegatives([]);
-      generateAiAnalysis(dayDiaries);
+      generateAiAnalysis();
     }
   }, [isOpen, dayKey]);
 
   // AI Generation Logic
-  const generateAiAnalysis = async (entries: DiaryEntry[]) => {
+  const generateAiAnalysis = async () => {
     setIsGeneratingAi(true);
 
-    if (!entries || entries.length === 0) {
-      setAiPositives(['لم يتم تدوين مذكرات تفصيلية لليوم لتوليد الإيجابيات تلقائياً.']);
-      setAiNegatives(['لا توجد سلبيات مرصودة من اليوميات فارغة.']);
+    const fullCompiledContext = compileFullDayData();
+
+    if (!fullCompiledContext || fullCompiledContext.trim().length === 0) {
+      setAiPositives(['لم يتم تدوين مذكرات تفصيلية أو أنشطة لليوم لتوليد الإيجابيات تلقائياً.']);
+      setAiNegatives(['لا توجد سلبيات مرصودة نظرًا لعدم وجود بيانات مسجلة لليوم.']);
       setIsGeneratingAi(false);
       return;
     }
-
-    const compiledText = entries.map(d => `عنوان: ${d.title || 'بدون عنوان'}\nالمحتوى: ${d.content || ''}\nالمزاج: ${d.tags?.join(', ') || ''}`).join('\n---\n');
 
     try {
       const response = await fetch('/api/gemini/smart-advisor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: `قم بتحليل اليوميات والخواطر التالية لليوم (${displayDate}) واستخرج باختصار شديد وموجز جداً:
-1) الإيجابيات (3 إلى 4 نقاط قصيرة وإيجابية)
-2) السلبيات أو التحديات (3 إلى 4 نقاط قصيرة)
+          query: `أنت خبير وباحث نفسي وسلوكي متقدم ومساعد ذكي محترف في منصة "يومياتي AI".
+تلقيت سجلاً كاملاً وشاملاً لكافة النشاطات والبيانات المسجلة للمستخدم لهذا اليوم: (${displayDate}).
 
-النص المتاح:
-${compiledText}
+### البيانات والأنشطة الشاملة المسجلة لليوم (${displayDate}):
+${fullCompiledContext}
 
-يرجى إرجاع النتيجة بالصيغة التالية بدقة:
+---
+المطلوب منك بدقة ودون تحيز:
+قم بإجراء تحليل ذكي وشامل واستخراج أهم الإيجابيات والسلبيات الخاصة بهذا اليوم (${displayDate}).
+
+قواعد التوليد والتحليل:
+1. الشمولية والدقة: يجب استغلال وتجميع كل التفاصيل والبيانات المتاحة أعلاه من كافة أجزاء التطبيق (المذكرات، الخواطر، العادات المكتملة والمخفقة، المهام، تمارين تفنيد الأفكار CBT، الأدوية والعلاجات، ساعات النوم، الأنشطة الرياضية، المشاعر الصوتية، بطاقات الامتنان، والقراءة).
+2. الاحترافية والإيجاز: اكتب النقاط بأسلوب لغوي رصين، عالي الجودة، موجز جداً ومباشر دون تعقيد لفظي أو إطالة غير مبررة.
+3. التوازن الدقيق:
+   - الإيجابيات: استخرج من 3 إلى 5 نقاط جوهرية مركزة تمثل الإنجازات، السلوكيات الصحية، مشاعر الامتنان، نجاح تمارين التفكير أو العادات والمهام المكتملة.
+   - السلبيات والتحديات: استخرج من 3 إلى 5 نقاط جوهرية مركزة تمثل الضغوط الملاحظة، العادات غير المكتملة، الأفكار السلبية، المشاعر المضطربة، أو أي تقصير في المهام/الصحة (وإذا كان اليوم خاوياً من السلبيات، صغ تحدياً عابراً أو توصية تحسين دقيقة).
+
+يرجى إرجاع النتيجة بالصيغة التالية تماماً دون أي مقدمات أو خاتمة:
 الإيجابيات:
 - ...
 - ...
@@ -172,10 +368,10 @@ ${compiledText}
       if (data.success && data.answer) {
         parseAiText(data.answer);
       } else {
-        fallbackNlpExtraction(entries);
+        fallbackNlpExtraction(fullCompiledContext);
       }
     } catch (e) {
-      fallbackNlpExtraction(entries);
+      fallbackNlpExtraction(fullCompiledContext);
     } finally {
       setIsGeneratingAi(false);
     }
@@ -209,28 +405,49 @@ ${compiledText}
       }
     }
 
-    setAiPositives(posList.length > 0 ? posList : ['الحفاظ على التدوين والتعبير عن المشاعر بشجاعة.']);
-    setAiNegatives(negList.length > 0 ? negList : ['وجود ضغوط بسيطة تم تجاوزها بالتدوين.']);
+    setAiPositives(posList.length > 0 ? posList : ['استخدام التدوين والتعبير عن الذات بوعي وشجاعة.']);
+    setAiNegatives(negList.length > 0 ? negList : ['وجود ضغوط عابرة تم توثيقها بنجاح للتعامل معها.']);
   };
 
   // Rule-based Fallback NLP extraction if AI service is offline
-  const fallbackNlpExtraction = (entries: DiaryEntry[]) => {
+  const fallbackNlpExtraction = (compiledContextStr: string) => {
     const pos: string[] = [];
     const neg: string[] = [];
+    const txt = compiledContextStr.toLowerCase();
 
-    entries.forEach(e => {
-      const txt = (e.title + ' ' + e.content).toLowerCase();
-      
-      if (txt.includes('سعيد') || txt.includes('صلاة') || txt.includes('الحمد') || txt.includes('أمل') || txt.includes('امتنان') || txt.includes('نجاح')) {
-        pos.push(`توثيق مشاعر إيجابية وإنجازات شخصية في: "${e.title || 'مذكرة لليوم'}"`);
-      }
-      if (txt.includes('قلق') || txt.includes('تعب') || txt.includes('ضغط') || txt.includes('حزن') || txt.includes('أرق') || txt.includes('خوف')) {
-        neg.push(`شعور ببعض الضغوط النفسية أو القلق في: "${e.title || 'مذكرة لليوم'}"`);
-      }
-    });
+    // Check CBT
+    if (txt.includes('cbt') || txt.includes('تفنيد') || txt.includes('البديل العقلاني')) {
+      pos.push('ممارسة تمارين العلاج المعرفي السلوكي (CBT) وصياغة البدائل العقلانية للأفكار.');
+    }
+    // Check Gratitude
+    if (txt.includes('امتنان') || txt.includes('بطاقة امتنان')) {
+      pos.push('التعبير عن الامتنان والتركيز على النعم واللحظات الإيجابية.');
+    }
+    // Check Habits
+    if (txt.includes('مكتملة ✅')) {
+      pos.push('الالتزام بإنجاز العادات والأنشطة اليومية المستهدفة.');
+    }
+    if (txt.includes('غير مكتملة ❌') || txt.includes('لم يتم')) {
+      neg.push('تعثر في استكمال بعض العادات أو المهام اليومية المخططة.');
+    }
+    // Check Health / Sports / Sleep
+    if (txt.includes('ساعة') && txt.includes('نوم')) {
+      pos.push('تأطير روتين النوم ومتابعة مؤشر الاسترخاء.');
+    }
+    if (txt.includes('رياضة') || txt.includes('دقيقة')) {
+      pos.push('ممارسة النشاط البدني والحفاظ على حيوية الجسد.');
+    }
+    // Check Mood / Positives
+    if (txt.includes('سعيد') || txt.includes('صلاة') || txt.includes('الحمد') || txt.includes('أمل') || txt.includes('نجاح') || txt.includes('هادئ')) {
+      pos.push('توثيق مشاعر إيجابية وإنجازات شخصية مثمرة.');
+    }
+    // Check Negatives
+    if (txt.includes('قلق') || txt.includes('تعب') || txt.includes('ضغط') || txt.includes('حزن') || txt.includes('أرق') || txt.includes('خوف') || txt.includes('صداع')) {
+      neg.push('مواجهة بعض الضغوط النفسية أو الأعراض الجسدية المجهدة.');
+    }
 
-    if (pos.length === 0) pos.push('الالتزام بالكتابة والتفريغ الوجداني لليوم.');
-    if (neg.length === 0) neg.push('تحديات وقتية بسيطة تم توثيقها.');
+    if (pos.length === 0) pos.push('الالتزام بالتدوين ومتابعة الأنشطة بوعي.');
+    if (neg.length === 0) neg.push('تحديات وقتية بسيطة تم توثيقها للتعلم منها.');
 
     setAiPositives(pos);
     setAiNegatives(neg);
@@ -1133,17 +1350,17 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
           <div className="bg-white border border-[#E2DCC8] rounded-2xl p-3 shadow-3xs flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs text-[#5A5A40] font-extrabold">
               <Brain className="w-4 h-4 text-[#8B9D83]" />
-              <span>تحليل اليوميات والخواطر المؤرخة لليوم لتوليد النقاط المحورية:</span>
+              <span>تحليل شامل لجميع تفاصيل اليوم (مذكرات، عادات، مهام، CBT، أدوية، امتنان وقراءة):</span>
             </div>
 
             <button
               type="button"
-              onClick={() => generateAiAnalysis(dayDiaries)}
+              onClick={() => generateAiAnalysis()}
               disabled={isGeneratingAi}
               className="px-3.5 py-2 bg-[#8B9D83] hover:bg-[#5A5A40] text-white rounded-xl text-xs font-black shadow-3xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingAi ? 'animate-spin' : ''}`} />
-              <span>{isGeneratingAi ? 'جاري التحليل والترخيص...' : 'إعادة التوليد بالذكاء الاصطناعي 🔄'}</span>
+              <span>{isGeneratingAi ? 'جاري التحليل والترخيص...' : 'إعادة التوليد الشامل 🔄'}</span>
             </button>
           </div>
 
@@ -1154,7 +1371,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                 <Sparkles className="w-4 h-4 text-[#8B9D83]" />
                 <span>أولاً: الإيجابيات والسلبيات المولدة بالذكاء الاصطناعي 🧠</span>
               </h4>
-              <span className="text-[11px] text-gray-400 font-bold">مستخلصة تلقائياً من المذكرات</span>
+              <span className="text-[11px] text-[#5A5A40] font-bold">مستخلصة تلقائياً من كافة أقسام وأنشطة التطبيق</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

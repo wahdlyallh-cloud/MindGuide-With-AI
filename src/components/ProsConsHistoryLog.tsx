@@ -3,7 +3,7 @@ import {
   Scale, Brain, Sparkles, Plus, Trash2, Download, Printer, Copy, Check, 
   Search, Filter, Calendar, CheckCircle2, XCircle, Edit3, FileText, RefreshCw, FileCheck2
 } from 'lucide-react';
-import { DiaryEntry } from '../types';
+import { DiaryEntry, Habit, GratitudeCard, Book } from '../types';
 import DailyProsConsModal, { 
   DailyProsConsEntry, 
   loadAllProsConsRecords, 
@@ -12,10 +12,19 @@ import DailyProsConsModal, {
 
 interface ProsConsHistoryLogProps {
   diaries: DiaryEntry[];
+  habits?: Habit[];
+  gratitudeCards?: GratitudeCard[];
+  books?: Book[];
   userApiKey?: string;
 }
 
-export default function ProsConsHistoryLog({ diaries, userApiKey }: ProsConsHistoryLogProps) {
+export default function ProsConsHistoryLog({
+  diaries,
+  habits,
+  gratitudeCards,
+  books,
+  userApiKey
+}: ProsConsHistoryLogProps) {
   const [records, setRecords] = useState<DailyProsConsEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'positives' | 'negatives'>('all');
@@ -411,6 +420,10 @@ export default function ProsConsHistoryLog({ diaries, userApiKey }: ProsConsHist
           dayKey={activeModalDayKey}
           displayDate={activeModalDisplayDate}
           dayDiaries={activeModalDiaries}
+          allHabits={habits}
+          allGratitudeCards={gratitudeCards}
+          allBooks={books}
+          allDiaries={diaries}
           userApiKey={userApiKey}
           onSaveSuccess={refreshRecords}
         />
