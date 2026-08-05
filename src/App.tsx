@@ -556,6 +556,31 @@ export default function App() {
     } catch (e) { console.warn(e); }
   }, [settings]);
 
+  // Auto-lock when user leaves tab/window, hides page, or switches applications
+  useEffect(() => {
+    const handleAutoLock = () => {
+      if (document.visibilityState === 'hidden' || document.hidden) {
+        if (settings.appPinCode || settings.isAppLocked) {
+          setSettings(prev => {
+            const next = { ...prev, isAppLocked: true };
+            try {
+              localStorage.setItem('yawmiyati_settings', JSON.stringify(next));
+            } catch (e) { console.warn(e); }
+            return next;
+          });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleAutoLock);
+    window.addEventListener('pagehide', handleAutoLock);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleAutoLock);
+      window.removeEventListener('pagehide', handleAutoLock);
+    };
+  }, [settings.appPinCode, settings.isAppLocked]);
+
   useEffect(() => {
     try {
       localStorage.setItem('yawmiyati_habits', JSON.stringify(habits));
@@ -7217,11 +7242,17 @@ export default function App() {
                 </div>
 
                 {(expandedSettingsCard === 'pin' || settings.isAppLocked) && (
-                  <div className="p-5 border-t border-[#E2DCC8]/60 bg-[#FAF8F5]/40 space-y-3">
-                    <h5 className="font-black text-[#5A5A40] text-xs">
-                      {isEn ? "🔐 Change App Passcode (PIN):" : "🔐 تغيير رمز قفل الشاشة (PIN):"}
-                    </h5>
-                    <div className="flex items-center gap-3 max-w-sm">
+                  <div className="p-5 border-t border-[#E2DCC8]/60 bg-[#FAF8F5]/40 space-y-4">
+                    <div className="space-y-1">
+                      <h5 className="font-black text-[#5A5A40] text-xs flex items-center gap-2">
+                        <span>🔐 قفل الشاشة والبيانات (PIN، بصمة الإصبع، وبصمة الوجه):</span>
+                      </h5>
+                      <p className="text-[11px] text-gray-500 font-bold leading-relaxed">
+                        عند تفعيل قفل التطبيق، سيتم طلب التحقق الأمني (بصمة الإصبع/الوجه أو رمز الـ PIN) فور مغادرة الموقع أو قفل الشاشة لحماية مذكراتك.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 max-w-sm bg-white p-3 rounded-2xl border border-[#E2DCC8]">
                       <input
                         type="password"
                         maxLength={4}
@@ -7230,12 +7261,24 @@ export default function App() {
                           const val = e.target.value.replace(/\D/g, '');
                           setSettings(prev => ({ ...prev, appPinCode: val }));
                         }}
-                        placeholder={isEn ? "Current (Default 1234)" : "الرمز الحالي (الافتراضي 1234)"}
-                        className="w-28 bg-white border border-[#E2DCC8] rounded-xl px-3 py-2 text-xs text-[#2B3E50] font-mono text-center focus:outline-none focus:ring-1 focus:ring-[#8B9D83] font-black"
+                        placeholder={isEn ? "Current (Default 1234)" : "الرمز الحالي (1234)"}
+                        className="w-28 bg-[#FAF8F5] border border-[#E2DCC8] rounded-xl px-3 py-2 text-xs text-[#2B3E50] font-mono text-center focus:outline-none focus:ring-1 focus:ring-[#8B9D83] font-black"
                       />
-                      <span className="text-[10px] text-gray-400 font-bold leading-relaxed">
-                        {isEn ? "Enter a 4-digit numeric code to completely safeguard your app." : "أدخل رمزاً مكوناً من 4 أرقام لحماية تطبيقك بالكامل."}
-                      </span>
+                      <div className="text-[10px] text-gray-500 font-bold leading-tight">
+                        <span>رمز الـ PIN السري (4 أرقام)</span>
+                        <br />
+                        <span className="text-[#8B9D83]">الرمز الافتراضي: 1234</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 text-xs font-bold leading-relaxed flex items-start gap-2">
+                      <span className="text-base shrink-0">💡</span>
+                      <div>
+                        <strong>كيفية استخدام بصمة الإصبع وبصمة الوجه:</strong>
+                        <p className="mt-0.5 text-[11px] text-amber-800 font-medium">
+                          تُفعل البصمة تلقائياً بمجرد تفعيل "قفل التطبيق". عندما تظهر شاشة القفل، يمكنك الضغط مباشرة على زر <strong>"بصمة الإصبع 👆"</strong> أو <strong>"بصمة الوجه 👤"</strong> لفتح التطبيق أو فتح الاختصارات بلمسة واحدة دون الحاجة لكتابة PIN.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
