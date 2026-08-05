@@ -7,7 +7,7 @@ import {
   Trash2, Edit3, Trash, Star, Image, Paperclip, Mic, MicOff, 
   Smile, ShieldCheck, Download, Upload, Activity, Moon, Pill,
   User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key, Archive, RotateCcw,
-  Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe, Fingerprint
+  Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe, Fingerprint, X
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book, AppReminder, AuthUser } from './types';
@@ -260,15 +260,24 @@ const HABIT_CATEGORIES: Record<string, { label: string; color: string; dot: stri
 
 // --- Streak Tracker calculation helper ---
 const calculateStreak = (entries: DiaryEntry[]) => {
-  const loggedDates = new Set(
-    entries.map(e => {
-      const d = new Date(e.createdAt);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    })
-  );
+  if (!Array.isArray(entries)) return { currentStreak: 0, maxStreak: 0, hasLoggedToday: false };
+  const loggedDates = new Set<string>();
+
+  entries.forEach(e => {
+    if (e && e.createdAt) {
+      try {
+        const d = new Date(e.createdAt);
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          loggedDates.add(`${year}-${month}-${day}`);
+        }
+      } catch {
+        // Safe fallback
+      }
+    }
+  });
 
   const today = new Date();
   const formatDate = (d: Date) => {
@@ -314,7 +323,7 @@ const calculateStreak = (entries: DiaryEntry[]) => {
   }
 
   // Calculate Max Streak of all time
-  const sortedDates = Array.from(loggedDates).sort();
+  const sortedDates = Array.from(loggedDates).filter(Boolean).sort();
   let maxStreak = 0;
   let tempStreak = 0;
   let prevDateMs: number | null = null;
@@ -322,6 +331,7 @@ const calculateStreak = (entries: DiaryEntry[]) => {
   for (const dateStr of sortedDates) {
     const currentDate = new Date(`${dateStr}T12:00:00`);
     const currentDateMs = currentDate.getTime();
+    if (isNaN(currentDateMs)) continue;
 
     if (prevDateMs === null) {
       tempStreak = 1;
@@ -1884,8 +1894,8 @@ export default function App() {
   const [tempVideoUrl, setTempVideoUrl] = useState('');
   const [tempWebUrl, setTempWebUrl] = useState('');
 
-  // Calculate user writing streak in real-time
-  const streakInfo = calculateStreak(diaries);
+  // Calculate user writing streak in real-time (Memoized)
+  const streakInfo = useMemo(() => calculateStreak(diaries), [diaries]);
 
   // --- Dynamic Greeting Selector ---
   const getArabicGreeting = () => {
@@ -3238,17 +3248,25 @@ export default function App() {
     }
   };
 
-  // --- Search and Filter Logic (Memoized for high performance) ---
+  // --- Search and Filter Logic (Memoized for high performance & crash-proof) ---
   const filteredDiariesList = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
+    if (!Array.isArray(diaries)) return [];
+    const q = (searchQuery || '').toLowerCase().trim();
     return diaries.filter(d => {
+      if (!d) return false;
       if (d.isArchived || d.isTrash) return false;
+      
+      const titleStr = typeof d.title === 'string' ? d.title : '';
+      const contentStr = typeof d.content === 'string' ? d.content : '';
+      const tagsArr = Array.isArray(d.tags) ? d.tags : [];
+      
       const matchesSearch = !q || 
-                            d.title.toLowerCase().includes(q) || 
-                            d.content.toLowerCase().includes(q) ||
-                            (d.tags && d.tags.some(t => t.toLowerCase().includes(q)));
-      const matchesTag = selectedTagFilter ? d.tags?.includes(selectedTagFilter) : true;
-      const matchesFavorites = showFavoritesOnly ? (d.importance >= 4) : true;
+                            titleStr.toLowerCase().includes(q) || 
+                            contentStr.toLowerCase().includes(q) ||
+                            tagsArr.some(t => typeof t === 'string' && t.toLowerCase().includes(q));
+                            
+      const matchesTag = selectedTagFilter ? tagsArr.includes(selectedTagFilter) : true;
+      const matchesFavorites = showFavoritesOnly ? ((d.importance || 0) >= 4) : true;
       
       const matchesType = diaryTypeFilter === 'all' 
         ? true 
@@ -3260,21 +3278,91 @@ export default function App() {
     });
   }, [diaries, searchQuery, selectedTagFilter, showFavoritesOnly, diaryTypeFilter]);
 
-  // Extract all unique tags for filter pills
+  // Memoized Day-by-Day grouping of filtered entries for instant tab rendering
+  const memoizedGroupedDiaries = useMemo(() => {
+    const groups: { [dayKey: string]: { dayEntries: DiaryEntry[]; formattedDayLabel: string } } = {};
+    if (!Array.isArray(filteredDiariesList)) return { sortedDays: [], groups: {} };
+    
+    const validEntries = filteredDiariesList.filter(e => e && e.createdAt);
+    const sorted = [...validEntries].sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime() || 0;
+      const timeB = new Date(b.createdAt).getTime() || 0;
+      return timeB - timeA;
+    });
+
+    const tempGroups: { [key: string]: DiaryEntry[] } = {};
+    sorted.forEach(entry => {
+      let dayKey = '2026-08-05';
+      if (typeof entry.createdAt === 'string' && entry.createdAt.includes('T')) {
+        dayKey = entry.createdAt.split('T')[0];
+      } else if (entry.createdAt) {
+        try {
+          dayKey = new Date(entry.createdAt).toISOString().split('T')[0];
+        } catch {
+          dayKey = '2026-08-05';
+        }
+      }
+      if (!tempGroups[dayKey]) {
+        tempGroups[dayKey] = [];
+      }
+      tempGroups[dayKey].push(entry);
+    });
+
+    const sortedDays = Object.keys(tempGroups).sort((a, b) => {
+      const timeA = new Date(a).getTime() || 0;
+      const timeB = new Date(b).getTime() || 0;
+      return timeB - timeA;
+    });
+
+    sortedDays.forEach(dayKey => {
+      let formattedDayLabel = dayKey;
+      try {
+        const d = new Date(dayKey + 'T12:00:00');
+        if (!isNaN(d.getTime())) {
+          formattedDayLabel = d.toLocaleDateString('ar-EG', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+        }
+      } catch {}
+
+      groups[dayKey] = {
+        dayEntries: tempGroups[dayKey],
+        formattedDayLabel
+      };
+    });
+
+    return { sortedDays, groups };
+  }, [filteredDiariesList]);
+
+  // Extract all unique tags for filter pills safely
   const allUniqueTags = useMemo(() => {
-    return Array.from(new Set(diaries.flatMap(d => d.tags || [])));
+    if (!Array.isArray(diaries)) return [];
+    return Array.from(new Set(diaries.flatMap(d => (d && Array.isArray(d.tags)) ? d.tags : [])));
   }, [diaries]);
 
-  // Find or create diary entry for selected date to update habits
+  // Find or create diary entry for selected date safely
   const activeDiaryForSelectedDate = useMemo(() => {
-    return diaries.find(d => d.createdAt.split('T')[0] === selectedDate);
+    if (!Array.isArray(diaries)) return undefined;
+    return diaries.find(d => {
+      if (!d || !d.createdAt) return false;
+      return String(d.createdAt).split('T')[0] === selectedDate;
+    });
   }, [diaries, selectedDate]);
 
-  // Dynamic tasks/habits/medications count for the top bar red badge
+  // Dynamic tasks/habits/medications count for the top bar red badge safely
   const incompleteTasksCount = useMemo(() => {
-    const customTasksIncomplete = activeDiaryForSelectedDate?.tasks?.filter(t => !t.completed)?.length || 0;
-    const medicationsIncomplete = activeDiaryForSelectedDate?.medications?.filter(m => !m.taken)?.length ?? 1;
-    const habitsIncomplete = habits.filter(h => !h.history[selectedDate])?.length || 0;
+    const customTasksIncomplete = Array.isArray(activeDiaryForSelectedDate?.tasks)
+      ? activeDiaryForSelectedDate!.tasks.filter(t => t && !t.completed).length
+      : 0;
+    const medicationsIncomplete = Array.isArray(activeDiaryForSelectedDate?.medications)
+      ? activeDiaryForSelectedDate!.medications.filter(m => m && !m.taken).length
+      : 1;
+    const habitsIncomplete = Array.isArray(habits)
+      ? habits.filter(h => h && h.history && !h.history[selectedDate]).length
+      : 0;
     return customTasksIncomplete + medicationsIncomplete + habitsIncomplete;
   }, [activeDiaryForSelectedDate, habits, selectedDate]);
 
@@ -3822,6 +3910,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+
 
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto px-4 pt-6 pb-28 md:pb-12 space-y-6">
@@ -6813,23 +6903,7 @@ export default function App() {
 
                 {/* Grouped Day-by-Day representation of entries */}
                 {(() => {
-                  // Helper to group entries by day (YYYY-MM-DD)
-                  const groupDiariesByDay = (entries: DiaryEntry[]) => {
-                    const groups: { [key: string]: DiaryEntry[] } = {};
-                    // Sort entries descending by creation time so newest entries show first
-                    const sorted = [...entries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                    sorted.forEach(entry => {
-                      const dayKey = entry.createdAt.split('T')[0];
-                      if (!groups[dayKey]) {
-                        groups[dayKey] = [];
-                      }
-                      groups[dayKey].push(entry);
-                    });
-                    return groups;
-                  };
-
-                  const groupedEntries = groupDiariesByDay(filteredDiariesList);
-                  const sortedDays = Object.keys(groupedEntries).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+                  const { sortedDays, groups } = memoizedGroupedDiaries;
 
                   if (sortedDays.length === 0) {
                     return (
@@ -6865,14 +6939,9 @@ export default function App() {
                   return (
                     <div className="space-y-8">
                       {sortedDays.map((dayKey) => {
-                        const dayEntries = groupedEntries[dayKey];
-                        // Format the day nicely in Arabic
-                        const formattedDayLabel = new Date(dayKey + 'T12:00:00').toLocaleDateString('ar-EG', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        });
+                        const dayData = groups[dayKey] || { dayEntries: [], formattedDayLabel: dayKey };
+                        const dayEntries = dayData.dayEntries;
+                        const formattedDayLabel = dayData.formattedDayLabel;
                         
                         return (
                           <div key={dayKey} className="bg-white border border-[#E2DCC8] rounded-3xl p-6 shadow-xs space-y-5">
@@ -6906,11 +6975,19 @@ export default function App() {
                             {/* Grid of smaller sub-notes on that day */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {dayEntries.map((diary) => {
-                                // Format the precise entry time
-                                const preciseTime = new Date(diary.createdAt).toLocaleTimeString('ar-EG', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                });
+                                // Format the precise entry time safely
+                                const preciseTime = (() => {
+                                  try {
+                                    const d = new Date(diary.createdAt);
+                                    if (isNaN(d.getTime())) return '12:00 م';
+                                    return d.toLocaleTimeString('ar-EG', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    });
+                                  } catch {
+                                    return '12:00 م';
+                                  }
+                                })();
                                 
                                 return (
                                   <div
@@ -8024,23 +8101,6 @@ export default function App() {
 
       {/* Floating radial assistant ball for quick navigation */}
       {settings.floatingBallEnabled && <FloatingBall onAction={handleQuickAction} />}
-
-      {/* Sleek Floating Physical Phone Power Button Simulator */}
-      <div className="fixed right-0 top-1/3 -translate-y-1/2 z-50 flex items-center group">
-        <button
-          onClick={() => setSettings(prev => ({ ...prev, isAppLocked: !prev.isAppLocked }))}
-          className="bg-[#4E685B] hover:bg-[#3F5449] active:scale-95 text-white p-3.5 rounded-l-2xl border-l-2 border-y-2 border-[#E5E1D4] shadow-2xl flex flex-col items-center space-y-1.5 transition-all cursor-pointer"
-          title="محاكاة الضغط على زر الطاقة (Power Key)"
-        >
-          <span className="text-xl group-hover:scale-115 transition-transform">🔌</span>
-          <span className="text-[9px] font-black tracking-widest text-[#FEFAE0]" style={{ writingMode: 'vertical-lr' }}>
-            POWER KEY
-          </span>
-        </button>
-        <div className="absolute right-12 bg-[#3A3A3A]/90 text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all shadow-lg border border-gray-600/50" dir="rtl">
-          اضغط زر الطاقة (Power) لمحاكاة شاشة القفل والإشعار 📱
-        </div>
-      </div>
 
       {/* Persistent Bottom Tab Navigation Bar with Lucide icons */}
       <nav className="fixed bottom-0 inset-x-0 bg-[#F9F7F2] border-t border-[#E2DCC8] py-2 z-35 shadow-xs font-sans">
