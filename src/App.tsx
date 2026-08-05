@@ -7,7 +7,7 @@ import {
   Trash2, Edit3, Trash, Star, Image, Paperclip, Mic, MicOff, 
   Smile, ShieldCheck, Download, Upload, Activity, Moon, Pill,
   User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key, Archive, RotateCcw,
-  Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe
+  Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe, Fingerprint
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book, AppReminder, AuthUser } from './types';
@@ -25,6 +25,7 @@ import SmartAdvisor from './components/SmartAdvisor';
 import GratitudeJournal from './components/GratitudeJournal';
 import LifeMap from './components/LifeMap';
 import PINLock from './components/PINLock';
+import { registerBiometrics } from './lib/biometrics';
 import { TasksChecklistSection } from './components/TasksChecklistSection';
 import { CBTExercisesSection } from './components/CBTExercisesSection';
 import IntegratedTherapyReport from './components/IntegratedTherapyReport';
@@ -435,7 +436,12 @@ export default function App() {
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('yawmiyati_settings');
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    const parsed: AppSettings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    const savedCredId = localStorage.getItem('yawmiyati_biometric_cred_id');
+    if (savedCredId && !parsed.biometricCredentialId) {
+      parsed.biometricCredentialId = savedCredId;
+    }
+    return parsed;
   });
 
   const isEn = settings.appLanguage === 'en';
@@ -3392,6 +3398,7 @@ export default function App() {
     return (
       <PINLock 
         correctPin={settings.appPinCode || '1234'} 
+        biometricCredentialId={settings.biometricCredentialId}
         onUnlocked={() => setSettings(prev => ({ ...prev, isAppLocked: false }))} 
         onQuickAction={(actionType) => {
           setSettings(prev => ({ ...prev, isAppLocked: false }));
@@ -7252,7 +7259,8 @@ export default function App() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3 max-w-sm bg-white p-3 rounded-2xl border border-[#E2DCC8]">
+                    {/* PIN Code Setting */}
+                    <div className="flex items-center gap-3 max-w-sm bg-white p-3.5 rounded-2xl border border-[#E2DCC8]">
                       <input
                         type="password"
                         maxLength={4}
@@ -7271,12 +7279,59 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* Biometric Passkey Hardware Registration */}
+                    <div className="bg-white p-4 rounded-2xl border border-[#E2DCC8] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Fingerprint className="w-5 h-5 text-amber-600" />
+                          <h6 className="text-xs font-black text-[#2B3E50]">ربط بصمة الإصبع وبصمة الوجه (Passkey):</h6>
+                        </div>
+                        {settings.biometricCredentialId ? (
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-1 rounded-lg">
+                            ✅ مفعلة ومربوطة
+                          </span>
+                        ) : (
+                          <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-1 rounded-lg">
+                            ⚠️ غير مربوطة
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-gray-500 font-bold leading-relaxed">
+                        قم بربط بصمة جهازك الرسمية (مستشعر الاصبع أو كاميرا الوجه) لفتح التطبيق أو إنجاز الاختصارات بلمسة واحدة.
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await registerBiometrics();
+                          if (res.success && res.credentialId) {
+                            setSettings(prev => ({
+                              ...prev,
+                              biometricCredentialId: res.credentialId,
+                              isBiometricEnabled: true
+                            }));
+                            try {
+                              localStorage.setItem('yawmiyati_biometric_cred_id', res.credentialId);
+                            } catch (e) { console.warn(e); }
+                            alert('✅ تم تسجيل وتوثيق بصمة جهازك بنجاح! يمكنك الآن فتح التطبيق ببصمة الاصبع أو الوجه.');
+                          } else {
+                            alert(`❌ ${res.error || 'فشلت عملية تسجيل البصمة.'}`);
+                          }
+                        }}
+                        className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 active:scale-98 text-white rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Fingerprint className="w-4 h-4 text-white" />
+                        <span>{settings.biometricCredentialId ? 'تحديث أو إعادة ربط بصمة الجهاز 👆👤' : 'ربط وتفعيل بصمة الجهاز / الوجه الآن 👆👤'}</span>
+                      </button>
+                    </div>
+
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 text-xs font-bold leading-relaxed flex items-start gap-2">
                       <span className="text-base shrink-0">💡</span>
                       <div>
-                        <strong>كيفية استخدام بصمة الإصبع وبصمة الوجه:</strong>
+                        <strong>تنبيه هائم للحماية المطلقة:</strong>
                         <p className="mt-0.5 text-[11px] text-amber-800 font-medium">
-                          تُفعل البصمة تلقائياً بمجرد تفعيل "قفل التطبيق". عندما تظهر شاشة القفل، يمكنك الضغط مباشرة على زر <strong>"بصمة الإصبع 👆"</strong> أو <strong>"بصمة الوجه 👤"</strong> لفتح التطبيق أو فتح الاختصارات بلمسة واحدة دون الحاجة لكتابة PIN.
+                          عند الضغط على "ربط وتفعيل بصمة الجهاز"، سيطلب منك نظام التشغيل (أندرويد أو iOS) مسح الإصبع أو الوجه. بعدها لن يتم فتح التطبيق بالبصمة إلا إذا استخدمت الإصبع أو الوجه الصحيح المسجل بهاتفك.
                         </p>
                       </div>
                     </div>

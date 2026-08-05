@@ -160,6 +160,8 @@ export interface AppSettings {
   floatingBallEnabled: boolean;
   appPinCode?: string; // Screen Lock PIN
   isAppLocked: boolean;
+  biometricCredentialId?: string; // WebAuthn Passkey Credential ID
+  isBiometricEnabled?: boolean; // Toggle for Biometrics (Fingerprint / Face ID)
   backupSettings: BackupSettings;
   userApiKey?: string; // Custom client API Key for standalone / APK usage
   reminders?: AppReminder[]; // Added scheduled reminders
