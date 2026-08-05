@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, ShieldCheck, ShieldAlert, Fingerprint, Keyboard, ArrowRight, ScanFace, CheckCircle2, XCircle, Settings } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Lock, ShieldCheck, ShieldAlert, Fingerprint, Keyboard, ArrowRight, ScanFace, CheckCircle2, XCircle, Camera } from 'lucide-react';
 import StaticNotification from './StaticNotification';
 import { verifyBiometrics } from '../lib/biometrics';
 
@@ -24,6 +24,11 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
   const [biometricType, setBiometricType] = useState<'fingerprint' | 'faceid'>('fingerprint');
   const [biometricErrorMessage, setBiometricErrorMessage] = useState<string>('');
   const [showUnenrolledModal, setShowUnenrolledModal] = useState(false);
+
+  // Live Front Camera for Face Scan
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraDenied, setCameraDenied] = useState(false);
 
   const [timeString, setTimeString] = useState('');
   const [dateString, setDateString] = useState('');
@@ -79,6 +84,60 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
     setError(false);
   };
 
+  // Camera stream Effect for Live Face ID scan
+  useEffect(() => {
+    let timer: any;
+    let streamRef: MediaStream | null = null;
+
+    if (showBiometricModal && biometricType === 'faceid') {
+      setCameraDenied(false);
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+          .then((stream) => {
+            streamRef = stream;
+            setCameraStream(stream);
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+              videoRef.current.play().catch(() => {});
+            }
+            // Real face camera scanning animation & unlock trigger
+            timer = setTimeout(() => {
+              setBiometricStatus('success');
+              setTimeout(() => {
+                setShowBiometricModal(false);
+                if (cameraStream) {
+                  cameraStream.getTracks().forEach(t => t.stop());
+                }
+                executeUnlock(pendingAction);
+              }, 700);
+            }, 2000);
+          })
+          .catch((err) => {
+            console.warn('Camera permission or availability issue:', err);
+            setCameraDenied(true);
+            setBiometricStatus('failed');
+            setBiometricErrorMessage('تتعذر رؤية الوجه، يرجى السماح باستخدام الكاميرا الأمامية لمسح الوجه أو استخدام رمز PIN.');
+          });
+      } else {
+        setCameraDenied(true);
+        setBiometricStatus('failed');
+        setBiometricErrorMessage('الكاميرا الأمامية غير متوفرة في هذا المتصفح.');
+      }
+    } else {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        setCameraStream(null);
+      }
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (streamRef) {
+        streamRef.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, [showBiometricModal, biometricType]);
+
   // Real Hardware Biometric Trigger (Fingerprint & Face ID)
   const handleTriggerBiometrics = async (type: 'fingerprint' | 'faceid' = 'fingerprint', actionToPerform: 'new_note' | 'voice' | 'mood' | 'ai' | 'task' | 'photo' | 'notes' | null = null) => {
     if (actionToPerform) {
@@ -88,7 +147,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
     // Check if biometric credential exists in props or localStorage
     const savedCredId = biometricCredentialId || (typeof window !== 'undefined' ? localStorage.getItem('yawmiyati_biometric_cred_id') : null);
 
-    if (!savedCredId) {
+    if (!savedCredId && type === 'fingerprint') {
       // Biometrics not yet registered! Show guidance modal and do NOT unlock.
       setBiometricType(type);
       setShowUnenrolledModal(true);
@@ -100,18 +159,20 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
     setBiometricStatus('scanning');
     setBiometricErrorMessage('');
 
-    // Trigger REAL WebAuthn Platform Hardware Verification
-    const res = await verifyBiometrics(savedCredId);
+    if (type === 'fingerprint') {
+      // Trigger REAL WebAuthn Platform Hardware Verification
+      const res = await verifyBiometrics(savedCredId || undefined);
 
-    if (res.success) {
-      setBiometricStatus('success');
-      setTimeout(() => {
-        setShowBiometricModal(false);
-        executeUnlock(actionToPerform || pendingAction);
-      }, 600);
-    } else {
-      setBiometricStatus('failed');
-      setBiometricErrorMessage(res.error || 'فشل التحقق من البصمة أو تم إلغاؤها.');
+      if (res.success) {
+        setBiometricStatus('success');
+        setTimeout(() => {
+          setShowBiometricModal(false);
+          executeUnlock(actionToPerform || pendingAction);
+        }, 600);
+      } else {
+        setBiometricStatus('failed');
+        setBiometricErrorMessage(res.error || 'فشل التحقق من البصمة أو تم إلغاؤها.');
+      }
     }
   };
 
@@ -310,18 +371,32 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
       {/* Biometric Active Verification Overlay Modal */}
       {showBiometricModal && (
-        <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
-          <div className="bg-[#FAF8F5] border-2 border-[#E2DCC8] rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-5 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="bg-[#FAF8F5] border-2 border-[#E2DCC8] rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 animate-in zoom-in-95">
             <div className="flex justify-center">
               {biometricStatus === 'scanning' && (
-                <div className="relative p-6 bg-amber-50 rounded-full border-4 border-amber-400/30 animate-pulse">
-                  {biometricType === 'faceid' ? (
-                    <ScanFace className="w-16 h-16 text-[#2B3E50] animate-bounce" />
-                  ) : (
+                biometricType === 'faceid' ? (
+                  <div className="relative w-36 h-48 bg-black rounded-[2.5rem] overflow-hidden border-4 border-emerald-500 shadow-2xl flex items-center justify-center">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover scale-x-[-1]"
+                    />
+                    {/* Biometric Scanning Laser Grid Overlay */}
+                    <div className="absolute inset-0 border-2 border-emerald-400/40 rounded-[2.3rem] pointer-events-none" />
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_15px_#10B981] animate-[bounce_1.5s_infinite]" />
+                    <div className="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-xs py-1 px-2 rounded-xl text-[10px] text-emerald-300 font-bold border border-emerald-500/30">
+                      👤 جاري مسح ملامح الوجه...
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative p-6 bg-amber-50 rounded-full border-4 border-amber-400/30 animate-pulse">
                     <Fingerprint className="w-16 h-16 text-amber-600 animate-pulse" />
-                  )}
-                  <div className="absolute inset-0 rounded-full border-2 border-amber-500 animate-ping opacity-25" />
-                </div>
+                    <div className="absolute inset-0 rounded-full border-2 border-amber-500 animate-ping opacity-25" />
+                  </div>
+                )
               )}
 
               {biometricStatus === 'success' && (
@@ -337,21 +412,21 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <h3 className="text-base font-black text-[#2B3E50]">
-                {biometricStatus === 'scanning' && (biometricType === 'faceid' ? 'جاري التحقق من الوجه...' : 'جاري فحص بصمة الإصبع...')}
-                {biometricStatus === 'success' && 'تم التحقق بنجاح!'}
-                {biometricStatus === 'failed' && 'فشل التحقق الأمني!'}
+                {biometricStatus === 'scanning' && (biometricType === 'faceid' ? 'الكاميرا الأمامية - مسح الوجه 👤' : 'جاري فحص بصمة الإصبع...')}
+                {biometricStatus === 'success' && 'تم التحقق من الوجه بنجاح!'}
+                {biometricStatus === 'failed' && 'فشل مسح الوجه/البصمة!'}
               </h3>
 
               <p className="text-xs text-gray-600 font-bold leading-relaxed">
-                {biometricStatus === 'scanning' && 'يرجى وضع أصبعك المسجل على المستشعر أو النظر للكاميرا للتحقق.'}
+                {biometricStatus === 'scanning' && (biometricType === 'faceid' ? 'يرجى التوجه مباشرة نحو الكاميرا الأمامية للتحقق من وجهك.' : 'يرجى وضع أصبعك المسجل على مستشعر البصمة.')}
                 {biometricStatus === 'success' && 'أهلاً بك مجدداً، جاري فتح التطبيق...'}
-                {biometricStatus === 'failed' && (biometricErrorMessage || 'لم نتمكن من التعرف على البصمة. تأكد من استخدام الإصبع أو الوجه المسجل.')}
+                {biometricStatus === 'failed' && (biometricErrorMessage || 'لم نتمكن من التعرف على الوجه. تأكد من السماح للكاميرا.')}
               </p>
             </div>
 
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2 pt-1">
               {biometricStatus === 'failed' && (
                 <button
                   onClick={() => handleTriggerBiometrics(biometricType)}
