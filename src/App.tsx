@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { 
@@ -1252,7 +1252,8 @@ export default function App() {
     diaryTypeFilter
   });
 
-  useEffect(() => {
+  // --- Optimized Navigation Engine ---
+  const switchTab = useCallback((newTab: 'dashboard' | 'diaries' | 'advisor' | 'analytics' | 'settings', options?: { subTab?: string; resetEdit?: boolean }) => {
     const currentState: NavState = {
       activeTab,
       activeDiariesSubTab,
@@ -1260,25 +1261,20 @@ export default function App() {
       editingDiaryId: editingDiary?.id || null,
       diaryTypeFilter
     };
-
-    const prev = prevNavStateRef.current;
-    const isDifferent = 
-      prev.activeTab !== currentState.activeTab ||
-      prev.activeDiariesSubTab !== currentState.activeDiariesSubTab ||
-      prev.analyticsSubTab !== currentState.analyticsSubTab ||
-      prev.editingDiaryId !== currentState.editingDiaryId ||
-      prev.diaryTypeFilter !== currentState.diaryTypeFilter;
-
-    if (isDifferent) {
-      if (!isNavigatingBackRef.current) {
-        setNavHistory(history => [...history.slice(-15), prev]);
-      }
-      isNavigatingBackRef.current = false;
-      prevNavStateRef.current = currentState;
+    
+    // Batch nav history update with active tab update for instant single-frame rendering
+    setNavHistory(history => [...history.slice(-15), currentState]);
+    setActiveTab(newTab);
+    if (options?.subTab) {
+      if (newTab === 'diaries') setActiveDiariesSubTab(options.subTab as any);
+      if (newTab === 'analytics') setAnalyticsSubTab(options.subTab as any);
+    }
+    if (options?.resetEdit || newTab !== activeTab) {
+      setEditingDiary(null);
     }
   }, [activeTab, activeDiariesSubTab, analyticsSubTab, editingDiary?.id, diaryTypeFilter]);
 
-  const handleGoBack = () => {
+  const handleGoBack = useCallback(() => {
     if (editingDiary) {
       setEditingDiary(null);
       return;
@@ -1286,7 +1282,6 @@ export default function App() {
 
     if (navHistory.length > 0) {
       const lastState = navHistory[navHistory.length - 1];
-      isNavigatingBackRef.current = true;
       setNavHistory(history => history.slice(0, history.length - 1));
 
       setActiveTab(lastState.activeTab);
@@ -1299,12 +1294,11 @@ export default function App() {
       } else {
         setEditingDiary(null);
       }
-      prevNavStateRef.current = lastState;
     } else if (activeTab !== 'dashboard') {
       setActiveTab('dashboard');
       setEditingDiary(null);
     }
-  };
+  }, [editingDiary, navHistory, activeTab, diaries]);
 
   useEffect(() => {
     if (backupEmail) {
@@ -1321,40 +1315,68 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Save active editing states to localStorage immediately (safely with try/catch to prevent QuotaExceededError crashes)
+  // Debounced Save active editing states to localStorage (400ms debounce to eliminate main-thread lag during typing/navigation)
+  const draftSaveTimeoutRef = useRef<any>(null);
+
   useEffect(() => {
-    if (editingDiary) {
-      try {
-        const safeDraft = {
-          ...editingDiary,
-          videos: (editingDiary.videos || []).map(v => (v && v.length > 5000000) ? '#' : v),
-          images: (editingDiary.images || []).map(img => (img && img.length > 3000000) ? '' : img).filter(Boolean),
-          audioRecordings: (editingDiary.audioRecordings || []).map(r => ({
-            ...r,
-            dataUrl: (r.dataUrl && r.dataUrl.length > 5000000) ? '#' : r.dataUrl
-          })),
-          files: (editingDiary.files || []).map(f => ({
-            ...f,
-            dataUrl: (f.dataUrl && f.dataUrl.length > 5000000) ? '#' : f.dataUrl
-          }))
-        };
-        localStorage.setItem('yawmiyati_draft_editing_diary', JSON.stringify(safeDraft));
-      } catch (e) {
-        console.warn('Failed to save draft diary to localStorage:', e);
-      }
-    } else {
-      try {
-        localStorage.removeItem('yawmiyati_draft_editing_diary');
-      } catch (e) {}
+    if (draftSaveTimeoutRef.current) {
+      clearTimeout(draftSaveTimeoutRef.current);
     }
+
+    draftSaveTimeoutRef.current = setTimeout(() => {
+      if (editingDiary) {
+        try {
+          const safeDraft = {
+            ...editingDiary,
+            videos: (editingDiary.videos || []).map(v => (v && v.length > 5000000) ? '#' : v),
+            images: (editingDiary.images || []).map(img => (img && img.length > 3000000) ? '' : img).filter(Boolean),
+            audioRecordings: (editingDiary.audioRecordings || []).map(r => ({
+              ...r,
+              dataUrl: (r.dataUrl && r.dataUrl.length > 5000000) ? '#' : r.dataUrl
+            })),
+            files: (editingDiary.files || []).map(f => ({
+              ...f,
+              dataUrl: (f.dataUrl && f.dataUrl.length > 5000000) ? '#' : f.dataUrl
+            }))
+          };
+          localStorage.setItem('yawmiyati_draft_editing_diary', JSON.stringify(safeDraft));
+        } catch (e) {
+          console.warn('Failed to save draft diary to localStorage:', e);
+        }
+      } else {
+        try {
+          localStorage.removeItem('yawmiyati_draft_editing_diary');
+        } catch (e) {}
+      }
+    }, 400);
+
+    return () => {
+      if (draftSaveTimeoutRef.current) {
+        clearTimeout(draftSaveTimeoutRef.current);
+      }
+    };
   }, [editingDiary]);
 
   useEffect(() => {
     localStorage.setItem('yawmiyati_draft_is_new_entry', String(isNewEntry));
   }, [isNewEntry]);
 
+  const newEditAdditionTimeoutRef = useRef<any>(null);
   useEffect(() => {
-    localStorage.setItem('yawmiyati_draft_new_edit_addition', newEditAddition);
+    if (newEditAdditionTimeoutRef.current) {
+      clearTimeout(newEditAdditionTimeoutRef.current);
+    }
+    newEditAdditionTimeoutRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem('yawmiyati_draft_new_edit_addition', newEditAddition);
+      } catch (e) {}
+    }, 400);
+
+    return () => {
+      if (newEditAdditionTimeoutRef.current) {
+        clearTimeout(newEditAdditionTimeoutRef.current);
+      }
+    };
   }, [newEditAddition]);
 
   // --- Drawing Sketchboard State ---
@@ -3216,38 +3238,45 @@ export default function App() {
     }
   };
 
-  // --- Search and Filter Logic ---
-  const filteredDiariesList = diaries.filter(d => {
-    if (d.isArchived || d.isTrash) return false;
-    const matchesSearch = d.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          d.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (d.tags && d.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
-    const matchesTag = selectedTagFilter ? d.tags.includes(selectedTagFilter) : true;
-    const matchesFavorites = showFavoritesOnly ? (d.importance >= 4) : true;
-    
-    // Check type filter
-    const matchesType = diaryTypeFilter === 'all' 
-      ? true 
-      : (diaryTypeFilter === 'diary' 
-         ? d.diaryType === 'diary' || !d.diaryType // default to diary if not specified
-         : d.diaryType === 'thought');
+  // --- Search and Filter Logic (Memoized for high performance) ---
+  const filteredDiariesList = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return diaries.filter(d => {
+      if (d.isArchived || d.isTrash) return false;
+      const matchesSearch = !q || 
+                            d.title.toLowerCase().includes(q) || 
+                            d.content.toLowerCase().includes(q) ||
+                            (d.tags && d.tags.some(t => t.toLowerCase().includes(q)));
+      const matchesTag = selectedTagFilter ? d.tags?.includes(selectedTagFilter) : true;
+      const matchesFavorites = showFavoritesOnly ? (d.importance >= 4) : true;
+      
+      const matchesType = diaryTypeFilter === 'all' 
+        ? true 
+        : (diaryTypeFilter === 'diary' 
+           ? d.diaryType === 'diary' || !d.diaryType
+           : d.diaryType === 'thought');
 
-    return matchesSearch && matchesTag && matchesFavorites && matchesType;
-  });
+      return matchesSearch && matchesTag && matchesFavorites && matchesType;
+    });
+  }, [diaries, searchQuery, selectedTagFilter, showFavoritesOnly, diaryTypeFilter]);
 
   // Extract all unique tags for filter pills
-  const allUniqueTags = Array.from(new Set(diaries.flatMap(d => d.tags || [])));
+  const allUniqueTags = useMemo(() => {
+    return Array.from(new Set(diaries.flatMap(d => d.tags || [])));
+  }, [diaries]);
 
   // Find or create diary entry for selected date to update habits
-  const activeDiaryForSelectedDate = diaries.find(d => d.createdAt.split('T')[0] === selectedDate);
+  const activeDiaryForSelectedDate = useMemo(() => {
+    return diaries.find(d => d.createdAt.split('T')[0] === selectedDate);
+  }, [diaries, selectedDate]);
 
   // Dynamic tasks/habits/medications count for the top bar red badge
-  const incompleteTasksCount = (() => {
+  const incompleteTasksCount = useMemo(() => {
     const customTasksIncomplete = activeDiaryForSelectedDate?.tasks?.filter(t => !t.completed)?.length || 0;
-    const medicationsIncomplete = activeDiaryForSelectedDate?.medications?.filter(m => !m.taken)?.length ?? 1; // Default 1 medication slot
+    const medicationsIncomplete = activeDiaryForSelectedDate?.medications?.filter(m => !m.taken)?.length ?? 1;
     const habitsIncomplete = habits.filter(h => !h.history[selectedDate])?.length || 0;
     return customTasksIncomplete + medicationsIncomplete + habitsIncomplete;
-  })();
+  }, [activeDiaryForSelectedDate, habits, selectedDate]);
 
   const fetchDailyQuote = async () => {
     setQuoteLoading(true);
@@ -3640,16 +3669,16 @@ export default function App() {
                   <h1 className="text-base font-extrabold tracking-tight text-[#3A3A3A]">يومياتي</h1>
                   <span className="text-xs font-black bg-[#8B9D83] text-white px-1.5 py-0.5 rounded-md leading-none">AI</span>
                 </div>
-                <p className="text-[9px] text-gray-500 font-bold mt-0.5 flex items-center space-x-1.5 space-x-reverse">
+                <p className="text-[9px] text-gray-500 font-bold mt-0.5 flex flex-wrap items-center gap-1.5 max-w-full">
                   <span>مساعد الصحة النفسية المتكامل</span>
-                  <span className="text-gray-300">•</span>
+                  <span className="text-gray-300 hidden sm:inline">•</span>
                   <span className={`inline-flex items-center space-x-1 space-x-reverse text-[9px] font-extrabold px-2 py-0.5 rounded-full border transition-all ${
                     autoSaveStatus === 'saving'
                       ? 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${autoSaveStatus === 'saving' ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`}></span>
-                    <span>{autoSaveStatus === 'saving' ? 'جارِ الحفظ التلقائي...' : `تم الحفظ تلقائياً ${lastAutoSaveTime ? `(${lastAutoSaveTime})` : '💾'}`}</span>
+                    <span>{autoSaveStatus === 'saving' ? 'جارِ الحفظ...' : `تم الحفظ تلقائياً ${lastAutoSaveTime ? `(${lastAutoSaveTime})` : '💾'}`}</span>
                   </span>
                 </p>
               </div>
@@ -6589,51 +6618,68 @@ export default function App() {
                 
 
 
-                 {/* Diaries & Gratitude Sub-Tab Swapper */}
-                 <div className="flex bg-[#F0EDE4] p-1.5 rounded-2xl border border-[#E2DCC8]/60 max-w-xl mx-auto sm:mx-0 shadow-3xs overflow-x-auto scrollbar-none" id="diaries-subtab-selector">
+                 {/* Diaries & Gratitude Sub-Tab Swapper with Quick Search trigger */}
+                 <div className="flex items-center gap-2 max-w-xl mx-auto sm:mx-0">
+                   <div className="flex-1 flex bg-[#F0EDE4] p-1.5 rounded-2xl border border-[#E2DCC8]/60 shadow-3xs overflow-x-auto scrollbar-none" id="diaries-subtab-selector">
+                     <button
+                       onClick={() => setActiveDiariesSubTab('journal')}
+                       className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                         activeDiariesSubTab === 'journal'
+                           ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                           : 'text-gray-500 hover:text-[#5A5A40]'
+                       }`}
+                     >
+                       <span>📓</span>
+                       <span>{isEn ? "Daily Journal" : "يومياتي والفضفضة"}</span>
+                     </button>
+                     <button
+                       onClick={() => setActiveDiariesSubTab('gratitude')}
+                       className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                         activeDiariesSubTab === 'gratitude'
+                           ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                           : 'text-gray-500 hover:text-[#5A5A40]'
+                       }`}
+                     >
+                       <span>🌸</span>
+                       <span>{isEn ? "Gratitude Journal" : "مفكرة الامتنان"}</span>
+                     </button>
+                     <button
+                       onClick={() => setActiveDiariesSubTab('cbt')}
+                       className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                         activeDiariesSubTab === 'cbt'
+                           ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                           : 'text-gray-500 hover:text-[#5A5A40]'
+                       }`}
+                     >
+                       <span>🧠</span>
+                       <span>CBT تمارين التفكير</span>
+                     </button>
+                     <button
+                       onClick={() => setActiveDiariesSubTab('tasks')}
+                       className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                         activeDiariesSubTab === 'tasks'
+                           ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
+                           : 'text-gray-500 hover:text-[#5A5A40]'
+                       }`}
+                     >
+                       <span>📋</span>
+                       <span>المهام اليومية والنشاط</span>
+                     </button>
+                   </div>
+
+                   {/* Quick Search Trigger Icon Button */}
                    <button
-                     onClick={() => setActiveDiariesSubTab('journal')}
-                     className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-                       activeDiariesSubTab === 'journal'
-                         ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
-                         : 'text-gray-500 hover:text-[#5A5A40]'
-                     }`}
+                     onClick={() => {
+                       setActiveDiariesSubTab('journal');
+                       setTimeout(() => {
+                         const el = document.getElementById('diaries-search-input');
+                         if (el) el.focus();
+                       }, 50);
+                     }}
+                     className="p-3 bg-white hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-2xl text-[#5A5A40] shadow-3xs hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0 flex items-center justify-center"
+                     title="البحث في اليوميات والخواطر"
                    >
-                     <span>📓</span>
-                     <span>{isEn ? "Daily Journal" : "يومياتي والفضفضة"}</span>
-                   </button>
-                   <button
-                     onClick={() => setActiveDiariesSubTab('gratitude')}
-                     className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-                       activeDiariesSubTab === 'gratitude'
-                         ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
-                         : 'text-gray-500 hover:text-[#5A5A40]'
-                     }`}
-                   >
-                     <span>🌸</span>
-                     <span>{isEn ? "Gratitude Journal" : "مفكرة الامتنان"}</span>
-                   </button>
-                   <button
-                     onClick={() => setActiveDiariesSubTab('cbt')}
-                     className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-                       activeDiariesSubTab === 'cbt'
-                         ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
-                         : 'text-gray-500 hover:text-[#5A5A40]'
-                     }`}
-                   >
-                     <span>🧠</span>
-                     <span>CBT تمارين التفكير</span>
-                   </button>
-                   <button
-                     onClick={() => setActiveDiariesSubTab('tasks')}
-                     className={`flex-grow flex items-center justify-center space-x-1 space-x-reverse py-2 px-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-                       activeDiariesSubTab === 'tasks'
-                         ? 'bg-white text-[#5A5A40] shadow-sm font-extrabold animate-fade-in'
-                         : 'text-gray-500 hover:text-[#5A5A40]'
-                     }`}
-                   >
-                     <span>📋</span>
-                     <span>المهام اليومية والنشاط</span>
+                     <Search className="w-4 h-4 text-[#8B9D83]" />
                    </button>
                  </div>
 
@@ -6685,17 +6731,46 @@ export default function App() {
                       </button>
                     </div>
                     
-                    {/* Search Bar - Separate floating input */}
+                    {/* Search Bar - Enhanced floating input with instant clear button */}
                     <div className="relative w-full">
-                      <Search className="absolute right-4 top-3.5 w-4 h-4 text-gray-400" />
+                      <Search className="absolute right-4 top-3.5 w-4 h-4 text-[#8B9D83]" />
                       <input
+                        id="diaries-search-input"
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="البحث في المذكرات، العناوين، أو الوسوم..."
-                        className="w-full bg-[#FBFBFA] hover:bg-[#F3F2F0] focus:bg-white border border-[#E2DCC8]/85 focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-2xl pr-11 pl-4 py-3.5 text-xs text-[#3A3A3A] transition-all placeholder-gray-400 font-bold shadow-3xs"
+                        placeholder="ابحث في اليوميات، الخواطر، العناوين، المحتوى، أو الوسوم..."
+                        className="w-full bg-[#FBFBFA] hover:bg-[#F3F2F0] focus:bg-white border border-[#E2DCC8]/85 focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-2xl pr-11 pl-10 py-3.5 text-xs text-[#3A3A3A] transition-all placeholder-gray-400 font-bold shadow-3xs"
                       />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          className="absolute left-3 top-3 p-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 transition-all cursor-pointer"
+                          title="مسح البحث"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
+
+                    {/* Active Search Query Status Banner */}
+                    {searchQuery.trim() !== '' && (
+                      <div className="flex items-center justify-between bg-[#8B9D83]/10 border border-[#8B9D83]/25 px-4 py-2.5 rounded-2xl text-xs font-bold text-[#4E685B] animate-fadeIn">
+                        <div className="flex items-center space-x-2 space-x-reverse truncate">
+                          <Search className="w-3.5 h-3.5 shrink-0 text-[#8B9D83]" />
+                          <span className="truncate">
+                            نتائج البحث عن: <strong className="text-[#3A3A3A]">"{searchQuery}"</strong> ({filteredDiariesList.length} نتيجة)
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="text-[10px] font-black text-[#8B9D83] hover:text-[#5A5A40] underline shrink-0 cursor-pointer mr-2"
+                        >
+                          إلغاء البحث
+                        </button>
+                      </div>
+                    )}
 
                     {/* Write New Note Button - Separate floating button */}
                     <button
@@ -6758,10 +6833,31 @@ export default function App() {
 
                   if (sortedDays.length === 0) {
                     return (
-                      <div className="bg-white border border-[#E2DCC8] rounded-3xl p-12 text-center text-gray-400 text-sm">
-                        <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30 text-[#8B9D83]" />
-                        <p className="font-bold text-[#3A3A3A]">لا توجد مذكرات مطابقة حالياً.</p>
-                        <p className="text-xs mt-1 text-gray-400">انقر على زر "كتابة مذكرات جديدة" للبدء بالفضفضة وبناء ملفك النفسي!</p>
+                      <div className="bg-white border border-[#E2DCC8] rounded-3xl p-10 text-center text-gray-400 text-sm space-y-3">
+                        <div className="w-14 h-14 mx-auto rounded-full bg-[#F0EDE4] flex items-center justify-center text-[#8B9D83]">
+                          <Search className="w-7 h-7" />
+                        </div>
+                        {searchQuery ? (
+                          <>
+                            <p className="font-extrabold text-[#3A3A3A] text-sm">
+                              لم يتم العثور على أي يومية أو خاطرة تطابق: "{searchQuery}"
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              تأكد من كتابة الكلمة بشكل صحيح، أو جرب تصفية بالوسوم أو خيارات أخرى.
+                            </p>
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="px-4 py-2 bg-[#8B9D83] text-white rounded-xl text-xs font-extrabold shadow-3xs hover:bg-[#72856A] transition-all cursor-pointer"
+                            >
+                              مسح كلمة البحث
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-bold text-[#3A3A3A]">لا توجد مذكرات مطابقة حالياً.</p>
+                            <p className="text-xs mt-1 text-gray-400">انقر على زر "كتابة مذكرات جديدة" للبدء بالفضفضة وبناء ملفك النفسي!</p>
+                          </>
+                        )}
                       </div>
                     );
                   }
@@ -6825,14 +6921,14 @@ export default function App() {
                                       setDiaryAiAnswer('');
                                       setNewEditAddition('');
                                     }}
-                                    className={`relative group border border-[#E2DCC8]/65 rounded-2xl p-5 hover:border-[#8B9D83] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 ${
+                                    className={`relative group border border-[#E2DCC8]/65 rounded-2xl p-4 sm:p-5 hover:border-[#8B9D83] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 max-w-full overflow-hidden ${
                                       diary.color || 'bg-[#F9F7F2]/45'
                                     }`}
                                   >
                                     {/* Top Corner: precise entry time, edit flag, and ratings aligned with the screenshot */}
-                                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500 w-full" dir="rtl">
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] text-gray-500 w-full max-w-full" dir="rtl">
                                       {/* Star Ratings & Actions on the Right in RTL */}
-                                      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                                      <div className="flex flex-wrap items-center gap-1.5 max-w-full">
                                         {/* Importance Rating Stars */}
                                         <div className="flex items-center space-x-0.5 space-x-reverse shrink-0">
                                           {[1, 2, 3, 4, 5].map((s) => (
@@ -6853,9 +6949,9 @@ export default function App() {
                                             e.stopPropagation();
                                             toggleArchiveDiary(diary.id);
                                           }}
-                                          className="px-2.5 py-1 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/80 rounded-xl text-[10px] font-black shadow-3xs hover:shadow-2xs transition-all cursor-pointer flex items-center space-x-1 space-x-reverse group/arch hover:scale-105 active:scale-95"
+                                          className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/80 rounded-xl text-[10px] font-black shadow-3xs hover:shadow-2xs transition-all cursor-pointer flex items-center space-x-1 space-x-reverse group/arch hover:scale-105 active:scale-95 shrink-0"
                                         >
-                                          <Archive className="w-3.5 h-3.5 text-amber-700 group-hover/arch:rotate-12 transition-transform" />
+                                          <Archive className="w-3 h-3 text-amber-700 group-hover/arch:rotate-12 transition-transform" />
                                           <span>أرشفة 📥</span>
                                         </button>
 
@@ -6867,21 +6963,21 @@ export default function App() {
                                             e.stopPropagation();
                                             handleDeleteDiary(diary.id);
                                           }}
-                                          className="p-1.5 bg-white/90 hover:bg-red-50 text-gray-500 hover:text-red-600 rounded-lg border border-gray-100/50 hover:shadow-2xs transition-all cursor-pointer"
+                                          className="p-1 bg-white/90 hover:bg-red-50 text-gray-500 hover:text-red-600 rounded-lg border border-gray-100/50 hover:shadow-2xs transition-all cursor-pointer shrink-0"
                                         >
                                           <Trash2 className="w-3 h-3" />
                                         </button>
 
                                         {/* Edited Flag */}
                                         {(diary.isEdited || (diary.edits && diary.edits.length > 0)) && (
-                                          <span className="bg-[#D4A373] text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-lg shadow-2xs">
+                                          <span className="bg-[#D4A373] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-lg shadow-2xs shrink-0">
                                             تم التعديل
                                           </span>
                                         )}
                                       </div>
 
                                       {/* Time Pill on the Left in RTL */}
-                                      <span className="font-bold flex items-center space-x-1 space-x-reverse bg-white/85 px-2.5 py-1 rounded-xl border border-[#E2DCC8]/50 shadow-3xs shrink-0">
+                                      <span className="font-bold flex items-center space-x-1 space-x-reverse bg-white/85 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl border border-[#E2DCC8]/50 shadow-3xs shrink-0 text-[10px]">
                                         <span>⏰</span>
                                         <span>{preciseTime}</span>
                                       </span>
@@ -6917,9 +7013,9 @@ export default function App() {
                                     </div>
 
                                     {/* Footer with Moods and Tags matching the layout of the screenshots */}
-                                    <div className="pt-2 border-t border-[#E2DCC8]/40 flex items-center justify-between gap-2 w-full">
+                                    <div className="pt-2 border-t border-[#E2DCC8]/40 flex flex-wrap items-center justify-between gap-1.5 w-full max-w-full overflow-hidden">
                                       {/* Tags on the right in RTL */}
-                                      <div>
+                                      <div className="shrink-0">
                                         {diary.tags && diary.tags.length > 0 ? (
                                           <span className="text-[9px] text-[#8B9D83] font-black">
                                             #{diary.tags[0]}
@@ -6930,25 +7026,25 @@ export default function App() {
                                       </div>
 
                                       {/* Mood badge on the left in RTL - showing both manual and AI analyzed mood percentages */}
-                                      <div className="flex flex-wrap items-center gap-1.5 shrink-0 justify-end">
+                                      <div className="flex flex-wrap items-center gap-1 justify-end max-w-full overflow-hidden">
                                         {/* Manual moods */}
                                         {diary.moods && diary.moods.slice(0, 2).map((m, idx) => (
-                                          <span key={idx} className="bg-[#8B9D83]/15 text-[#4E685B] text-[10px] px-2.5 py-1 rounded-lg font-black border border-[#8B9D83]/20 shadow-3xs">
+                                          <span key={idx} className="bg-[#8B9D83]/15 text-[#4E685B] text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg font-black border border-[#8B9D83]/20 shadow-3xs max-w-full truncate">
                                             {m}
                                           </span>
                                         ))}
                                         
                                         {/* AI Mood percentages */}
                                         {diary.aiMoodAnalysis && diary.aiMoodAnalysis.length > 0 && (
-                                          <div className="flex flex-wrap gap-1">
+                                          <div className="flex flex-wrap gap-1 max-w-full overflow-hidden">
                                             {diary.aiMoodAnalysis.slice(0, 2).map((analysis, idx) => (
                                               <span 
                                                 key={idx} 
-                                                className="bg-purple-50 text-purple-700 text-[10px] px-2.5 py-1 rounded-lg font-black border border-purple-100 shadow-3xs flex items-center space-x-1 space-x-reverse"
+                                                className="bg-purple-50 text-purple-700 text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg font-black border border-purple-100 shadow-3xs flex items-center space-x-1 space-x-reverse max-w-full overflow-hidden"
                                                 title="تحليل المزاج التلقائي بالذكاء الاصطناعي"
                                               >
                                                 <span>🧠</span>
-                                                <span>{analysis.mood} ({analysis.percentage}%)</span>
+                                                <span className="truncate">{analysis.mood} ({analysis.percentage}%)</span>
                                               </span>
                                             ))}
                                           </div>
@@ -7947,77 +8043,65 @@ export default function App() {
       </div>
 
       {/* Persistent Bottom Tab Navigation Bar with Lucide icons */}
-      <nav className="fixed bottom-0 inset-x-0 bg-[#F9F7F2] border-t border-[#E2DCC8] py-2.5 z-35 shadow-xs font-sans">
-        <div className="max-w-md mx-auto px-6 grid grid-cols-5 gap-1 text-center font-bold">
+      <nav className="fixed bottom-0 inset-x-0 bg-[#F9F7F2] border-t border-[#E2DCC8] py-2 z-35 shadow-xs font-sans">
+        <div className="max-w-md mx-auto px-1.5 sm:px-6 grid grid-cols-5 gap-0.5 text-center font-bold">
           
           {/* Tab 1: Dashboard */}
           <button
-            onClick={() => {
-              setActiveTab('dashboard');
-              setEditingDiary(null);
-            }}
+            onClick={() => switchTab('dashboard')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'dashboard' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
           >
-            <Calendar className="w-5 h-5 mb-1" />
-            <span className="text-[10px]">{t.homeTab}</span>
+            <Calendar className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.homeTab}</span>
           </button>
 
           {/* Tab 2: Journal Diaries */}
           <button
-            onClick={() => setActiveTab('diaries')}
+            onClick={() => switchTab('diaries')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'diaries' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
           >
-            <BookOpen className="w-5 h-5 mb-1" />
-            <span className="text-[10px]">{t.diariesTab}</span>
+            <BookOpen className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.diariesTab}</span>
           </button>
 
           {/* Tab 3: Flagship Smart Advisor */}
           <button
-            onClick={() => {
-              setActiveTab('advisor');
-              setEditingDiary(null);
-            }}
+            onClick={() => switchTab('advisor')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'advisor' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
           >
             <div className="relative">
-              <Brain className="w-5 h-5 mb-1" />
+              <Brain className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
               <span className="absolute top-[-4px] left-[-4px] w-2 h-2 bg-[#D4A373] rounded-full animate-ping"></span>
             </div>
-            <span className="text-[10px]">{t.advisorTab}</span>
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.advisorTab}</span>
           </button>
 
           {/* Tab 4: Interactive Charts & Analytics */}
           <button
-            onClick={() => {
-              setActiveTab('analytics');
-              setEditingDiary(null);
-            }}
+            onClick={() => switchTab('analytics')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'analytics' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
           >
-            <Activity className="w-5 h-5 mb-1" />
-            <span className="text-[10px]">{t.analyticsTab}</span>
+            <Activity className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.analyticsTab}</span>
           </button>
 
           {/* Tab 5: Settings and Backup */}
           <button
-            onClick={() => {
-              setActiveTab('settings');
-              setEditingDiary(null);
-            }}
+            onClick={() => switchTab('settings')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'settings' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
           >
-            <SettingsIcon className="w-5 h-5 mb-1" />
-            <span className="text-[10px]">{t.settingsTab}</span>
+            <SettingsIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.settingsTab}</span>
           </button>
 
         </div>
