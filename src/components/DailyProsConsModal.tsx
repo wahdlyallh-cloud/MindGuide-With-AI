@@ -851,13 +851,16 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
 
                 <ul className="space-y-2">
                   {aiPositives.map((pos, idx) => (
-                    <li key={idx} className="bg-white border border-[#C2DCBE] p-2.5 rounded-xl text-xs text-gray-800 font-medium flex items-start justify-between gap-2 shadow-3xs group">
-                      <span className="leading-relaxed">🟢 {renderFormattedText(pos)}</span>
+                    <li key={idx} className="bg-white border border-[#C2DCBE] p-2.5 rounded-xl text-xs text-gray-800 font-medium flex items-start justify-between gap-2 shadow-3xs transition-all hover:border-emerald-400">
+                      <span className="leading-relaxed flex-1">🟢 {renderFormattedText(pos)}</span>
                       <button
+                        type="button"
                         onClick={() => setAiPositives(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                        className="text-gray-400 hover:text-red-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer shrink-0"
+                        title="حذف هذه النقطة"
+                        aria-label="حذف هذه النقطة"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </li>
                   ))}
@@ -896,13 +899,16 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
 
                 <ul className="space-y-2">
                   {aiNegatives.map((neg, idx) => (
-                    <li key={idx} className="bg-white border border-[#F5C6C3] p-2.5 rounded-xl text-xs text-gray-800 font-medium flex items-start justify-between gap-2 shadow-3xs group">
-                      <span className="leading-relaxed">🔴 {renderFormattedText(neg)}</span>
+                    <li key={idx} className="bg-white border border-[#F5C6C3] p-2.5 rounded-xl text-xs text-gray-800 font-medium flex items-start justify-between gap-2 shadow-3xs transition-all hover:border-rose-400">
+                      <span className="leading-relaxed flex-1">🔴 {renderFormattedText(neg)}</span>
                       <button
+                        type="button"
                         onClick={() => setAiNegatives(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                        className="text-gray-400 hover:text-red-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer shrink-0"
+                        title="حذف هذه النقطة"
+                        aria-label="حذف هذه النقطة"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </li>
                   ))}
@@ -957,12 +963,15 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                 <div className="space-y-2">
                   {userPositives.map((pos, idx) => (
                     <div key={idx} className="bg-[#FAF8F5] border border-[#E2DCC8] p-2.5 rounded-xl text-xs text-gray-800 flex items-center justify-between gap-2">
-                      <span>• {pos}</span>
+                      <span className="flex-1">• {pos}</span>
                       <button
+                        type="button"
                         onClick={() => setUserPositives(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-gray-400 hover:text-red-500"
+                        className="text-gray-400 hover:text-red-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer shrink-0"
+                        title="حذف هذه النقطة"
+                        aria-label="حذف هذه النقطة"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
@@ -1002,12 +1011,15 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
                 <div className="space-y-2">
                   {userNegatives.map((neg, idx) => (
                     <div key={idx} className="bg-[#FAF8F5] border border-[#E2DCC8] p-2.5 rounded-xl text-xs text-gray-800 flex items-center justify-between gap-2">
-                      <span>• {neg}</span>
+                      <span className="flex-1">• {neg}</span>
                       <button
+                        type="button"
                         onClick={() => setUserNegatives(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-gray-400 hover:text-red-500"
+                        className="text-gray-400 hover:text-red-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer shrink-0"
+                        title="حذف هذه النقطة"
+                        aria-label="حذف هذه النقطة"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
