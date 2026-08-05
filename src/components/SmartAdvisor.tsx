@@ -102,6 +102,20 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
 
   const isAllEnabled = Object.values(advisorPermissions).every(val => val === true);
 
+  // Sync hasConsent with advisorPermissions.diaries
+  const toggleDiariesConsent = () => {
+    const nextVal = !advisorPermissions.diaries;
+    setHasConsent(nextVal);
+    setAdvisorPermissions(prev => {
+      const updated = { ...prev, diaries: nextVal };
+      try {
+        localStorage.setItem('yawmiyati_advisor_permissions', JSON.stringify(updated));
+        localStorage.setItem('yawmiyati_chat_has_consent', String(nextVal));
+      } catch (e) { console.warn(e); }
+      return updated;
+    });
+  };
+
   const toggleAllPermissions = () => {
     const nextVal = !isAllEnabled;
     const updated: AdvisorPermissions = {
@@ -118,14 +132,19 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
       prosCons: nextVal,
     };
     setAdvisorPermissions(updated);
+    setHasConsent(nextVal);
     try {
       localStorage.setItem('yawmiyati_advisor_permissions', JSON.stringify(updated));
+      localStorage.setItem('yawmiyati_chat_has_consent', String(nextVal));
     } catch (e) { console.warn(e); }
   };
 
   const toggleSinglePermission = (key: keyof AdvisorPermissions) => {
     setAdvisorPermissions(prev => {
       const updated = { ...prev, [key]: !prev[key] };
+      if (key === 'diaries') {
+        setHasConsent(updated.diaries);
+      }
       try {
         localStorage.setItem('yawmiyati_advisor_permissions', JSON.stringify(updated));
       } catch (e) { console.warn(e); }
@@ -269,10 +288,10 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
   const handleVoiceChatSubmit = async (queryText: string) => {
     setVoiceStatus('analyzing');
     try {
-      const diariesToPass = hasConsent ? diaries : [];
-      const habitsToPass = hasConsent ? habits : [];
-      const gratitudeCardsToPass = hasConsent ? gratitudeCards : [];
-      const booksToPass = hasConsent ? books : [];
+      const diariesToPass = (hasConsent && advisorPermissions.diaries) ? diaries : [];
+      const habitsToPass = (hasConsent && advisorPermissions.habits) ? habits : [];
+      const gratitudeCardsToPass = (hasConsent && advisorPermissions.gratitude) ? gratitudeCards : [];
+      const booksToPass = (hasConsent && advisorPermissions.books) ? books : [];
       const response = await fetch('/api/gemini/smart-advisor', {
         method: 'POST',
         headers: { 
@@ -406,11 +425,11 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
     setLoading(true);
 
     try {
-      // If user revoked consent, do not pass diaries context!
-      const diariesToPass = hasConsent ? diaries : [];
-      const habitsToPass = hasConsent ? habits : [];
-      const gratitudeCardsToPass = hasConsent ? gratitudeCards : [];
-      const booksToPass = hasConsent ? books : [];
+      // Filter context based on consent and granular advisor permissions
+      const diariesToPass = (hasConsent && advisorPermissions.diaries) ? diaries : [];
+      const habitsToPass = (hasConsent && advisorPermissions.habits) ? habits : [];
+      const gratitudeCardsToPass = (hasConsent && advisorPermissions.gratitude) ? gratitudeCards : [];
+      const booksToPass = (hasConsent && advisorPermissions.books) ? books : [];
 
       const response = await fetch('/api/gemini/smart-advisor', {
         method: 'POST',
@@ -565,21 +584,21 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
             <span>صلاحية وصول المستشار</span>
           </button>
 
-          {/* User Consent Toggle */}
+          {/* User Consent Quick Toggle */}
           <div className="flex items-center justify-between md:justify-end bg-white p-2 rounded-xl border border-[#E2DCC8] shadow-xs gap-3">
             <span className="text-[11px] font-bold text-gray-500 flex items-center space-x-1 space-x-reverse">
               <ShieldCheck className="w-3.5 h-3.5 text-[#8B9D83]" />
               <span>صلاحية الوصول لليوميات:</span>
             </span>
             <button
-              onClick={() => setHasConsent(!hasConsent)}
+              onClick={toggleDiariesConsent}
               className={`w-10 h-6 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer ${
-                hasConsent ? 'bg-[#8B9D83]' : 'bg-[#E2DCC8]'
+                hasConsent && advisorPermissions.diaries ? 'bg-[#8B9D83]' : 'bg-[#E2DCC8]'
               }`}
             >
               <div
                 className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
-                  hasConsent ? 'translate-x-0' : '-translate-x-4'
+                  hasConsent && advisorPermissions.diaries ? 'translate-x-0' : '-translate-x-4'
                 }`}
               />
             </button>
