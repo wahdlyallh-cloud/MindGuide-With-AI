@@ -1,6 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Brain, Send, ShieldCheck, HelpCircle, Sparkles, Mic, Trash2, Paperclip } from 'lucide-react';
+import { Brain, Send, ShieldCheck, HelpCircle, Sparkles, Mic, Trash2, Paperclip, X } from 'lucide-react';
 import { DiaryEntry } from '../types';
+
+export interface AdvisorPermissions {
+  diaries: boolean;
+  moodLogs: boolean;
+  habits: boolean;
+  tasks: boolean;
+  cbtExercises: boolean;
+  therapyReports: boolean;
+  voiceNotes: boolean;
+  books: boolean;
+  gratitude: boolean;
+  lifeMap: boolean;
+  prosCons: boolean;
+}
+
+const DEFAULT_ADVISOR_PERMISSIONS: AdvisorPermissions = {
+  diaries: true,
+  moodLogs: true,
+  habits: true,
+  tasks: true,
+  cbtExercises: true,
+  therapyReports: true,
+  voiceNotes: true,
+  books: true,
+  gratitude: true,
+  lifeMap: true,
+  prosCons: true,
+};
+
+const PERMISSIONS_CONFIG: { key: keyof AdvisorPermissions; title: string; desc: string; icon: string }[] = [
+  { key: 'diaries', title: 'اليوميات والمذكرات الشخصية', desc: 'قراءة المذكرات والملاحظات المكتوبة', icon: '📖' },
+  { key: 'moodLogs', title: 'سجل المزاج والانفعالات اليومية', desc: 'قراءة وتقييم درجات المزاج اليومي', icon: '📊' },
+  { key: 'habits', title: 'قائمة العادات والالتزام اليومي', desc: 'متابعة نسبة إنجاز وتكرار عاداتك', icon: '🎯' },
+  { key: 'tasks', title: 'المهام وقوائم الإنجاز (Tasks)', desc: 'الاطلاع على قائمة مهامك اليومية والأسبوعية', icon: '📝' },
+  { key: 'cbtExercises', title: 'تمارين العلاج المعرفي السلوكي (CBT)', desc: 'قراءة بطاقات التكيف وأفكارك لإعطاء إرشادات', icon: '🧠' },
+  { key: 'therapyReports', title: 'تقارير الصحة النفسية الشاملة', desc: 'قراءة ملخصات التقييم النفسي والتحليلات', icon: '🩺' },
+  { key: 'voiceNotes', title: 'المذكرات والتسجيلات الصوتية', desc: 'تحليل نصوص التسجيلات والملاحظات الصوتية', icon: '🗣️' },
+  { key: 'books', title: 'المكتبة والكتب المفضلة', desc: 'قراءة قائمة قراءاتك واقتباساتك الملهمة', icon: '📚' },
+  { key: 'gratitude', title: 'شجرة الامتنان والتفكير الإيجابي', desc: 'مراجعة أسباب الامتنان والأفكار الإيجابية', icon: '🌟' },
+  { key: 'lifeMap', title: 'خريطة الحياة والأهداف المستقبلية', desc: 'متابعة رؤيتك المستقبلية وأهدافك طويلة المدى', icon: '🗺️' },
+  { key: 'prosCons', title: 'ميزان القرار والموازنات (Pros & Cons)', desc: 'مراجعة الموازنات والقرارات الشخصية', icon: '⚖️' },
+];
 
 interface SmartAdvisorProps {
   diaries: DiaryEntry[];
@@ -43,6 +85,53 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
     const saved = localStorage.getItem('yawmiyati_chat_has_consent');
     return saved !== null ? saved === 'true' : true;
   });
+
+  // Granular Advisor Access Permissions State
+  const [advisorPermissions, setAdvisorPermissions] = useState<AdvisorPermissions>(() => {
+    const saved = localStorage.getItem('yawmiyati_advisor_permissions');
+    if (saved) {
+      try {
+        return { ...DEFAULT_ADVISOR_PERMISSIONS, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error('Error parsing advisor permissions:', e);
+      }
+    }
+    return DEFAULT_ADVISOR_PERMISSIONS;
+  });
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+
+  const isAllEnabled = Object.values(advisorPermissions).every(val => val === true);
+
+  const toggleAllPermissions = () => {
+    const nextVal = !isAllEnabled;
+    const updated: AdvisorPermissions = {
+      diaries: nextVal,
+      moodLogs: nextVal,
+      habits: nextVal,
+      tasks: nextVal,
+      cbtExercises: nextVal,
+      therapyReports: nextVal,
+      voiceNotes: nextVal,
+      books: nextVal,
+      gratitude: nextVal,
+      lifeMap: nextVal,
+      prosCons: nextVal,
+    };
+    setAdvisorPermissions(updated);
+    try {
+      localStorage.setItem('yawmiyati_advisor_permissions', JSON.stringify(updated));
+    } catch (e) { console.warn(e); }
+  };
+
+  const toggleSinglePermission = (key: keyof AdvisorPermissions) => {
+    setAdvisorPermissions(prev => {
+      const updated = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem('yawmiyati_advisor_permissions', JSON.stringify(updated));
+      } catch (e) { console.warn(e); }
+      return updated;
+    });
+  };
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -467,6 +556,15 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
             <span>بدء محادثة صوتية مستمرة</span>
           </button>
 
+          {/* 🛡️ Advisor Access Permissions Button (Added exactly between the two buttons) */}
+          <button
+            onClick={() => setShowPermissionsModal(true)}
+            className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-black rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer shrink-0"
+          >
+            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>صلاحية وصول المستشار</span>
+          </button>
+
           {/* User Consent Toggle */}
           <div className="flex items-center justify-between md:justify-end bg-white p-2 rounded-xl border border-[#E2DCC8] shadow-xs gap-3">
             <span className="text-[11px] font-bold text-gray-500 flex items-center space-x-1 space-x-reverse">
@@ -855,6 +953,113 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
                 إنهاء المكالمة
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🛡️ Advisor Access Permissions Modal */}
+      {showPermissionsModal && (
+        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="bg-[#FAF8F5] border-2 border-[#E2DCC8] rounded-3xl p-6 max-w-xl w-full text-right shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-in zoom-in-95">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#E2DCC8] pb-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-100 text-amber-800 rounded-2xl border border-amber-200">
+                  <ShieldCheck className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#2B3E50]">صلاحية وصول المستشار الذكي 🛡️</h3>
+                  <p className="text-xs text-gray-500 font-bold">تحديد الأماكن والبيانات المسموح للمستشار بتحليلها وقراءتها</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPermissionsModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Master Toggle (Enable All) */}
+            <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between shrink-0 shadow-xs">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <span className="text-xs font-black text-amber-950 block">تفعيل الوصول للكل (Enable All Access)</span>
+                  <span className="text-[11px] text-amber-800 font-bold">عند التفعيل، يستطيع المستشار تقديم تحليلات وشاملة لكافة الأنشطة</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={toggleAllPermissions}
+                className={`w-12 h-7 rounded-full p-1 transition-colors focus:outline-none cursor-pointer shrink-0 ${
+                  isAllEnabled ? 'bg-emerald-600' : 'bg-gray-300'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
+                    isAllEnabled ? 'translate-x-0' : '-translate-x-5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Permissions List */}
+            <div className="flex-grow overflow-y-auto space-y-2 pr-1 pl-1">
+              {PERMISSIONS_CONFIG.map((item) => {
+                const isEnabled = advisorPermissions[item.key];
+                return (
+                  <div 
+                    key={item.key}
+                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                      isEnabled ? 'bg-white border-[#8B9D83]/50 shadow-2xs' : 'bg-gray-50 border-gray-200 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl text-lg ${isEnabled ? 'bg-[#8B9D83]/15' : 'bg-gray-200'}`}>
+                        {item.icon}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-[#2B3E50]">{item.title}</h4>
+                        <p className="text-[11px] text-gray-500 font-bold">{item.desc}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleSinglePermission(item.key)}
+                      className={`w-10 h-6 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer shrink-0 ${
+                        isEnabled ? 'bg-[#8B9D83]' : 'bg-gray-300'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
+                          isEnabled ? 'translate-x-0' : '-translate-x-4'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="pt-3 border-t border-[#E2DCC8] flex items-center justify-between shrink-0">
+              <span className="text-[10px] text-gray-500 font-bold">
+                🔒 يتم حفظ تفضيلاتك محلياً وتُطبق فورياً على ردود المستشار الذكي.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowPermissionsModal(false)}
+                className="px-5 py-2.5 bg-[#8B9D83] hover:bg-[#7A8C72] text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                حفظ وتطبيق 💾
+              </button>
+            </div>
+
           </div>
         </div>
       )}

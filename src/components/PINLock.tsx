@@ -273,13 +273,22 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
                 0
               </button>
 
-              <button
-                onClick={() => handleTriggerBiometrics('fingerprint')}
-                className="w-14 h-14 mx-auto flex items-center justify-center text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 active:scale-95 rounded-full transition-all cursor-pointer border border-amber-200"
-                title="مسح بصمة الإصبع أو الوجه"
-              >
-                <Fingerprint className="w-5 h-5" />
-              </button>
+              <div className="flex items-center justify-center gap-1.5 w-14 h-14 mx-auto">
+                <button
+                  onClick={() => handleTriggerBiometrics('fingerprint')}
+                  className="w-7 h-12 flex items-center justify-center text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 active:scale-95 rounded-xl transition-all cursor-pointer border border-amber-200"
+                  title="مسح بصمة الإصبع 👆"
+                >
+                  <Fingerprint className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleTriggerBiometrics('faceid')}
+                  className="w-7 h-12 flex items-center justify-center text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 active:scale-95 rounded-xl transition-all cursor-pointer border border-emerald-200"
+                  title="مسح بصمة الوجه 👤"
+                >
+                  <ScanFace className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Back Button and Prompt */}
