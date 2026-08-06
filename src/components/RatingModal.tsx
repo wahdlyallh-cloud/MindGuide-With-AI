@@ -34,7 +34,7 @@ export default function RatingModal({ isOpen, onClose, isEn }: RatingModalProps)
         {/* Header */}
         <div className="p-5 border-b border-[#E2DCC8]/50 flex items-center justify-between bg-[#F9F7F2]/50">
           <h4 className="font-extrabold text-[#3A3A3A] text-sm md:text-base">
-            {isEn ? "⭐ Rate Our Application" : "⭐ تقييم تطبيق يومياتي AI"}
+            {isEn ? "⭐ Rate Our Application" : "⭐ تقييم تطبيق حياة AI"}
           </h4>
           <button 
             onClick={onClose}

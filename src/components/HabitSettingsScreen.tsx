@@ -79,7 +79,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
   // 1. Export Full JSON Backup
   const handleExportFullJSON = () => {
     const backupObj = {
-      app: 'Yawmiyati_Habits_Tracker',
+      app: 'Hayat_Habits_Tracker',
       exportedAt: new Date().toISOString(),
       habits,
       diaries,
@@ -89,7 +89,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupObj, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `Yawmiyati_Habits_Backup_${new Date().toISOString().split('T')[0]}.json`);
+    downloadAnchor.setAttribute('download', `Hayat_Habits_Backup_${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -127,7 +127,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
     const encodedUri = encodeURI(csvContent);
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', encodedUri);
-    downloadAnchor.setAttribute('download', `Yawmiyati_Habits_Data_${new Date().toISOString().split('T')[0]}.csv`);
+    downloadAnchor.setAttribute('download', `Hayat_Habits_Data_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -416,7 +416,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
                   <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-extrabold">مُوصى به 🔥</span>
                 </span>
                 <p className="text-[10px] sm:text-xs text-gray-500 font-bold mt-0.5">
-                  إظهار بطاقة (يومياتي AI) بجميع الاختصارات السريعة كإشعار مثبّت على شاشة القفل الخارجية وشريط النظام عند ضغط زر الباور للهاتف.
+                  إظهار بطاقة (حياة AI) بجميع الاختصارات السريعة كإشعار مثبّت على شاشة القفل الخارجية وشريط النظام عند ضغط زر الباور للهاتف.
                 </p>
               </div>
             </div>
@@ -448,7 +448,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
                       if ('serviceWorker' in navigator) {
                         const reg = await navigator.serviceWorker.register('/sw.js').catch(() => null);
                         if (reg && reg.showNotification) {
-                          await reg.showNotification('يومياتي AI • نشط الآن 📱', {
+                          await reg.showNotification('حياة AI • نشط الآن 📱', {
                             body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط هنا للوصول السريع لتدوين المذكرات، التسجيل الصوتي، المستشار، وتحديد المزاج.',
                             tag: 'yawmiyati-lockscreen-widget',
                             requireInteraction: true,
@@ -460,7 +460,7 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
                           return;
                         }
                       }
-                      new Notification('يومياتي AI • نشط الآن 📱', {
+                      new Notification('حياة AI • نشط الآن 📱', {
                         body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط هنا للوصول السريع لتدوين المذكرات، التسجيل الصوتي، المستشار، وتحديد المزاج.',
                         tag: 'yawmiyati-lockscreen-widget',
                         requireInteraction: true

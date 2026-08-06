@@ -21,7 +21,7 @@ export default function ContactOwnerModal({ isOpen, onClose, isEn }: ContactOwne
   };
 
   const handleEmailClick = () => {
-    window.location.href = `mailto:${emailAddress}?subject=يومياتي AI - اقتراح وتطوير`;
+    window.location.href = `mailto:${emailAddress}?subject=حياة AI - اقتراح وتطوير`;
   };
 
   return (

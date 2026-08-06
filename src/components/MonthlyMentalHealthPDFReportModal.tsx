@@ -759,7 +759,7 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
   // Copy text report directly to clipboard
   const handleCopyText = async () => {
     try {
-      const fullText = `🎓 ${periodTitle}\nمنصة يومياتي AI | الفترة: ${periodLabel}\n\n📊 الإحصائيات السريعة:\n- عدد المذكرات: ${stats.totalDiaries}\n- متوسط النوم: ${stats.avgSleep} ساعة/ليلة\n- معدل المزاج: ${stats.avgMood} / 10\n- وقت الرياضة: ${stats.totalSportsMinutes} دقيقة\n\n📋 التقرير والتحليل السريري للمستشار الذكي:\n${aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي والنوم.'}\n\n${patientNotes ? `📝 ملاحظات وأسئلة المعالج:\n${patientNotes}\n\n` : ''}تم إنشاء التقرير عبر منصة يومياتي AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}`;
+      const fullText = `🎓 ${periodTitle}\nمنصة حياة AI | الفترة: ${periodLabel}\n\n📊 الإحصائيات السريعة:\n- عدد المذكرات: ${stats.totalDiaries}\n- متوسط النوم: ${stats.avgSleep} ساعة/ليلة\n- معدل المزاج: ${stats.avgMood} / 10\n- وقت الرياضة: ${stats.totalSportsMinutes} دقيقة\n\n📋 التقرير والتحليل السريري للمستشار الذكي:\n${aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي للنوم.'}\n\n${patientNotes ? `📝 ملاحظات وأسئلة المعالج:\n${patientNotes}\n\n` : ''}تم إنشاء التقرير عبر منصة حياة AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}`;
       await navigator.clipboard.writeText(fullText);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 3000);
@@ -770,7 +770,7 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
 
   // Download plain text report (.txt UTF-8 BOM)
   const handleDownloadTxt = () => {
-    const fullText = `\uFEFF🎓 ${periodTitle}\nمنصة يومياتي AI | الفترة: ${periodLabel}\n\n📊 الإحصائيات السريعة:\n- عدد المذكرات: ${stats.totalDiaries}\n- متوسط النوم: ${stats.avgSleep} ساعة/ليلة\n- معدل المزاج: ${stats.avgMood} / 10\n- وقت الرياضة: ${stats.totalSportsMinutes} دقيقة\n\n📋 التقرير والتحليل السريري للمستشار الذكي:\n${aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي والنوم.'}\n\n${patientNotes ? `📝 ملاحظات وأسئلة المعالج:\n${patientNotes}\n\n` : ''}تم إنشاء التقرير عبر منصة يومياتي AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}`;
+    const fullText = `\uFEFF🎓 ${periodTitle}\nمنصة حياة AI | الفترة: ${periodLabel}\n\n📊 الإحصائيات السريعة:\n- عدد المذكرات: ${stats.totalDiaries}\n- متوسط النوم: ${stats.avgSleep} ساعة/ليلة\n- معدل المزاج: ${stats.avgMood} / 10\n- وقت الرياضة: ${stats.totalSportsMinutes} دقيقة\n\n📋 التقرير والتحليل السريري للمستشار الذكي:\n${aiAnalysisText || 'تقرير شامل يرصد حالة الاستقرار المزاجي والتوازن السلوكي للنوم.'}\n\n${patientNotes ? `📝 ملاحظات وأسئلة المعالج:\n${patientNotes}\n\n` : ''}تم إنشاء التقرير عبر منصة حياة AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}`;
     const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -809,7 +809,7 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
     <h3>📝 ملاحظات وأسئلة موجهة للمعالج</h3>
     <div class="report-body">${patientNotes.replace(/\n/g, '<br/>')}</div>
   ` : ''}
-  <div class="footer">تم إنشاء هذا التقرير تلقائياً وبسرية تامة عبر يومياتي AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}</div>
+  <div class="footer">تم إنشاء هذا التقرير تلقائياً وبسرية تامة عبر حياة AI بتاريخ ${new Date().toLocaleDateString('ar-EG')}</div>
 </body>
 </html>`;
     const blob = new Blob([htmlDocContent], { type: 'application/msword;charset=utf-8' });
@@ -939,7 +939,7 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
       <html dir="rtl" lang="ar">
         <head>
           <meta charset="utf-8">
-          <title>${periodTitle} - يومياتي AI</title>
+          <title>${periodTitle} - حياة AI</title>
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
@@ -1220,7 +1220,7 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
                   </h1>
                 </div>
                 <p className="text-xs text-gray-500 font-bold">
-                  منصة يومياتي AI | المستند السريري الشامل المجهز للمختص والأطباء النفسيين
+                  منصة حياة AI | المستند السريري الشامل المجهز للمختص والأطباء النفسيين
                 </p>
               </div>
 
@@ -1642,8 +1642,8 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
               </div>
 
               <div className="text-center sm:text-left space-y-0.5">
-                <p className="font-extrabold text-[#5A5A40]">Yawmiyati AI Medical & Behavioral Report</p>
-                <p className="text-[10px] text-gray-400">وثيقة مشفرة ومولدة تلقائياً من نظام يومياتي AI</p>
+                <p className="font-extrabold text-[#5A5A40]">Hayat AI Medical & Behavioral Report</p>
+                <p className="text-[10px] text-gray-400">وثيقة مشفرة ومولدة تلقائياً من نظام حياة AI</p>
               </div>
             </div>
 

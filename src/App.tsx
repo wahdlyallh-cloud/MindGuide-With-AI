@@ -367,7 +367,7 @@ const calculateStreak = (entries: DiaryEntry[]) => {
 
 export const TRANSLATIONS = {
   ar: {
-    appName: "يومياتي AI",
+    appName: "حياة AI",
     settingsTitle: "الإعدادات العامة",
     settingsSubtitle: "تخصيص مساعد الذكي، قفل الحماية، وتزامن بياناتك",
     apiKeyTitle: "مفتاح API الخاص بك 🔑",
@@ -404,7 +404,7 @@ export const TRANSLATIONS = {
     contactSub: "راسلنا باقتراحاتك وملاحظاتك القيمة لتطوير التطبيق",
   },
   en: {
-    appName: "My Diaries AI",
+    appName: "Hayat AI",
     settingsTitle: "General Settings",
     settingsSubtitle: "Customize your smart assistant, privacy lock, and sync your data",
     apiKeyTitle: "Your API Key 🔑",
@@ -1023,7 +1023,7 @@ export default function App() {
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.register('/sw.js').catch(() => null);
           if (reg && reg.showNotification) {
-            await reg.showNotification('يومياتي AI • نشط الآن 📱', {
+            await reg.showNotification(t.notificationActiveNow, {
               body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط للوصول السريع لتدوين المذكرات، التسجيل الصوتي، والمستشار الذكي.',
               tag: 'yawmiyati-lockscreen-widget',
               requireInteraction: true,
@@ -1034,7 +1034,7 @@ export default function App() {
             return;
           }
         }
-        new Notification('يومياتي AI • نشط الآن 📱', {
+        new Notification(t.notificationActiveNow, {
           body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط للوصول السريع لتدوين المذكرات، التسجيل الصوتي، والمستشار الذكي.',
           tag: 'yawmiyati-lockscreen-widget',
           requireInteraction: true
@@ -3269,7 +3269,7 @@ export default function App() {
     const dataStr = JSON.stringify({ diaries, settings });
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
-    const exportFileDefaultName = `YawmiyatiAI_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    const exportFileDefaultName = `HayatAI_Backup_${new Date().toISOString().split('T')[0]}.json`;
     
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
@@ -3892,7 +3892,7 @@ export default function App() {
             title="انقر لإظهار الشريط العلوي مجدداً لمدة 3 ثوانٍ (يمكن تحريك هذه الأيقونة أفقياً)"
           >
             <Brain className="w-4 h-4 text-[#FEFAE0] animate-pulse shrink-0" />
-            <span className="text-[11px] font-black tracking-tight">يومياتي AI</span>
+            <span className="text-[11px] font-black tracking-tight">{t.appName}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
             <ChevronDown className="w-3.5 h-3.5 text-white/80 group-hover:translate-y-0.5 transition-transform shrink-0" />
           </button>
@@ -3921,7 +3921,7 @@ export default function App() {
               </div>
               <div>
                 <div className="flex items-baseline space-x-1.5 space-x-reverse">
-                  <h1 className="text-base font-extrabold tracking-tight text-[#3A3A3A]">يومياتي</h1>
+                  <h1 className="text-base font-extrabold tracking-tight text-[#3A3A3A]">{isEn ? "Hayat" : "حياة"}</h1>
                   <span className="text-xs font-black bg-[#8B9D83] text-white px-1.5 py-0.5 rounded-md leading-none">AI</span>
                 </div>
                 <p className="text-[9px] text-gray-500 font-bold mt-0.5 flex flex-wrap items-center gap-1.5 max-w-full">
@@ -8291,7 +8291,7 @@ export default function App() {
                           <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-extrabold">مُوصى به 🔥</span>
                         </span>
                         <p className="text-[10px] text-gray-500 font-bold mt-0.5">
-                          إظهار لوحة الاختصارات (يومياتي AI) كإشعار مثبّت على شاشة القفل الخارجية عند ضغط زر الباور للهاتف.
+                          إظهار لوحة الاختصارات ({isEn ? "Hayat AI" : "حياة AI"}) كإشعار مثبّت على شاشة القفل الخارجية عند ضغط زر الباور للهاتف.
                         </p>
                       </div>
                     </div>
@@ -8413,7 +8413,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        alert("💡 كيف تخفي شريط المتصفح العلوي بشكل دائم وحذفه من الشاشة؟\n\n1. افتح قائمة المتصفح (⋮) في أعلى الصفحة أو زر المشاركة.\n2. اختر 'إضافة إلى الشاشة الرئيسية' (Add to Home Screen).\n3. سيتم تثبيت تطبيق (يومياتي AI) كـ PWA مستقل بدون أي شريط عنوان إطلاقاً!");
+                        alert(`💡 كيف تخفي شريط المتصفح العلوي بشكل دائم وحذفه من الشاشة؟\n\n1. افتح قائمة المتصفح (⋮) في أعلى الصفحة أو زر المشاركة.\n2. اختر 'إضافة إلى الشاشة الرئيسية' (Add to Home Screen).\n3. سيتم تثبيت تطبيق (${t.appName}) كـ PWA مستقل بدون أي شريط عنوان إطلاقاً!`);
                       }}
                       className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-900 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1"
                     >
@@ -8490,7 +8490,7 @@ export default function App() {
 
             {/* Developer/System credits details */}
             <div className="pt-6 border-t border-[#E2DCC8]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-gray-400 font-bold leading-relaxed text-center">
-              <span>{isEn ? "✨ My Diaries AI — Stable Private Version 1.0.0" : "✨ يومياتي AI — الإصدار المستقر والخاص 1.0.0"}</span>
+              <span>{isEn ? "✨ Hayat AI — Stable Private Version 1.0.0" : "✨ حياة AI — الإصدار المستقر والخاص 1.0.0"}</span>
               <span className="max-w-xs">{isEn ? "Developed with 100% privacy protection & smart behavioral support." : "تم التطوير بخصوصية مطلقة وأعلى درجات الحماية المعرفية السلوكية والذكاء الاصطناعي لراحتك النفسية."}</span>
             </div>
 
@@ -8809,7 +8809,7 @@ export default function App() {
                   📓
                 </div>
                 <div>
-                  <h1 className="text-xl font-black text-[#8B9D83] tracking-wide">يومياتي الذكية</h1>
+                  <h1 className="text-xl font-black text-[#8B9D83] tracking-wide">{isEn ? "Hayat AI" : "حياة AI الذكية"}</h1>
                   <p className="text-[10px] text-gray-400 font-bold mt-0.5">سجل المذكرات والفضفضة النفسية الآمن</p>
                 </div>
               </div>
@@ -8939,7 +8939,7 @@ export default function App() {
                 "إن كتابة اليوميات والوعي بالمشاعر هو أولى خطوات التوازن النفسي والسلام الداخلي."
               </p>
               <div className="text-[9px] text-gray-400 font-bold flex items-center space-x-1.5 space-x-reverse mt-2">
-                <span>تطبيق يومياتي الذكية</span>
+                <span>{isEn ? "Hayat AI App" : "تطبيق حياة AI الذكية"}</span>
                 <span>•</span>
                 <span>تصدير آمن للمعلومات الشخصية</span>
                 <span>•</span>

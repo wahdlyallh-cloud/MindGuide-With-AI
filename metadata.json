@@ -1,5 +1,5 @@
 {
-  "name": "Yawmiyati AI (يومياتي AI)",
+  "name": "Hayat AI (حياة AI)",
   "description": "منصة ذكية متكاملة لإدارة الحياة، تدوين اليوميات، ومتابعة الصحة النفسية مدعومة بالذكاء الاصطناعي والمستشار الذكي العام.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

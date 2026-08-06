@@ -346,13 +346,13 @@ app.post("/api/backup/email", async (req, res) => {
 
       // Prepare email content
       const mailOptions = {
-        from: `"يومياتي الذكية" <${smtpFrom}>`,
+        from: `"حياة AI" <${smtpFrom}>`,
         to: email,
-        subject: `النسخة الاحتياطية ليومياتك الذكية - ${new Date().toLocaleDateString('ar-EG')}`,
-        text: `أهلاً بك،\n\nتجد مرفقاً مع هذا البريد النسخة الاحتياطية الكاملة والمشفرة الخاصة ببياناتك ومذكراتك اليومية في تطبيق "يومياتي الذكية".\n\nتم الحفظ في: ${new Date().toLocaleString('ar-EG')}\n\nيرجى الاحتفاظ بهذا الملف لاستيراده في التطبيق عند الحاجة.\n\nمع تمنياتنا لك بسلام داخلي دائم 🌸`,
+        subject: `النسخة الاحتياطية لتطبيق حياة AI - ${new Date().toLocaleDateString('ar-EG')}`,
+        text: `أهلاً بك،\n\nتجد مرفقاً مع هذا البريد النسخة الاحتياطية الكاملة والمشفرة الخاصة ببياناتك ومذكراتك اليومية في تطبيق "حياة AI".\n\nتم الحفظ في: ${new Date().toLocaleString('ar-EG')}\n\nيرجى الاحتفاظ بهذا الملف لاستيراده في التطبيق عند الحاجة.\n\nمع تمنياتنا لك بسلام داخلي دائم 🌸`,
         attachments: [
           {
-            filename: `Yawmiyati_Backup_${new Date().toISOString().split('T')[0]}.json`,
+            filename: `HayatAI_Backup_${new Date().toISOString().split('T')[0]}.json`,
             content: JSON.stringify(backupData, null, 2)
           }
         ]
@@ -1012,7 +1012,7 @@ ${cbtStr}
 
   if (ai) {
     try {
-      let systemInstruction = "أنت 'المستشار الذكي' (Yawmiyati Genius AI) - رفيق حكيم، صديق متفهم، ومساعد ذكاء اصطناعي عبقري وشامل لكل مجالات المعرفة والتفكير والحياة (داخل التطبيق وخارجه). لديك قدرة فائقة على تقديم الإجابات الأكثر دقة وعمقاً وإبداعاً وسلاسة باللغة العربية الفصحى الدافئة والراقية، مع الحفاظ على روح الحوار البشري الراقي والتعاطف العالي." + getLanguageInstruction(req.body.appLanguage);
+      let systemInstruction = "أنت 'المستشار الذكي' (Hayat Genius AI / حياة AI) - رفيق حكيم، صديق متفهم، ومساعد ذكاء اصطناعي عبقري وشامل لكل مجالات المعرفة والتفكير والحياة (داخل التطبيق وخارجه). لديك قدرة فائقة على تقديم الإجابات الأكثر دقة وعمقاً وإبداعاً وسلاسة باللغة العربية الفصحى الدافئة والراقية، مع الحفاظ على روح الحوار البشري الراقي والتعاطف العالي." + getLanguageInstruction(req.body.appLanguage);
       let userPrompt = "";
 
       if (reportType === "therapist") {

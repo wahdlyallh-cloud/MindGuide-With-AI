@@ -275,7 +275,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
             <div className="p-3 bg-[#8B9D83]/10 rounded-full border border-[#8B9D83]/20 text-[#8B9D83]">
               <Lock className="w-6 h-6 animate-pulse" />
             </div>
-            <h1 className="text-xl font-extrabold text-[#5A5A40]">يومياتي AI Pro</h1>
+            <h1 className="text-xl font-extrabold text-[#5A5A40]">حياة AI Pro</h1>
             <p className="text-xs text-gray-600 max-w-xs font-bold leading-relaxed">
               {pendingAction 
                 ? 'يتطلب فتح هذا الاختصار التحقق من رمز PIN أو البصمة' 

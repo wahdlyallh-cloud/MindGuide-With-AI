@@ -57,13 +57,13 @@ export async function registerBiometrics(): Promise<{ success: boolean; credenti
       publicKey: {
         challenge,
         rp: {
-          name: 'تطبيق يومياتي AI Pro',
+          name: 'تطبيق حياة AI Pro',
           id: window.location.hostname
         },
         user: {
           id: userId,
-          name: 'user@yawmiyati.app',
-          displayName: 'مستخدم يومياتي'
+          name: 'user@hayatai.app',
+          displayName: 'مستخدم حياة AI'
         },
         pubKeyCredParams: [
           { alg: -7, type: 'public-key' },  // ES256

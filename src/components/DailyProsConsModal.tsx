@@ -335,7 +335,7 @@ export default function DailyProsConsModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: `أنت خبير وباحث نفسي وسلوكي متقدم ومساعد ذكي محترف في منصة "يومياتي AI".
+          query: `أنت خبير وباحث نفسي وسلوكي متقدم ومساعد ذكي محترف في منصة "حياة AI".
 تلقيت سجلاً كاملاً وشاملاً لكافة النشاطات والبيانات المسجلة للمستخدم لهذا اليوم: (${displayDate}).
 
 ### البيانات والأنشطة الشاملة المسجلة لليوم (${displayDate}):
@@ -522,7 +522,7 @@ ${userPositives.length > 0 ? userPositives.map(p => `• ${p}`).join('\n') : '�
 ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '• لم يتم إدخال نقاط خاصة'}
 
 ---
-تم التوليد بواسطة تطبيق يومياتي AI 🌿`;
+تم التوليد بواسطة تطبيق حياة AI 🌿`;
 
     navigator.clipboard.writeText(summary);
     setCopySuccess(true);
@@ -905,7 +905,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
           </div>
 
           <div class="report-footer">
-            <span>منصة يومياتي AI - تقرير الإيجابيات والسلبيات اليومية</span>
+            <span>منصة حياة AI - تقرير الإيجابيات والسلبيات اليومية</span>
             <span>سرية تامة وتشفير محلي 🌿</span>
           </div>
         </div>
@@ -1059,7 +1059,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
 
           <!-- Footer -->
           <div style="border-top: 2px solid #E2DCC8; padding: 14px 24px; background-color: #F0EDE4; font-size: 12px; color: #5A5A40; display: flex; align-items: center; justify-content: space-between; font-weight: 800;">
-            <span>منصة يومياتي AI - تقرير الإيجابيات والسلبيات اليومية</span>
+            <span>منصة حياة AI - تقرير الإيجابيات والسلبيات اليومية</span>
             <span>سرية تامة وتشفير محلي 🌿</span>
           </div>
         </div>
@@ -1384,7 +1384,7 @@ ${userNegatives.length > 0 ? userNegatives.map(n => `• ${n}`).join('\n') : '�
 
           {/* Clean Footer inside the export card */}
           <div className="pt-2 border-t border-[#E2DCC8] flex items-center justify-between text-[11px] text-[#5A5A40] font-bold">
-            <span>منصة يومياتي AI - تقرير الإيجابيات والسلبيات اليومية</span>
+            <span>منصة حياة AI - تقرير الإيجابيات والسلبيات اليومية</span>
             <span>سرية تامة وتشفير محلي 🌿</span>
           </div>
 

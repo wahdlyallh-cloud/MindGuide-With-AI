@@ -206,7 +206,7 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
     printWindow.document.write(`
       <html dir="rtl" lang="ar">
         <head>
-          <title>تقرير جلسة العلاج النفسي - يومياتي AI</title>
+          <title>تقرير جلسة العلاج النفسي - حياة AI</title>
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
             h1 { color: #5A5A40; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
@@ -241,7 +241,7 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
           </div>
 
           <div class="footer">
-            تم توليد هذا التقرير تلقائياً وبسرية تامة بواسطة منصة Yawmiyati AI (يومياتي AI).
+            تم توليد هذا التقرير تلقائياً وبسرية تامة بواسطة منصة Hayat AI (حياة AI).
           </div>
           <script>window.print();</script>
         </body>
@@ -252,7 +252,7 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
 
   const handleCopyText = async () => {
     try {
-      const textToCopy = `تقرير مجهز لجلسة العلاج النفسي - يومياتي AI\nالفترة: من ${startDate} إلى ${endDate}\n\nإحصائيات مكملة:\n- عدد المذكرات: ${totalEntries}\n- متوسط النوم: ${averageSleep} ساعة\n- وقت الرياضة: ${totalSports} دقيقة\n\nالتقرير التحليلي:\n${reportText}`;
+      const textToCopy = `تقرير مجهز لجلسة العلاج النفسي - حياة AI\nالفترة: من ${startDate} إلى ${endDate}\n\nإحصائيات مكملة:\n- عدد المذكرات: ${totalEntries}\n- متوسط النوم: ${averageSleep} ساعة\n- وقت الرياضة: ${totalSports} دقيقة\n\nالتقرير التحليلي:\n${reportText}`;
       await navigator.clipboard.writeText(textToCopy);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 3000);
@@ -263,7 +263,7 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
 
   const handleDownloadTxt = () => {
     // Add UTF-8 BOM (\uFEFF) at the start so mobile/desktop text readers render Arabic properly without Mojibake
-    const textContent = `\uFEFFتقرير مجهز لجلسة العلاج النفسي - يومياتي AI\nالفترة: من ${startDate} إلى ${endDate}\n\nإحصائيات مكملة:\n- عدد المذكرات: ${totalEntries}\n- متوسط النوم: ${averageSleep} ساعة\n- وقت الرياضة: ${totalSports} دقيقة\n\nالتقرير التحليلي:\n${reportText}`;
+    const textContent = `\uFEFFتقرير مجهز لجلسة العلاج النفسي - حياة AI\nالفترة: من ${startDate} إلى ${endDate}\n\nإحصائيات مكملة:\n- عدد المذكرات: ${totalEntries}\n- متوسط النوم: ${averageSleep} ساعة\n- وقت الرياضة: ${totalSports} دقيقة\n\nالتقرير التحليلي:\n${reportText}`;
     const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -288,7 +288,7 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
   </style>
 </head>
 <body>
-  <h1>🎓 تقرير جلسة العلاج النفسي - يومياتي AI</h1>
+  <h1>🎓 تقرير جلسة العلاج النفسي - حياة AI</h1>
   <div class="meta">
     <p><strong>الفترة الزمنية:</strong> من ${startDate} إلى ${endDate}</p>
     <p><strong>إحصائيات المذكرات:</strong> ${totalEntries} | <strong>متوسط ساعات النوم:</strong> ${averageSleep} ساعة | <strong>وقت التمارين:</strong> ${totalSports} دقيقة</p>
@@ -296,7 +296,7 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
   <div class="report-body">
     ${reportText.replace(/\n/g, '<br/>')}
   </div>
-  <div class="footer">تم إنشاء هذا التقرير تلقائياً وبسرية تامة عبر يومياتي AI</div>
+  <div class="footer">تم إنشاء هذا التقرير تلقائياً وبسرية تامة عبر حياة AI</div>
 </body>
 </html>`;
     const blob = new Blob([htmlDocContent], { type: 'application/msword;charset=utf-8' });

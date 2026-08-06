@@ -76,7 +76,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
       {
         id: 'welcome',
         sender: 'ai',
-        text: 'أهلاً بك في **المستشار الذكي لليوميات (Yawmiyati AI)**. أنا صديقك ومستشارك الخاص، ولدي الصلاحية لمساعدتك في ربط الخيوط واكتشاف الأنماط وتحليل مزاجك على مدار الأيام والأسابيع.\n\nيمكنك أن تسألني عما تشاء، مثل:\n• *"ما الذي سبب لي القلق خلال الأسبوع الماضي؟"*\n• *"ماذا حدث لي يوم 15 يوليو؟"*\n• *"متى كانت آخر مرة شعرت فيها بالسعادة؟"*\n• *"قارن بين حالتي النفسية مؤخراً ومقارنتها بالشهر الماضي."*',
+        text: 'أهلاً بك في **المستشار الذكي (حياة AI / Hayat AI)**. أنا صديقك ومستشارك الخاص، ولدي الصلاحية لمساعدتك في ربط الخيوط واكتشاف الأنماط وتحليل مزاجك على مدار الأيام والأسابيع.\n\nيمكنك أن تسألني عما تشاء، مثل:\n• *"ما الذي سبب لي القلق خلال الأسبوع الماضي؟"*\n• *"ماذا حدث لي يوم 15 يوليو؟"*\n• *"متى كانت آخر مرة شعرت فيها بالسعادة؟"*\n• *"قارن بين حالتي النفسية مؤخراً ومقارنتها بالشهر الماضي."*',
         createdAt: new Date().toISOString()
       }
     ];
@@ -299,14 +299,16 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-gemini-key': userApiKey || ''
+          'x-gemini-key': userApiKey || '',
+          'x-app-language': appLanguage
         },
         body: JSON.stringify({
           diaries: diariesToPass,
           habits: habitsToPass,
           gratitudeCards: gratitudeCardsToPass,
           books: booksToPass,
-          query: queryText
+          query: queryText,
+          appLanguage: appLanguage
         })
       });
 
@@ -438,14 +440,16 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-gemini-key': userApiKey || ''
+          'x-gemini-key': userApiKey || '',
+          'x-app-language': appLanguage
         },
         body: JSON.stringify({
           diaries: diariesToPass,
           habits: habitsToPass,
           gratitudeCards: gratitudeCardsToPass,
           books: booksToPass,
-          query: textWithAttachments
+          query: textWithAttachments,
+          appLanguage: appLanguage
         })
       });
 
