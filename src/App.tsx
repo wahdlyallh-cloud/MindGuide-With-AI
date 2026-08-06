@@ -2020,6 +2020,11 @@ export default function App() {
 
   const getArabicGreetingHeader = () => {
     const hour = new Date().getHours();
+    if (settings.appLanguage !== 'ar' && settings.appLanguage !== 'ur') {
+      if (hour < 12) return 'Good Morning & Peaceful Mind';
+      if (hour < 17) return 'Welcome & Have a Wonderful Day';
+      return 'Good Evening & Inner Tranquility';
+    }
     if (hour < 12) return 'صباح التفاؤل والنشاط والتصالح';
     if (hour < 17) return 'أهلاً بك وطاب يومك يا صديقي النبيل';
     return 'مساء الهدوء وراحة البال والاسترخاء';
@@ -2041,7 +2046,7 @@ export default function App() {
       const d = new Date();
       d.setDate(today.getDate() - i);
       arr.push({
-        label: d.toLocaleDateString('ar-EG', { weekday: 'short' }),
+        label: d.toLocaleDateString(settings.appLanguage === 'ar' ? 'ar-EG' : settings.appLanguage, { weekday: 'short' }),
         dayNum: d.getDate(),
         isoString: d.toISOString().split('T')[0]
       });
@@ -3925,7 +3930,7 @@ export default function App() {
                   <span className="text-xs font-black bg-[#8B9D83] text-white px-1.5 py-0.5 rounded-md leading-none">AI</span>
                 </div>
                 <p className="text-[9px] text-gray-500 font-bold mt-0.5 flex flex-wrap items-center gap-1.5 max-w-full">
-                  <span>مساعد الصحة النفسية المتكامل</span>
+                  <span>{isEn ? "Comprehensive Psychological Assistant" : "مساعد الصحة النفسية المتكامل"}</span>
                   <span className="text-gray-300 hidden sm:inline">•</span>
                   <span className={`inline-flex items-center space-x-1 space-x-reverse text-[9px] font-extrabold px-2 py-0.5 rounded-full border transition-all ${
                     autoSaveStatus === 'saving'
@@ -3933,7 +3938,7 @@ export default function App() {
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${autoSaveStatus === 'saving' ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`}></span>
-                    <span>{autoSaveStatus === 'saving' ? 'جارِ الحفظ...' : `تم الحفظ تلقائياً ${lastAutoSaveTime ? `(${lastAutoSaveTime})` : '💾'}`}</span>
+                    <span>{autoSaveStatus === 'saving' ? (isEn ? 'Saving...' : 'جارِ الحفظ...') : (isEn ? 'Auto Saved' : `تم الحفظ تلقائياً ${lastAutoSaveTime ? `(${lastAutoSaveTime})` : '💾'}`)}</span>
                   </span>
                 </p>
               </div>
@@ -3980,10 +3985,10 @@ export default function App() {
                 }
               }}
               className="flex items-center space-x-1 space-x-reverse px-2.5 py-2 bg-blue-50 text-blue-900 border border-blue-200 rounded-xl text-xs font-black shadow-3xs hover:bg-blue-100 active:scale-95 transition-all cursor-pointer shrink-0"
-              title="تفعيل وضع الشاشة الكاملة وإخفاء شريط المتصفح العلوي"
+              title={isEn ? "Fullscreen mode" : "تفعيل وضع الشاشة الكاملة وإخفاء شريط المتصفح العلوي"}
             >
               <Maximize className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-              <span className="text-[11px]">ملء الشاشة</span>
+              <span className="text-[11px]">{isEn ? "Fullscreen" : "ملء الشاشة"}</span>
             </button>
 
             {/* 1. Dhikr / Azkar Button (الأذكار) */}
@@ -3999,9 +4004,9 @@ export default function App() {
                 }, 100);
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-black shadow-3xs hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer shrink-0"
-              title="الأذكار والتسبيح"
+              title={isEn ? "Mindfulness & Reflection" : "الأذكار والتسبيح"}
             >
-              <span>الأذكار</span>
+              <span>{isEn ? "Mindfulness" : "الأذكار"}</span>
               <span className="flex items-center justify-center w-5 h-5 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-300 shrink-0">
                 <Sparkles className="w-3 h-3 text-emerald-700" />
               </span>
@@ -4020,7 +4025,7 @@ export default function App() {
               <span className="flex items-center justify-center bg-[#C5221F] text-white text-[10px] font-black w-4.5 h-4.5 rounded-full border border-white shrink-0">
                 {incompleteTasksCount}
               </span>
-              <span>المهام اليومية</span>
+              <span>{isEn ? "Daily Tasks" : "المهام اليومية"}</span>
             </button>
 
             {/* 3. My Diary Thoughts Button (خواطري) */}
@@ -4034,7 +4039,7 @@ export default function App() {
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4] rounded-xl text-xs font-black shadow-3xs hover:bg-[#F9ECC4] active:scale-95 transition-all cursor-pointer shrink-0"
             >
-              <span>خواطري</span>
+              <span>{isEn ? "My Thoughts" : "خواطري"}</span>
               <span className="flex items-center justify-center w-5 h-5 bg-[#F8ECB8] text-[#8C6418] rounded-full border border-[#E1D39D] shrink-0">
                 <PenTool className="w-3 h-3 text-[#8C6418]" />
               </span>
@@ -4050,7 +4055,7 @@ export default function App() {
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#446A5E] hover:bg-[#3B5A50] text-white rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0"
             >
-              <span>جلسة العلاج</span>
+              <span>{isEn ? "Therapy Session" : "جلسة العلاج"}</span>
               <span className="flex items-center justify-center w-5 h-5 bg-[#FCF5DE] border border-[#E9E1C4] rounded-full shrink-0 shadow-3xs animate-pulse">
                 <svg className="w-3 h-3 text-[#A67E2E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
@@ -4069,7 +4074,7 @@ export default function App() {
                   ? 'bg-teal-700 text-white border-teal-800 hover:bg-teal-800'
                   : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
               }`}
-              title="حسابي الشخصي وتزامن البيانات السحابي"
+              title={isEn ? "Personal Account & Sync" : "حسابي الشخصي وتزامن البيانات السحابي"}
             >
               {currentUser ? (
                 <>
@@ -4079,7 +4084,7 @@ export default function App() {
               ) : (
                 <>
                   <User className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>تسجيل الدخول</span>
+                  <span>{isEn ? "Sign In" : "تسجيل الدخول"}</span>
                 </>
               )}
             </button>
@@ -4132,10 +4137,10 @@ export default function App() {
                 type="button"
                 onClick={handleGoBack}
                 className="inline-flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-white hover:bg-[#8B9D83] text-[#3A3A3A] hover:text-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-2xl text-xs font-black shadow-2xs hover:shadow-md transition-all active:scale-95 cursor-pointer group shrink-0"
-                title="الرجوع إلى الشاشة أو الصفحة السابقة"
+                title={isEn ? "Go Back" : "الرجوع إلى الشاشة أو الصفحة السابقة"}
               >
                 <ArrowRight className="w-4 h-4 text-[#8B9D83] group-hover:text-white group-hover:-translate-x-1 transition-transform" />
-                <span>رجوع للخلف</span>
+                <span>{isEn ? "Go Back" : "رجوع للخلف"}</span>
                 {navHistory.length > 0 && (
                   <span className="text-[10px] bg-[#EEF1EB] group-hover:bg-white/20 text-[#556E4F] group-hover:text-white px-1.5 py-0.5 rounded-full font-black">
                     {navHistory.length}
@@ -4145,14 +4150,14 @@ export default function App() {
 
               {/* Current Breadcrumb Location */}
               <div className="text-[11px] font-bold text-gray-500 hidden sm:flex items-center space-x-1.5 space-x-reverse bg-white/80 px-3 py-1 rounded-xl border border-[#E2DCC8]/50 shadow-3xs">
-                <span className="text-gray-400">الصفحة الحالية:</span>
+                <span className="text-gray-400">{isEn ? "Current Page:" : "الصفحة الحالية:"}</span>
                 <span className="text-[#556E4F] font-black">
-                  {editingDiary ? 'تعديل/عرض المذكرة' :
-                   activeTab === 'dashboard' ? 'الرئيسية' :
-                   activeTab === 'diaries' ? `اليوميات والمهام (${activeDiariesSubTab === 'journal' ? 'سجل المذكرات' : activeDiariesSubTab === 'tasks' ? 'المهام' : activeDiariesSubTab === 'gratitude' ? 'الامتنان' : 'CBT'})` :
-                   activeTab === 'advisor' ? 'المستشار النفسي الذكي' :
-                   activeTab === 'analytics' ? 'التقدم والاستشارات' :
-                   activeTab === 'settings' ? 'إعدادات التطبيق' : ''}
+                  {editingDiary ? (isEn ? 'Edit Diary' : 'تعديل/عرض المذكرة') :
+                   activeTab === 'dashboard' ? t.homeTab :
+                   activeTab === 'diaries' ? `${t.diariesTab} (${activeDiariesSubTab === 'journal' ? (isEn ? 'Journal' : 'سجل المذكرات') : activeDiariesSubTab === 'tasks' ? (isEn ? 'Tasks' : 'المهام') : activeDiariesSubTab === 'gratitude' ? (isEn ? 'Gratitude' : 'الامتنان') : 'CBT'})` :
+                   activeTab === 'advisor' ? t.advisorTab :
+                   activeTab === 'analytics' ? t.analyticsTab :
+                   activeTab === 'settings' ? t.settingsTab : ''}
                 </span>
               </div>
             </div>
@@ -4167,7 +4172,7 @@ export default function App() {
         
         {/* Mock Android Notification Widget at the top of the Home Dashboard for simulation */}
         {activeTab === 'dashboard' && (
-          <StaticNotification onAction={handleQuickAction} />
+          <StaticNotification onAction={handleQuickAction} appLanguage={settings.appLanguage} />
         )}
 
         {/* --- TAB VIEW 1: DASHBOARD (HOME) --- */}
@@ -4182,10 +4187,10 @@ export default function App() {
               <div className="space-y-1">
                 <h3 className="text-xs sm:text-sm font-black text-[#4E685B] flex items-center space-x-1.5 space-x-reverse">
                   <span>📅</span>
-                  <span>التقويم الكامل واستعراض الأيام</span>
+                  <span>{t.fullCalendar || (isEn ? 'Full Calendar & Day View' : 'التقويم الكامل واستعراض الأيام')}</span>
                 </h3>
                 <p className="text-[10px] sm:text-xs text-[#5A5A40]/80 leading-relaxed">
-                  اضغط لتصفح كل ما حدث في أي يوم (يومياتي، كتب، أنشطة، واستشارات AI)
+                  {t.fullCalendarSub || (isEn ? 'Tap to browse diaries, books, and AI insights logged on any day' : 'اضغط لتصفح كل ما حدث في أي يوم (يومياتي، كتب، أنشطة، واستشارات AI)')}
                 </p>
               </div>
               <div className="p-3 bg-white border border-[#E2DCC8] rounded-2xl text-rose-500 shadow-xs shrink-0 group-hover:scale-105 transition-transform flex items-center justify-center">
@@ -4199,14 +4204,14 @@ export default function App() {
               <div className="relative z-10 space-y-2">
                 <span className="text-xs font-bold text-[#FEFAE0] tracking-wide flex items-center space-x-1.5 space-x-reverse">
                   <Sparkles className="w-3.5 h-3.5 text-[#FEFAE0]" />
-                  <span>مساحتك النفسية الآمنة والمشفرة بالكامل</span>
+                  <span>{isEn ? 'Your Safe & Fully Encrypted Psychological Space' : 'مساحتك النفسية الآمنة والمشفرة بالكامل'}</span>
                 </span>
                 <h2 className="text-xl font-extrabold tracking-wide flex items-center space-x-2 space-x-reverse">
                   <span>{getArabicGreetingHeader()}</span>
                   <span className="text-2xl">{getArabicGreetingIcon()}</span>
                 </h2>
                 <p className="text-xs text-[#F9F7F2]/90 leading-relaxed max-w-xl">
-                  اليوم هو يوم جديد للنمو والتصالح مع الذات. تذكر أن تدوين أفكارك البسيطة اليوم يتيح لمستشارك النفسي الذكي تقديم أفضل نصائح وتوصيات سلوكية غداً.
+                  {t.greetingDesc || (isEn ? 'Today is a new day for growth and inner harmony. Logging your thoughts helps your AI advisor offer personalized guidance.' : 'اليوم هو يوم جديد للنمو والتصالح مع الذات. تذكر أن تدوين أفكارك البسيطة اليوم يتيح لمستشارك النفسي الذكي تقديم أفضل نصائح وتوصيات سلوكية غداً.')}
                 </p>
               </div>
             </div>
@@ -4215,7 +4220,7 @@ export default function App() {
             <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-3">
               <h3 className="text-xs font-extrabold text-[#5A5A40] flex items-center space-x-2 space-x-reverse">
                 <span className="p-1 bg-[#8B9D83]/10 text-[#8B9D83] rounded-lg">⚡</span>
-                <span>الوصول المباشر لملفات الهاتف ومرفقات اليومية</span>
+                <span>{t.directUploadTitle || (isEn ? 'Direct Access to Mobile Files & Attachments' : 'الوصول المباشر لملفات الهاتف ومرفقات اليومية')}</span>
               </h3>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
@@ -4227,8 +4232,8 @@ export default function App() {
                   <div className="w-11 h-11 rounded-full bg-[#8B9D83]/10 text-[#8B9D83] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                     <PenTool className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-bold text-[#3A3A3A]">كتابة حرة</span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">فتح محرر فارغ</span>
+                  <span className="text-xs font-bold text-[#3A3A3A]">{t.freeWrite || (isEn ? 'Free Write' : 'كتابة حرة')}</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">{t.freeWriteSub || (isEn ? 'Open Editor' : 'فتح محرر فارغ')}</span>
                 </button>
 
                 {/* 2. صورة */}
@@ -4239,8 +4244,8 @@ export default function App() {
                   <div className="w-11 h-11 rounded-full bg-sky-500/10 text-sky-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                     <Camera className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-bold text-[#3A3A3A]">إرفاق صورة</span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">من ألبوم الهاتف</span>
+                  <span className="text-xs font-bold text-[#3A3A3A]">{t.attachPhoto || (isEn ? 'Attach Photo' : 'إرفاق صورة')}</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">{t.attachPhotoSub || (isEn ? 'From Gallery' : 'من ألبوم الهاتف')}</span>
                 </button>
 
                 {/* 3. فيديو */}
@@ -4251,8 +4256,8 @@ export default function App() {
                   <div className="w-11 h-11 rounded-full bg-orange-500/10 text-orange-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                     <Video className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-bold text-[#3A3A3A]">فيديو الهاتف</span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">تحميل مقطع مرئي</span>
+                  <span className="text-xs font-bold text-[#3A3A3A]">{t.phoneVideo || (isEn ? 'Video' : 'فيديو الهاتف')}</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">{t.phoneVideoSub || (isEn ? 'Upload Clip' : 'تحميل مقطع مرئي')}</span>
                 </button>
 
                 {/* 4. تسجيل ريكورد */}
@@ -4263,8 +4268,8 @@ export default function App() {
                   <div className="w-11 h-11 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                     <Mic className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-bold text-[#3A3A3A]">ملف صوتي</span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">تسجيل أو ملف ريكورد</span>
+                  <span className="text-xs font-bold text-[#3A3A3A]">{t.audioFile || (isEn ? 'Audio File' : 'ملف صوتي')}</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">{t.audioFileSub || (isEn ? 'Record Voice' : 'تسجيل أو ملف ريكورد')}</span>
                 </button>
 
                 {/* 5. كتاب / PDF */}
@@ -4275,8 +4280,8 @@ export default function App() {
                   <div className="w-11 h-11 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                     <BookOpen className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-bold text-[#3A3A3A]">كتاب أو وثيقة</span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">تحميل PDF أو نص</span>
+                  <span className="text-xs font-bold text-[#3A3A3A]">{t.bookDoc || (isEn ? 'Document' : 'كتاب أو وثيقة')}</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">{t.bookDocSub || (isEn ? 'Upload PDF' : 'تحميل PDF أو نص')}</span>
                 </button>
 
                 {/* 6. مستشار الذكاء الاصطناعي */}
@@ -4287,8 +4292,8 @@ export default function App() {
                   <div className="w-11 h-11 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                     <Sparkles className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-bold text-[#3A3A3A]">مستشار AI</span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">تحليل وتوصيات فورية</span>
+                  <span className="text-xs font-bold text-[#3A3A3A]">{t.aiAdvisor || (isEn ? 'AI Advisor' : 'مستشار AI')}</span>
+                  <span className="text-[9px] text-gray-400 mt-0.5">{t.aiAdvisorSub || (isEn ? 'Smart Insights' : 'تحليل وتوصيات فورية')}</span>
                 </button>
               </div>
             </div>
@@ -4324,10 +4329,10 @@ export default function App() {
                   </motion.div>
 
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-gray-400 tracking-wider block">سلسلة الالتزام والتدوين</span>
+                    <span className="text-[10px] font-bold text-gray-400 tracking-wider block">{t.streakTitle || (isEn ? 'Streak Tracker' : 'سلسلة الالتزام والتدوين')}</span>
                     <div className="flex items-baseline space-x-1 space-x-reverse">
                       <span className="text-2xl font-extrabold text-[#3A3A3A]">{streakInfo.currentStreak}</span>
-                      <span className="text-xs text-[#5A5A40] font-semibold">يوم متتالي</span>
+                      <span className="text-xs text-[#5A5A40] font-semibold">{t.dayStreak || (isEn ? 'Days' : 'يوم متتالي')}</span>
                     </div>
                   </div>
                 </div>
@@ -4337,14 +4342,14 @@ export default function App() {
                   <p className="text-xs text-[#5A5A40] leading-relaxed font-medium">
                     {streakInfo.hasLoggedToday ? (
                       <span className="text-emerald-700 flex items-center space-x-1 space-x-reverse">
-                        <span>✨ رائع! لقد دوّنت أفكارك اليوم وحافظت على توهج شعلتك. استمر في رعاية صحتك النفسية غداً!</span>
+                        <span>✨ {t.streakEncouragement || (isEn ? 'Great job! You logged your thoughts today and kept your streak alive!' : 'رائع! لقد دوّنت أفكارك اليوم وحافظت على توهج شعلتك. استمر في رعاية صحتك النفسية غداً!')}</span>
                       </span>
                     ) : (
                       <span>
                         {streakInfo.currentStreak === 0 ? (
-                          "اكتب تدوينة اليوم لتفعيل شعلة الالتزام والبدء في رصد أنماطك السلوكية!"
+                          isEn ? "Write a log today to activate your daily streak!" : "اكتب تدوينة اليوم لتفعيل شعلة الالتزام والبدء في رصد أنماطك السلوكية!"
                         ) : (
-                          "تبقى خطوة أخيرة! اكتب تدوينتك اليوم للحفاظ على سلسلة التزامك من الانقطاع."
+                          isEn ? "One final step! Log your thoughts today to keep your streak going." : "تبقى خطوة أخيرة! اكتب تدوينتك اليوم للحفاظ على سلسلة التزامك من الانقطاع."
                         )}
                       </span>
                     )}
@@ -4354,10 +4359,10 @@ export default function App() {
                 {/* Right Side: Quick Stats Badges */}
                 <div className="flex flex-col items-end justify-center shrink-0 border-r md:border-r border-t md:border-t-0 border-[#E2DCC8]/60 pt-3 md:pt-0 pr-4 md:pr-4 pl-4 md:pl-0">
                   <div className="text-right">
-                    <span className="text-[10px] text-gray-400 block font-medium">أطول سلسلة تاريخية:</span>
+                    <span className="text-[10px] text-gray-400 block font-medium">{t.longestStreak || (isEn ? 'Longest Streak:' : 'أطول سلسلة تاريخية:')}</span>
                     <span className="text-sm font-bold text-[#8B9D83] flex items-center justify-end space-x-1 space-x-reverse">
                       <span>🏆</span>
-                      <span>{streakInfo.maxStreak} يوم</span>
+                      <span>{streakInfo.maxStreak} {isEn ? 'Days' : 'يوم'}</span>
                     </span>
                   </div>
                 </div>
@@ -4366,7 +4371,7 @@ export default function App() {
 
               {/* 7-Day Visual Calendar Tracker */}
               <div className="border-t border-[#E2DCC8]/50 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span className="text-[10px] font-bold text-gray-400">متابعة الأسبوع الأخير:</span>
+                <span className="text-[10px] font-bold text-gray-400">{t.recentWeek || (isEn ? 'Recent Week Progress:' : 'متابعة الأسبوع الأخير:')}</span>
                 <div className="flex items-center space-x-1.5 space-x-reverse overflow-x-auto">
                   {getWeekDays().map((day, idx) => {
                     // Check if diaries has an entry on this day
@@ -4396,7 +4401,7 @@ export default function App() {
 
             {/* Day Selector Calendar Matrix */}
             <div className="bg-white border border-[#E2DCC8] rounded-3xl p-4 shadow-xs space-y-3">
-              <span className="text-xs font-bold text-[#5A5A40] block mb-1">اختر اليوم لتسجيل أو عرض الأنشطة:</span>
+              <span className="text-xs font-bold text-[#5A5A40] block mb-1">{t.selectDateTitle || (isEn ? 'Select a date to log or view activities:' : 'اختر اليوم لتسجيل أو عرض الأنشطة:')}</span>
               <div className="grid grid-cols-7 gap-2">
                 {getWeekDays().map((day, idx) => (
                   <button
@@ -4422,7 +4427,7 @@ export default function App() {
                 <div className="space-y-2 flex-grow">
                   <div className="flex items-center space-x-2 space-x-reverse text-xs font-bold text-[#D4A373]">
                     <Sparkles className="w-4 h-4" />
-                    <span>حكمة اليوم لراحة البال والتحفيز النفسي</span>
+                    <span>{t.quoteTitle || (isEn ? 'Daily Wisdom & Psychological Motivation 🌿' : 'حكمة اليوم لراحة البال والتحفيز النفسي')}</span>
                   </div>
                   <p className="text-sm md:text-base font-medium text-[#3A3A3A] leading-relaxed italic">
                     "{dailyQuote.quote}"
@@ -4433,10 +4438,10 @@ export default function App() {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(`"${dailyQuote.quote}" - ${dailyQuote.author}`);
-                      alert('تم نسخ الحكمة إلى الحافظة بنجاح! 🌸');
+                      alert(isEn ? 'Quote copied to clipboard! 🌸' : 'تم نسخ الحكمة إلى الحافظة بنجاح! 🌸');
                     }}
                     className="p-2.5 bg-white border border-[#E2DCC8] hover:border-[#D4A373] text-[#5A5A40] rounded-2xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center justify-center"
-                    title="نسخ الحكمة"
+                    title={isEn ? "Copy quote" : "نسخ الحكمة"}
                   >
                     <Copy className="w-4 h-4" />
                   </button>
@@ -4450,7 +4455,7 @@ export default function App() {
                     ) : (
                       <Sparkles className="w-4 h-4" />
                     )}
-                    <span>إلهام ذكي (AI)</span>
+                    <span>{t.aiInspirationBtn || (isEn ? '(AI) Smart Inspiration 🪄' : 'إلهام ذكي (AI)')}</span>
                   </button>
                 </div>
               </div>
@@ -4458,7 +4463,7 @@ export default function App() {
 
             {/* 📿 Spiritual Dhikr & Salawat Counter Widget */}
             <div id="dhikr-counter">
-              <DhikrCounter className="shadow-sm" />
+              <DhikrCounter className="shadow-sm" appLanguage={settings.appLanguage} />
             </div>
 
             {/* 🎯 Interactive Rapid Mood, Water & Symptoms Tracker Grid */}
@@ -4469,10 +4474,10 @@ export default function App() {
                 <div className="space-y-1">
                   <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
                     <Smile className="w-4 h-4 text-[#8B9D83]" />
-                    <span>مقياس المزاج الرقمي السريع (1 - 10)</span>
+                    <span>{t.moodScaleTitle || (isEn ? 'Quick Digital Mood Scale (1 - 10) 😐' : 'مقياس المزاج الرقمي السريع (1 - 10)')}</span>
                   </h3>
                   <p className="text-[10px] text-gray-500 font-medium">
-                    اسحب المؤشر لتوثيق حالتك المزاجية الحالية في ثانية واحدة؛ يُسجل هذا التقييم كمدخل يومي سريع.
+                    {t.moodScaleDesc || (isEn ? 'Drag slider to log your current mood in one second; saved as daily entry.' : 'اسحب المؤشر لتوثيق حالتك المزاجية الحالية في ثانية واحدة؛ يُسجل هذا التقييم كمدخل يومي سريع.')}
                   </p>
                 </div>
 
@@ -4492,16 +4497,16 @@ export default function App() {
                   {/* Rating indicator */}
                   <div className="text-center space-y-1">
                     <span className="text-xs font-bold text-[#5A5A40] block">
-                      تقييم المزاج: <span className="font-mono text-base font-extrabold text-[#8B9D83]">{activeDiaryForSelectedDate?.fastMoodScore || 5}</span> / 10
+                      {t.moodRating || (isEn ? 'Mood Rating:' : 'تقييم المزاج:')} <span className="font-mono text-base font-extrabold text-[#8B9D83]">{activeDiaryForSelectedDate?.fastMoodScore || 5}</span> / 10
                     </span>
                     <span className="text-xs text-[#D4A373] font-bold block">
                       {(() => {
                         const score = activeDiaryForSelectedDate?.fastMoodScore || 5;
-                        if (score <= 2) return 'ضيق شديد وحزن عميق 😭';
-                        if (score <= 4) return 'قلق وتفكير زائد وأرق 😞';
-                        if (score <= 6) return 'مزاج مستقر وهادئ نسبياً 😐';
-                        if (score <= 8) return 'راضٍ ومطمئن ومستقر النفس 😊';
-                        return 'سعيد جداً وفخور وممتلئ بالنشاط! 🤩';
+                        if (score <= 2) return isEn ? 'Severe distress & sadness 😭' : 'ضيق شديد وحزن عميق 😭';
+                        if (score <= 4) return isEn ? 'Anxious & overthinking 😞' : 'قلق وتفكير زائد وأرق 😞';
+                        if (score <= 6) return isEn ? 'Stable & neutral mood 😐' : 'مزاج مستقر وهادئ نسبياً 😐';
+                        if (score <= 8) return isEn ? 'Content & peaceful 😊' : 'راضٍ ومطمئن ومستقر النفس 😊';
+                        return isEn ? 'Joyful & high energy! 🤩' : 'سعيد جداً وفخور وممتلئ بالنشاط! 🤩';
                       })()}
                     </span>
                   </div>
@@ -4531,10 +4536,10 @@ export default function App() {
                 <div className="space-y-1">
                   <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
                     <span className="text-[#89CFF0] text-base">💧</span>
-                    <span>عداد كؤوس الماء التفاعلي اليومي</span>
+                    <span>{t.waterTrackerTitle || (isEn ? 'Daily Interactive Water Counter 💧' : 'عداد كؤوس الماء التفاعلي اليومي')}</span>
                   </h3>
                   <p className="text-[10px] text-gray-500 font-medium">
-                    اضغط على الكؤوس أدناه لتسجيل كميات المياه المستهلكة؛ شرب المياه يحمي جهازك العصبي من التوتر.
+                    {t.waterTrackerDesc || (isEn ? 'Tap cups below to log consumed water. Hydration calms the nervous system.' : 'اضغط على الكؤوس أدناه لتسجيل كميات المياه المستهلكة؛ شرب المياه يحمي جهازك العصبي من التوتر.')}
                   </p>
                 </div>
 
@@ -4584,7 +4589,7 @@ export default function App() {
                                 ? 'bg-[#89CFF0]/20 border-[#89CFF0] text-[#3399FF] scale-105 shadow-2xs' 
                                 : 'bg-[#F9F7F2]/50 border-[#E2DCC8]/60 hover:border-[#89CFF0] text-gray-300 hover:text-[#89CFF0]/60'
                             }`}
-                            title={`كوب ${idx + 1}`}
+                            title={isEn ? `Cup ${idx + 1}` : `كوب ${idx + 1}`}
                           >
                             <span className="text-xl">🥛</span>
                             <span className="text-[9px] font-bold font-mono mt-0.5">{idx + 1}</span>
@@ -4595,12 +4600,12 @@ export default function App() {
 
                     <div className="text-center sm:text-right">
                       <span className="text-xs font-bold text-[#5A5A40]">
-                        الكمية المستهلكة: <span className="font-mono text-base text-[#3399FF] font-extrabold">{activeDiaryForSelectedDate?.waterCups || 0}</span> من 8 كؤوس ({(activeDiaryForSelectedDate?.waterCups || 0) * 0.25} لتر)
+                        {t.waterConsumed || (isEn ? 'Consumed Amount:' : 'الكمية المستهلكة:')} <span className="font-mono text-base text-[#3399FF] font-extrabold">{activeDiaryForSelectedDate?.waterCups || 0}</span> {isEn ? 'of 8 cups' : 'من 8 كؤوس'} ({(activeDiaryForSelectedDate?.waterCups || 0) * 0.25} {isEn ? 'L' : 'لتر'})
                       </span>
                       <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
                         {(activeDiaryForSelectedDate?.waterCups || 0) >= 8 
-                          ? '🏆 ممتاز! لقد أتممت الارتواء الكامل لليوم!' 
-                          : '💡 تبقّى لك بعض الكؤوس لتصل للمعدل المثالي.'}
+                          ? (isEn ? '🏆 Excellent! Daily hydration target reached!' : '🏆 ممتاز! لقد أتممت الارتواء الكامل لليوم!') 
+                          : (t.waterRemaining || (isEn ? 'A few cups left to reach your goal.' : '💡 تبقّى لك بعض الكؤوس لتصل للمعدل المثالي.'))}
                       </p>
                     </div>
                   </div>
@@ -4615,23 +4620,23 @@ export default function App() {
               <div className="space-y-1">
                 <h3 className="font-bold text-sm text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
                   <Activity className="w-4 h-4 text-red-400" />
-                  <span>الأعراض الجسدية المصاحبة لقلقك اليوم (Physical Symptoms Tracker)</span>
+                  <span>{t.symptomsTitle || (isEn ? 'Physical Symptoms Tracker ⚡' : 'الأعراض الجسدية المصاحبة لقلقك اليوم')}</span>
                 </h3>
                 <p className="text-[10px] text-gray-500 font-medium">
-                  حدد أي من الأعراض الفسيولوجية التالية شعرت بها اليوم لتساعد الذكاء الاصطناعي والمستشار في رصد الروابط النفس-جسدية (Psychosomatic) في تحليلك السنوي.
+                  {t.symptomsDesc || (isEn ? 'Check any symptoms experienced today to track mind-body connections with AI.' : 'حدد أي من الأعراض الفسيولوجية التالية شعرت بها اليوم لتساعد الذكاء الاصطناعي والمستشار في رصد الروابط النفس-جسدية (Psychosomatic) في تحليلك السنوي.')}
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2.5">
                 {[
-                  { id: 'headache', label: 'صداع وضغط رأس 🤯' },
-                  { id: 'heart', label: 'تسارع نبضات القلب 💓' },
-                  { id: 'breath', label: 'ضيق وصعوبة تنفس 🫁' },
-                  { id: 'muscle', label: 'شد عضلي وآلام ظهر 🧘' },
-                  { id: 'fatigue', label: 'خمول وإرهاق عام 🔋' },
-                  { id: 'insomnia', label: 'أرق وقلة جودة النوم 😴' },
-                  { id: 'stomach', label: 'اضطراب وتوتر معدة 🤢' },
-                  { id: 'sweat', label: 'تعرق زائد ورجفة أطراف 🥶' },
+                  { id: 'headache', label: t.symptomHeadache || (isEn ? 'Headache / Pressure 🤯' : 'صداع وضغط رأس 🤯') },
+                  { id: 'heart', label: t.symptomRapidHeart || (isEn ? 'Rapid Heartbeat 💓' : 'تسارع نبضات القلب 💓') },
+                  { id: 'breath', label: t.symptomShortnessBreath || (isEn ? 'Shortness of Breath 🫁' : 'ضيق وصعوبة تنفس 🫁') },
+                  { id: 'muscle', label: t.symptomBackTension || (isEn ? 'Muscle / Back Tension 🧘' : 'شد عضلي وآلام ظهر 🧘') },
+                  { id: 'fatigue', label: t.symptomFatigue || (isEn ? 'Fatigue / Low Energy 🔋' : 'خمول وإرهاق عام 🔋') },
+                  { id: 'insomnia', label: t.symptomPoorSleep || (isEn ? 'Insomnia / Poor Sleep 😴' : 'أرق وقلة جودة النوم 😴') },
+                  { id: 'stomach', label: t.symptomStomach || (isEn ? 'Stomach Upset 🤢' : 'اضطراب وتوتر معدة 🤢') },
+                  { id: 'sweat', label: t.symptomTremors || (isEn ? 'Sweating / Tremors 🥶' : 'تعرق زائد ورجفة أطراف 🥶') },
                 ].map(symptom => {
                   const currentSymptoms = activeDiaryForSelectedDate?.symptomsChecklist || [];
                   const isChecked = currentSymptoms.includes(symptom.id);
@@ -8505,7 +8510,8 @@ export default function App() {
       {settings.floatingBallEnabled && (
         <FloatingBall 
           onAction={handleQuickAction} 
-          isCollapsed={isBottomNavCollapsedOnMobile} 
+          isCollapsed={isBottomNavCollapsedOnMobile}
+          appLanguage={settings.appLanguage}
         />
       )}
 
@@ -8521,14 +8527,14 @@ export default function App() {
             type="button"
             onClick={revealBottomNavTemporarily}
             className="flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-[#4E685B] text-white rounded-full shadow-xl border border-white/40 active:scale-95 transition-all cursor-pointer group"
-            title="انقر لإظهار الشريط السفلي مجدداً لمدة 3 ثوانٍ (يمكن تحريك هذه الأيقونة أفقياً)"
+            title={isEn ? "Tap to show bottom menu (Draggable)" : "انقر لإظهار الشريط السفلي مجدداً لمدة 3 ثوانٍ (يمكن تحريك هذه الأيقونة أفقياً)"}
           >
             <Compass className="w-4 h-4 text-[#FEFAE0] animate-pulse shrink-0" />
             <span className="text-[11px] font-black tracking-tight">
-              {activeTab === 'dashboard' ? 'الرئيسية' :
-               activeTab === 'diaries' ? 'اليوميات والمهام' :
-               activeTab === 'advisor' ? 'المستشار الذكي' :
-               activeTab === 'analytics' ? 'التقدم والاستشارات' : 'الإعدادات'}
+              {activeTab === 'dashboard' ? t.homeTab :
+               activeTab === 'diaries' ? t.diariesTab :
+               activeTab === 'advisor' ? t.advisorTab :
+               activeTab === 'analytics' ? t.analyticsTab : t.settingsTab}
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping"></span>
             <ChevronUp className="w-3.5 h-3.5 text-white/80 group-hover:-translate-y-0.5 transition-transform shrink-0" />
@@ -8636,6 +8642,7 @@ export default function App() {
         onClose={() => setShowTherapistModal(false)}
         diaries={diaries}
         userApiKey={settings.userApiKey}
+        appLanguage={settings.appLanguage}
       />
 
       {/* ⭐ Rating Modal Window */}
@@ -8733,6 +8740,7 @@ export default function App() {
         isOpen={showSmartRemindersModal}
         onClose={() => setShowSmartRemindersModal(false)}
         reminders={settings.reminders || []}
+        appLanguage={settings.appLanguage}
         onSaveReminders={(updatedReminders) => {
           setSettings(prev => ({ ...prev, reminders: updatedReminders }));
         }}
@@ -8748,7 +8756,7 @@ export default function App() {
               </span>
               <div>
                 <span className="text-[10px] font-black bg-[#D4A373] text-white px-2.5 py-0.5 rounded-full">
-                  تنبيه ذكي الآن ({triggeredReminder.time})
+                  {isEn ? `Smart Reminder (${triggeredReminder.time})` : `تنبيه ذكي الآن (${triggeredReminder.time})`}
                 </span>
                 <h3 className="text-base font-extrabold text-[#2C3E35] mt-1">
                   {triggeredReminder.title}
@@ -8760,7 +8768,7 @@ export default function App() {
               <div className="bg-[#FCF5DE] border border-[#E9E1C4] p-3.5 rounded-2xl text-xs text-[#8C661D] font-bold space-y-1">
                 <div className="flex items-center gap-1 text-[#A67E2E]">
                   <Sparkles className="w-4 h-4" />
-                  <span>رسالة تحفيزية لك:</span>
+                  <span>{isEn ? 'Motivational note for you:' : 'رسالة تحفيزية لك:'}</span>
                 </div>
                 <p className="leading-relaxed italic text-sm">
                   "{triggeredReminder.motivationalNote}"
@@ -8777,13 +8785,13 @@ export default function App() {
                 }}
                 className="flex-1 py-2.5 bg-[#4E685B] text-white font-bold text-xs rounded-xl hover:bg-[#3F5449] transition-all cursor-pointer shadow-xs text-center"
               >
-                انتقل للخواطر واليوميات ✍️
+                {isEn ? 'Go to Journal ✍️' : 'انتقل للخواطر واليوميات ✍️'}
               </button>
               <button
                 onClick={() => setTriggeredReminder(null)}
                 className="px-4 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-300 transition-all cursor-pointer"
               >
-                حسناً، شكراً
+                {isEn ? 'OK, Thanks' : 'حسناً، شكراً'}
               </button>
             </div>
           </div>

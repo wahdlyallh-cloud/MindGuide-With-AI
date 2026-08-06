@@ -7,9 +7,11 @@ interface TherapistReportModalProps {
   onClose: () => void;
   diaries: DiaryEntry[];
   userApiKey?: string;
+  appLanguage?: string;
 }
 
-export default function TherapistReportModal({ isOpen, onClose, diaries, userApiKey }: TherapistReportModalProps) {
+export default function TherapistReportModal({ isOpen, onClose, diaries, userApiKey, appLanguage = 'ar' }: TherapistReportModalProps) {
+  const isEn = appLanguage !== 'ar' && appLanguage !== 'ur';
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 14); // default 2 weeks ago
@@ -199,8 +201,8 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
               <FileText className="w-6 h-6 text-[#FEFAE0]" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">🎓 تجهيز تقرير جلسة العلاج</h2>
-              <p className="text-xs text-[#E2DCC8]">توليد تقرير احترافي شامل لمعالجك النفسي في ثوانٍ</p>
+              <h2 className="text-xl font-bold">{isEn ? '🎓 Prepare Therapy Session Report' : '🎓 تجهيز تقرير جلسة العلاج'}</h2>
+              <p className="text-xs text-[#E2DCC8]">{isEn ? 'Generate a comprehensive report for your therapist in seconds' : 'توليد تقرير احترافي شامل لمعالجك النفسي في ثوانٍ'}</p>
             </div>
           </div>
           <button
@@ -219,7 +221,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
             <div>
               <label className="block text-xs font-bold text-[#5A5A40] mb-1.5 flex items-center space-x-1 space-x-reverse">
                 <Calendar className="w-3.5 h-3.5 text-[#8B9D83]" />
-                <span>تاريخ البدء:</span>
+                <span>{isEn ? 'Start Date:' : 'تاريخ البدء:'}</span>
               </label>
               <input
                 type="date"
@@ -231,7 +233,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
             <div>
               <label className="block text-xs font-bold text-[#5A5A40] mb-1.5 flex items-center space-x-1 space-x-reverse">
                 <Calendar className="w-3.5 h-3.5 text-[#8B9D83]" />
-                <span>تاريخ الانتهاء:</span>
+                <span>{isEn ? 'End Date:' : 'تاريخ الانتهاء:'}</span>
               </label>
               <input
                 type="date"
@@ -245,16 +247,16 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
           {/* Local Range Statistics Info */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 bg-[#F0EDE4] rounded-xl border border-[#E2DCC8] text-center">
-              <span className="block text-[10px] font-bold text-gray-500">عدد اليوميات</span>
+              <span className="block text-[10px] font-bold text-gray-500">{isEn ? 'Total Entries' : 'عدد اليوميات'}</span>
               <span className="text-lg font-extrabold text-[#5A5A40]">{totalEntries}</span>
             </div>
             <div className="p-3 bg-[#CCD5AE]/30 rounded-xl border border-[#CCD5AE]/60 text-center">
-              <span className="block text-[10px] font-bold text-gray-500">متوسط ساعات النوم</span>
-              <span className="text-lg font-extrabold text-[#8B9D83]">{averageSleep} س</span>
+              <span className="block text-[10px] font-bold text-gray-500">{isEn ? 'Avg Sleep' : 'متوسط ساعات النوم'}</span>
+              <span className="text-lg font-extrabold text-[#8B9D83]">{averageSleep} {isEn ? 'h' : 'س'}</span>
             </div>
             <div className="p-3 bg-[#FAEDCD]/40 rounded-xl border border-[#E2DCC8] text-center">
-              <span className="block text-[10px] font-bold text-gray-500">التمارين الرياضية</span>
-              <span className="text-lg font-extrabold text-[#D4A373]">{totalSports} د</span>
+              <span className="block text-[10px] font-bold text-gray-500">{isEn ? 'Sports Time' : 'التمارين الرياضية'}</span>
+              <span className="text-lg font-extrabold text-[#D4A373]">{totalSports} {isEn ? 'm' : 'د'}</span>
             </div>
           </div>
 
@@ -262,7 +264,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
           {filteredDiaries.length === 0 ? (
             <div className="bg-[#FAEDCD]/50 border border-[#D4A373]/30 rounded-xl p-4 text-center text-[#D4A373] text-sm flex items-center justify-center space-x-2 space-x-reverse">
               <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>لا توجد مذكرات مدونة في الفترة المحددة. يرجى تدوين مذكرات أو تعديل نطاق التاريخ أولاً!</span>
+              <span>{isEn ? 'No entries found in selected period. Please log diaries or adjust date range!' : 'لا توجد مذكرات مدونة في الفترة المحددة. يرجى تدوين مذكرات أو تعديل نطاق التاريخ أولاً!'}</span>
             </div>
           ) : (
             !reportText && !loading && (
@@ -271,7 +273,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
                 className="w-full py-3.5 px-4 bg-gradient-to-tr from-[#5A5A40] to-[#8B9D83] hover:from-[#5A5A40]/90 hover:to-[#8B9D83]/90 text-white rounded-2xl font-bold text-sm shadow-md transition-colors flex items-center justify-center space-x-2 space-x-reverse cursor-pointer group"
               >
                 <Brain className="w-4 h-4 animate-pulse group-hover:scale-110 transition-transform text-[#FEFAE0]" />
-                <span>تحليل البيانات وتوليد التقرير الطبي بالذكاء الاصطناعي 🧠</span>
+                <span>{isEn ? 'Analyze Data & Generate AI Medical Report 🧠' : 'تحليل البيانات وتوليد التقرير الطبي بالذكاء الاصطناعي 🧠'}</span>
               </button>
             )
           )}
@@ -284,8 +286,8 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
                 <div className="absolute inset-0 rounded-full border-4 border-[#8B9D83] border-t-transparent animate-spin"></div>
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-[#5A5A40]">جاري قراءة وتحليل مذكراتك...</h4>
-                <p className="text-xs text-gray-500">يقوم الذكاء الاصطناعي بفحص الحالة المزاجية، الأنشطة، والأنماط النفسية وصياغة تقرير عيادي.</p>
+                <h4 className="font-bold text-[#5A5A40]">{isEn ? 'Reading and analyzing your entries...' : 'جاري قراءة وتحليل مذكراتك...'}</h4>
+                <p className="text-xs text-gray-500">{isEn ? 'AI is evaluating mood, activities, and psychological patterns to compose a clinical report.' : 'يقوم الذكاء الاصطناعي بفحص الحالة المزاجية، الأنشطة، والأنماط النفسية وصياغة تقرير عيادي.'}</p>
               </div>
             </div>
           )}
@@ -296,11 +298,11 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
               <div className="bg-[#F0EDE4] p-3 px-4 border-b border-[#E2DCC8] flex items-center justify-between">
                 <div className="flex items-center space-x-2 space-x-reverse text-xs font-bold text-[#5A5A40]">
                   <Sparkles className="w-4 h-4 text-[#D4A373]" />
-                  <span>التقرير النفسي المولد بواسطة {reportSource === 'gemini' ? 'Gemini 3.5-Flash 🚀' : 'المستشار المحلي 🖥️'}</span>
+                  <span>{isEn ? 'Report generated by ' : 'التقرير النفسي المولد بواسطة '}{reportSource === 'gemini' ? 'Gemini 3.5-Flash 🚀' : (isEn ? 'Local Advisor 🖥️' : 'المستشار المحلي 🖥️')}</span>
                 </div>
                 {reportSource !== 'gemini' && (
                   <span className="text-[10px] bg-[#D4A373]/10 text-[#D4A373] border border-[#D4A373]/20 px-2 py-0.5 rounded-full font-semibold">
-                    نسخة تجريبية
+                    {isEn ? 'Demo Version' : 'نسخة تجريبية'}
                   </span>
                 )}
               </div>
@@ -320,7 +322,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
               className="px-4 py-2 text-xs font-medium text-[#8B9D83] hover:bg-white/50 rounded-lg transition-colors cursor-pointer"
               disabled={loading}
             >
-              إعادة توليد 🔄
+              {isEn ? 'Regenerate 🔄' : 'إعادة توليد 🔄'}
             </button>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -329,7 +331,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
                 className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-[#F9F7F2] text-gray-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
               >
                 {copySuccess ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#5A5A40]" />}
-                <span>{copySuccess ? 'تم النسخ!' : 'نسخ النص'}</span>
+                <span>{copySuccess ? (isEn ? 'Copied!' : 'تم النسخ!') : (isEn ? 'Copy Text' : 'نسخ النص')}</span>
               </button>
 
               <button
@@ -347,7 +349,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
                 className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-white border border-[#E2DCC8] hover:bg-[#F9F7F2] text-gray-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 text-[#5A5A40]" />
-                <span>ملف نصي (UTF-8)</span>
+                <span>{isEn ? 'Text File (UTF-8)' : 'ملف نصي (UTF-8)'}</span>
               </button>
 
               <button
@@ -356,7 +358,7 @@ export default function TherapistReportModal({ isOpen, onClose, diaries, userApi
                 className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#5A5A40] hover:bg-[#5A5A40]/90 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5 text-white" />
-                <span>طباعة التقرير</span>
+                <span>{isEn ? 'Print Report' : 'طباعة التقرير'}</span>
               </button>
             </div>
           </div>

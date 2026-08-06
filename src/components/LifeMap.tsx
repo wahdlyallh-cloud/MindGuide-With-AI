@@ -1,13 +1,18 @@
 import React from 'react';
 import { Calendar, Clock, CheckCircle, Heart, Pill, Activity, Moon, BookOpen, Brain, Sparkles, Mic, FileText, Image as ImageIcon } from 'lucide-react';
 import { DiaryEntry, LifeMapEvent } from '../types';
+import { AppLanguage, getTranslation } from '../lib/languages';
 
 interface LifeMapProps {
   selectedDate: string; // ISO split Date 'YYYY-MM-DD'
   diaries: DiaryEntry[];
+  appLanguage?: AppLanguage;
 }
 
-export default function LifeMap({ selectedDate, diaries }: LifeMapProps) {
+export default function LifeMap({ selectedDate, diaries, appLanguage = 'ar' }: LifeMapProps) {
+  const t = getTranslation(appLanguage);
+  const isEn = appLanguage !== 'ar' && appLanguage !== 'ur';
+
   // Find diary entry for the selected date
   const diaryToday = diaries.find(d => d.createdAt && (typeof d.createdAt === 'string' ? d.createdAt.split('T')[0] : new Date(d.createdAt).toISOString().split('T')[0]) === selectedDate);
 

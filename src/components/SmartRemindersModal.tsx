@@ -10,16 +10,17 @@ interface SmartRemindersModalProps {
   onClose: () => void;
   reminders: AppReminder[];
   onSaveReminders: (updatedReminders: AppReminder[]) => void;
+  appLanguage?: string;
 }
 
 const ARABIC_DAYS = [
-  { id: 0, short: 'أحد', full: 'الأحد' },
-  { id: 1, short: 'إثنين', full: 'الإثنين' },
-  { id: 2, short: 'ثلاثاء', full: 'الثلاثاء' },
-  { id: 3, short: 'أربعاء', full: 'الأربعاء' },
-  { id: 4, short: 'خميس', full: 'الخميس' },
-  { id: 5, short: 'جمعة', full: 'الجمعة' },
-  { id: 6, short: 'سبت', full: 'السبت' },
+  { id: 0, short: 'أحد', full: 'الأحد', shortEn: 'Sun', fullEn: 'Sunday' },
+  { id: 1, short: 'إثنين', full: 'الإثنين', shortEn: 'Mon', fullEn: 'Monday' },
+  { id: 2, short: 'ثلاثاء', full: 'الثلاثاء', shortEn: 'Tue', fullEn: 'Tuesday' },
+  { id: 3, short: 'أربعاء', full: 'الأربعاء', shortEn: 'Wed', fullEn: 'Wednesday' },
+  { id: 4, short: 'خميس', full: 'الخميس', shortEn: 'Thu', fullEn: 'Thursday' },
+  { id: 5, short: 'جمعة', full: 'الجمعة', shortEn: 'Fri', fullEn: 'Friday' },
+  { id: 6, short: 'سبت', full: 'السبت', shortEn: 'Sat', fullEn: 'Saturday' },
 ];
 
 const PRESET_MOTIVATIONAL_NOTES = [
@@ -47,7 +48,9 @@ export const SmartRemindersModal: React.FC<SmartRemindersModalProps> = ({
   onClose,
   reminders = [],
   onSaveReminders,
+  appLanguage = 'ar'
 }) => {
+  const isEn = appLanguage !== 'ar' && appLanguage !== 'ur';
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -187,11 +190,11 @@ export const SmartRemindersModal: React.FC<SmartRemindersModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-black text-[#2C3E35] flex items-center gap-2">
-                <span>نظام التذكيرات الذكية والتنبيهات</span>
-                <span className="text-xs bg-[#D4A373] text-white px-2 py-0.5 rounded-full font-bold">ذكاء سلوكي</span>
+                <span>{isEn ? 'Smart Reminders & Alerts System' : 'نظام التذكيرات الذكية والتنبيهات'}</span>
+                <span className="text-xs bg-[#D4A373] text-white px-2 py-0.5 rounded-full font-bold">{isEn ? 'Behavioral AI' : 'ذكاء سلوكي'}</span>
               </h2>
               <p className="text-[11px] text-[#556E4F] font-bold">
-                قم بضبط تكرار التذكير بأوقاتك المفضلة وأضف عبارات تحفيزية تلهمك عند كل تنبيه
+                {isEn ? 'Set reminder frequency and add motivational notes to inspire you on each alert' : 'قم بضبط تكرار التذكير بأوقاتك المفضلة وأضف عبارات تحفيزية تلهمك عند كل تنبيه'}
               </p>
             </div>
           </div>
@@ -199,11 +202,11 @@ export const SmartRemindersModal: React.FC<SmartRemindersModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={playTestChime}
-              title="تجربة صوت التنبيه"
+              title={isEn ? "Test Alert Sound" : "تجربة صوت التنبيه"}
               className="p-2 bg-white text-[#4E685B] border border-[#DCE4D8] rounded-xl hover:bg-[#F2F5F0] transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
             >
               <Volume2 className="w-4 h-4 text-[#D4A373]" />
-              <span className="hidden sm:inline">تجربة الصوت</span>
+              <span className="hidden sm:inline">{isEn ? "Test Sound" : "تجربة الصوت"}</span>
             </button>
             <button
               onClick={onClose}
