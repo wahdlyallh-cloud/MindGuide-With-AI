@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Eye, EyeOff, Globe } from 'lucide-react';
+import { AppLanguage, getLanguageInfo, getTranslation } from '../lib/languages';
 
 interface GeminiKeyModalProps {
   isOpen: boolean;
@@ -7,15 +8,19 @@ interface GeminiKeyModalProps {
   apiKey: string;
   onSave: (key: string) => void;
   onClear: () => void;
-  isEn: boolean;
+  appLanguage?: AppLanguage;
+  isEn?: boolean;
 }
 
-export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClear, isEn }: GeminiKeyModalProps) {
+export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClear, appLanguage = 'ar' }: GeminiKeyModalProps) {
   const [tempKey, setTempKey] = useState(apiKey || '');
   const [showPassword, setShowPassword] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validationSuccess, setValidationSuccess] = useState<string | null>(null);
+
+  const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
 
   if (!isOpen) return null;
 
@@ -40,17 +45,17 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
 
       const data = await response.json();
       if (data.success) {
-        setValidationSuccess(isEn ? "API Key verified successfully!" : "تم التحقق من مفتاح الـ API بنجاح وهو يعمل بشكل ممتاز! 🎉");
+        setValidationSuccess(t.apiKeyVerified);
         setTimeout(() => {
           onSave(trimmedKey);
           onClose();
           setValidationSuccess(null);
         }, 1500);
       } else {
-        setValidationError(data.error || (isEn ? "Failed to verify API Key." : "فشل التحقق من المفتاح. يرجى التأكد من صحته ومحاولة المحاولة مجدداً."));
+        setValidationError(data.error || t.apiKeyVerifyFailed);
       }
     } catch (e: any) {
-      setValidationError(isEn ? "Connection error during validation." : "حدث خطأ أثناء الاتصال بالخادم للتحقق.");
+      setValidationError(t.apiKeyVerifyFailed);
     } finally {
       setIsValidating(false);
     }
@@ -65,16 +70,17 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-55 font-sans" dir={isEn ? "ltr" : "rtl"}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-55 font-sans" dir={langInfo.dir}>
       <div className="bg-[#FAF8F5] border border-[#E2DCC8] rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl transition-all duration-300 transform scale-100">
         
         {/* Header */}
         <div className="p-6 pb-2 flex items-center justify-between">
           <h4 className="font-black text-[#2B3E50] text-base md:text-lg flex items-center gap-2">
             <span>🔑</span>
-            <span>{isEn ? "Gemini API Key Settings" : "إعدادات مفتاح API الخاص بك 🔑"}</span>
+            <span>{t.geminiKeyTitle} 🔑</span>
           </h4>
           <button 
+            type="button"
             onClick={onClose}
             className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer"
           >
@@ -85,23 +91,19 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
         {/* Content Body */}
         <div className="p-6 space-y-4">
           <p className="text-xs text-gray-600 font-extrabold leading-relaxed text-justify">
-            {isEn 
-              ? "This section allows you to use your personal API key from Google Gemini for the full autonomous and integrated execution of the application."
-              : "يتيح لك هذا القسم استخدام مفتاح الـ API الخاص بك من Google Gemini للتشغيل الكامل والتكامل للتطبيق."}
+            {t.geminiKeyDesc}
           </p>
 
           <div className="bg-amber-50/10 border border-amber-200/50 rounded-2xl p-4">
             <p className="text-[10px] text-amber-800/80 font-bold leading-relaxed text-justify">
-              {isEn
-                ? "Note: This key is stored securely and 100% locally on your device only. It is never transmitted or shared with any third party except official Google servers to process your smart requests."
-                : "ملاحظة: يتم تخزين هذا المفتاح محلياً وبشكل آمن تماماً على جهازك الخاص فقط، ولا يتم إرساله أو مشاركته مع أي طرف خارجي سوى خوادم Google الرسمية لمعالجة طلباتك الذكية."}
+              {t.geminiKeyNotice}
             </p>
           </div>
 
           {/* Form Field with Label on Border */}
           <div className="relative mt-4">
-            <label className="absolute -top-2.5 right-4 px-2 bg-[#FAF8F5] text-[10px] font-black text-gray-500">
-              {isEn ? "Gemini API Key" : "مفتاح Gemini API"}
+            <label className={`absolute -top-2.5 ${langInfo.dir === 'rtl' ? 'right-4' : 'left-4'} px-2 bg-[#FAF8F5] text-[10px] font-black text-gray-500`}>
+              {t.geminiKeyTitle}
             </label>
             <div className="flex items-center bg-white border-2 border-[#E2DCC8] rounded-2xl px-4 py-3 shadow-3xs focus-within:border-[#8B9D83] transition-all">
               <input
@@ -109,7 +111,7 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
                 value={tempKey}
                 disabled={isValidating}
                 onChange={(e) => setTempKey(e.target.value)}
-                placeholder={isEn ? "Enter Gemini API Key (AIzaSy...)" : "أدخل مفتاح Gemini API Key (مثال: AIzaSy...)"}
+                placeholder={t.geminiKeyPlaceholder}
                 className="w-full bg-transparent text-xs text-[#2B3E50] font-mono focus:outline-none placeholder-gray-400 font-bold disabled:opacity-50"
               />
               <button
@@ -127,7 +129,7 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
             <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-xs font-bold text-red-700 space-y-1">
               <p className="flex items-center gap-1">
                 <span>⚠️</span>
-                <span>{isEn ? "Verification Failed:" : "فشل التحقق من المفتاح:"}</span>
+                <span>{t.apiKeyVerifyFailed}</span>
               </p>
               <p className="font-medium text-[11px] opacity-90 leading-relaxed">{validationError}</p>
             </div>
@@ -148,20 +150,22 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
             className="flex items-center justify-center gap-2 bg-[#F5EFE6] border border-[#E2DCC8] hover:bg-[#EADFC9] text-[#5A4F41] font-extrabold text-xs py-3.5 rounded-2xl transition-all cursor-pointer shadow-3xs"
           >
             <Globe className="w-4 h-4 text-sky-600 animate-pulse" />
-            <span>{isEn ? "Get a free key from Google AI Studio" : "احصل على مفتاح مجاني من Google AI Studio"}</span>
+            <span>{t.getFreeKeyLink}</span>
           </a>
 
           {/* Action Buttons Row */}
           <div className="flex items-center gap-3 pt-2">
             <button
+              type="button"
               onClick={handleClear}
               disabled={isValidating}
               className="flex-1 py-3 bg-white hover:bg-red-50 border-2 border-red-100 hover:border-red-200 text-red-600 font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-3xs disabled:opacity-50"
             >
               <span>🗑️</span>
-              <span>{isEn ? "Delete Key" : "مسح المفتاح"}</span>
+              <span>{t.deleteKeyBtn}</span>
             </button>
             <button
+              type="button"
               onClick={handleSave}
               disabled={isValidating}
               className="flex-1 py-3 bg-[#3F5449] hover:bg-[#2C3E50] text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs hover:shadow-md disabled:opacity-75"
@@ -169,12 +173,12 @@ export default function GeminiKeyModal({ isOpen, onClose, apiKey, onSave, onClea
               {isValidating ? (
                 <>
                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>{isEn ? "Verifying..." : "جاري التحقق..."}</span>
+                  <span>{t.verifyingKey}</span>
                 </>
               ) : (
                 <>
                   <span>💾</span>
-                  <span>{isEn ? "Save Key" : "حفظ المفتاح"}</span>
+                  <span>{t.saveKeyBtn}</span>
                 </>
               )}
             </button>

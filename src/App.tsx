@@ -3671,6 +3671,7 @@ export default function App() {
       <PINLock 
         correctPin={settings.appPinCode || '1234'} 
         biometricCredentialId={settings.biometricCredentialId}
+        appLanguage={settings.appLanguage}
         onUnlocked={() => setSettings(prev => ({ ...prev, isAppLocked: false }))} 
         onQuickAction={(actionType) => {
           setSettings(prev => ({ ...prev, isAppLocked: false }));
@@ -8653,14 +8654,14 @@ export default function App() {
       <RatingModal
         isOpen={showRatingModal}
         onClose={() => setShowRatingModal(false)}
-        isEn={isEn}
+        appLanguage={settings.appLanguage}
       />
 
       {/* ✉️ Contact Owner Modal Window */}
       <ContactOwnerModal
         isOpen={showContactModal}
         onClose={() => setShowContactModal(false)}
-        isEn={isEn}
+        appLanguage={settings.appLanguage}
       />
 
       {/* 🔑 Gemini API Key Modal Window */}
@@ -8670,14 +8671,14 @@ export default function App() {
         apiKey={settings.userApiKey || ''}
         onSave={(key) => setSettings(prev => ({ ...prev, userApiKey: key }))}
         onClear={() => setSettings(prev => ({ ...prev, userApiKey: '' }))}
-        isEn={isEn}
+        appLanguage={settings.appLanguage}
       />
 
       {/* ☁️ Backup & Sync Modal Window */}
       <BackupSyncModal
         isOpen={showBackupSyncModal}
         onClose={() => setShowBackupSyncModal(false)}
-        isEn={isEn}
+        appLanguage={settings.appLanguage}
         isCloudSyncing={isCloudSyncing}
         cloudSyncMessage={cloudSyncMessage}
         onCloudSync={() => performCloudSync()}
@@ -8712,13 +8713,14 @@ export default function App() {
         onManualRestore={handleCloudRestore}
         isSyncing={isCloudSyncing}
         syncMessage={cloudSyncMessage}
+        appLanguage={settings.appLanguage}
       />
 
       {/* 📖 WriteDiary (يومياتي) Importer Modal */}
       <WriteDiaryImporter
         isOpen={showWriteDiaryImporter}
         onClose={() => setShowWriteDiaryImporter(false)}
-        isEn={isEn}
+        appLanguage={settings.appLanguage}
         onImportCompleted={handleWriteDiaryImportCompleted}
       />
 
@@ -8737,7 +8739,6 @@ export default function App() {
           localStorage.setItem('yawmiyati_language_chosen', 'true');
           localStorage.setItem('app_language', lang);
         }}
-        isEn={isEn}
         isFirstTime={isFirstTimeLangSelect}
       />
 

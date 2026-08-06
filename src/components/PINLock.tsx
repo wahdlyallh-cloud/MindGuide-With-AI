@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, ShieldCheck, ShieldAlert, Fingerprint, Keyboard, ArrowRight, ScanFace, CheckCircle2, XCircle, Camera } from 'lucide-react';
+import { Lock, ShieldCheck, ShieldAlert, Fingerprint, Keyboard, ArrowRight, ScanFace, CheckCircle2, XCircle } from 'lucide-react';
 import StaticNotification from './StaticNotification';
 import DhikrCounter from './DhikrCounter';
 import { verifyBiometrics } from '../lib/biometrics';
+import { AppLanguage } from '../types';
+import { getTranslation, getLanguageInfo } from '../lib/languages';
 
 interface PINLockProps {
   correctPin: string;
   biometricCredentialId?: string;
+  appLanguage?: AppLanguage;
   onUnlocked: () => void;
   onQuickAction?: (actionType: 'new_note' | 'voice' | 'mood' | 'ai' | 'task' | 'photo' | 'notes') => void;
 }
 
-export default function PINLock({ correctPin, biometricCredentialId, onUnlocked, onQuickAction }: PINLockProps) {
+export default function PINLock({ correctPin, biometricCredentialId, appLanguage = 'ar', onUnlocked, onQuickAction }: PINLockProps) {
+  const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
+
   const [viewMode, setViewMode] = useState<'lockscreen' | 'pinpad'>('lockscreen');
   const [pin, setPin] = useState<string>('');
   const [error, setError] = useState<boolean>(false);
@@ -43,13 +49,18 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
       setTimeString(`${hours}:${minutes}`);
 
       const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
-      setDateString(now.toLocaleDateString('ar-EG', options));
+      const localeMap: Record<string, string> = {
+        ar: 'ar-EG', en: 'en-US', fr: 'fr-FR', de: 'de-DE', es: 'es-ES',
+        tr: 'tr-TR', ur: 'ur-PK', ru: 'ru-RU', zh: 'zh-CN', ja: 'ja-JP'
+      };
+      const locale = localeMap[appLanguage] || 'ar-EG';
+      setDateString(now.toLocaleDateString(locale, options));
     };
 
     updateTime();
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [appLanguage]);
 
   const executeUnlock = (action: 'new_note' | 'voice' | 'mood' | 'ai' | 'task' | 'photo' | 'notes' | null) => {
     setSuccess(true);
@@ -115,12 +126,12 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
             console.warn('Camera permission or availability issue:', err);
             setCameraDenied(true);
             setBiometricStatus('failed');
-            setBiometricErrorMessage('تتعذر رؤية الوجه، يرجى السماح باستخدام الكاميرا الأمامية لمسح الوجه أو استخدام رمز PIN.');
+            setBiometricErrorMessage(t.cameraDeniedError);
           });
       } else {
         setCameraDenied(true);
         setBiometricStatus('failed');
-        setBiometricErrorMessage('الكاميرا الأمامية غير متوفرة في هذا المتصفح.');
+        setBiometricErrorMessage(t.cameraDeniedError);
       }
     } else {
       if (cameraStream) {
@@ -135,7 +146,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
         streamRef.getTracks().forEach(t => t.stop());
       }
     };
-  }, [showBiometricModal, biometricType]);
+  }, [showBiometricModal, biometricType, t.cameraDeniedError]);
 
   // Real Hardware Biometric Trigger (Fingerprint & Face ID)
   const handleTriggerBiometrics = async (type: 'fingerprint' | 'faceid' = 'fingerprint', actionToPerform: 'new_note' | 'voice' | 'mood' | 'ai' | 'task' | 'photo' | 'notes' | null = null) => {
@@ -167,7 +178,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
         // If failed or cancelled, show error modal so user can retry or use PIN
         setShowBiometricModal(true);
         setBiometricStatus('failed');
-        setBiometricErrorMessage(res.error || 'فشل التحقق من البصمة أو تم إلغاؤها.');
+        setBiometricErrorMessage(res.error || t.biometricFailedTitle);
       }
     } else {
       // Face ID Camera mode
@@ -184,14 +195,14 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-[#5A5A40] via-[#8B9D83] to-[#FEFAE0] text-[#3A3A3A] z-50 flex flex-col justify-between p-4 sm:p-6 font-sans select-none overflow-y-auto" dir="rtl">
+    <div className="fixed inset-0 bg-gradient-to-b from-[#5A5A40] via-[#8B9D83] to-[#FEFAE0] text-[#3A3A3A] z-50 flex flex-col justify-between p-4 sm:p-6 font-sans select-none overflow-y-auto" dir={langInfo.dir}>
       {/* Simulated Device Status Bar */}
       <div className="w-full flex items-center justify-between text-white/90 text-xs px-3 pt-2">
         <span className="font-semibold font-mono tracking-wider">{timeString}</span>
         <div className="flex items-center space-x-1.5 space-x-reverse">
           <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-md font-bold flex items-center space-x-1 space-x-reverse">
             <span>🔒</span>
-            <span>مؤمن بالبصمة و PIN</span>
+            <span>{t.lockscreenSecured}</span>
           </span>
         </div>
       </div>
@@ -214,13 +225,14 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
           {/* Spiritual Dhikr & Salawat Counter Card */}
           <div className="max-w-md w-full mx-auto px-1">
-            <DhikrCounter />
+            <DhikrCounter appLanguage={appLanguage} />
           </div>
 
           {/* Centered Notification Card (Direct Action Trigger with Biometric Lock) */}
           <div className="max-w-md w-full mx-auto px-1">
             <div className="transform scale-[0.98] sm:scale-100 hover:scale-[1.01] transition-transform duration-200">
               <StaticNotification 
+                appLanguage={appLanguage}
                 onAction={handleNotificationActionClick} 
                 onBodyClick={() => handleNotificationActionClick('notes')} 
               />
@@ -232,29 +244,32 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
             <div className="flex items-center space-x-3 space-x-reverse flex-wrap justify-center gap-y-2">
               {/* Unlock PIN Pad Button */}
               <button
+                type="button"
                 onClick={() => setViewMode('pinpad')}
                 className="flex items-center space-x-2 space-x-reverse px-4 py-2.5 bg-white/25 hover:bg-white/35 active:scale-95 text-white rounded-2xl border border-white/30 text-xs font-black shadow-md cursor-pointer transition-all"
               >
                 <Keyboard className="w-4 h-4 text-amber-300" />
-                <span>رمز PIN 🔑</span>
+                <span>{t.pinCodeBtn}</span>
               </button>
 
               {/* Fingerprint Unlock Button */}
               <button
+                type="button"
                 onClick={() => handleTriggerBiometrics('fingerprint')}
                 className="flex items-center space-x-2 space-x-reverse px-4 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-2xl text-xs font-black shadow-lg cursor-pointer transition-all"
               >
                 <Fingerprint className="w-4 h-4 text-white" />
-                <span>بصمة الإصبع 👆</span>
+                <span>{t.fingerprintBtn}</span>
               </button>
 
               {/* Face ID Unlock Button */}
               <button
+                type="button"
                 onClick={() => handleTriggerBiometrics('faceid')}
                 className="flex items-center space-x-2 space-x-reverse px-4 py-2.5 bg-[#2B3E50] hover:bg-[#3B5066] active:scale-95 text-white rounded-2xl text-xs font-black shadow-lg cursor-pointer transition-all"
               >
                 <ScanFace className="w-4 h-4 text-emerald-400" />
-                <span>بصمة الوجه 👤</span>
+                <span>{t.faceIdBtn}</span>
               </button>
             </div>
 
@@ -262,7 +277,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
             <div className="bg-[#1C2833]/95 text-white border border-white/20 px-4 py-2.5 rounded-2xl text-xs font-black shadow-2xl backdrop-blur-md flex items-center justify-center gap-2 text-center max-w-sm mx-auto">
               <span className="text-amber-400 text-sm shrink-0">💡</span>
               <span className="text-white font-extrabold leading-relaxed">
-                اضغط على أي اختصار بالإشعار أعلاه لفتح التطبيق والانتقال للمهمة فوراً
+                {t.lockscreenHint}
               </span>
             </div>
           </div>
@@ -275,11 +290,11 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
             <div className="p-3 bg-[#8B9D83]/10 rounded-full border border-[#8B9D83]/20 text-[#8B9D83]">
               <Lock className="w-6 h-6 animate-pulse" />
             </div>
-            <h1 className="text-xl font-extrabold text-[#5A5A40]">حياة AI Pro</h1>
+            <h1 className="text-xl font-extrabold text-[#5A5A40]">{t.appName} Pro</h1>
             <p className="text-xs text-gray-600 max-w-xs font-bold leading-relaxed">
               {pendingAction 
-                ? 'يتطلب فتح هذا الاختصار التحقق من رمز PIN أو البصمة' 
-                : 'تشفير محلي متكامل. أدخل رمز الأمان أو استخدم البصمة للوصول.'}
+                ? t.pinPadShortcutSub 
+                : t.pinPadSub}
             </p>
           </div>
 
@@ -301,14 +316,14 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
             {error && (
               <div className="flex items-center space-x-2 space-x-reverse text-[#D4A373] text-xs font-bold animate-bounce">
                 <ShieldAlert className="w-3.5 h-3.5" />
-                <span>الرمز غير صحيح! (الرمز الافتراضي: 1234)</span>
+                <span>{t.incorrectPin}</span>
               </div>
             )}
 
             {success && (
               <div className="flex items-center space-x-2 space-x-reverse text-[#8B9D83] text-xs font-black">
                 <ShieldCheck className="w-4 h-4 animate-pulse" />
-                <span>تم التحقق بنجاح... جاري الدخول</span>
+                <span>{t.pinVerified}</span>
               </div>
             )}
           </div>
@@ -319,6 +334,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                 <button
                   key={num}
+                  type="button"
                   onClick={() => handleNumberClick(num)}
                   className="w-14 h-14 mx-auto flex items-center justify-center text-xl font-bold bg-[#F9F7F2] hover:bg-[#F0EDE4] active:bg-[#8B9D83] active:text-white rounded-full transition-colors duration-100 focus:outline-none cursor-pointer border border-[#E2DCC8]/60 shadow-3xs"
                 >
@@ -327,13 +343,15 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
               ))}
 
               <button
+                type="button"
                 onClick={handleDelete}
                 className="w-14 h-14 mx-auto flex items-center justify-center text-xs font-black bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full cursor-pointer border border-[#E2DCC8]/40"
               >
-                مسح
+                {t.clearBtn}
               </button>
 
               <button
+                type="button"
                 onClick={() => handleNumberClick(0)}
                 className="w-14 h-14 mx-auto flex items-center justify-center text-xl font-bold bg-[#F9F7F2] hover:bg-[#F0EDE4] active:bg-[#8B9D83] active:text-white rounded-full transition-colors duration-100 cursor-pointer border border-[#E2DCC8]/60"
               >
@@ -342,16 +360,18 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
               <div className="flex items-center justify-center gap-1.5 w-14 h-14 mx-auto">
                 <button
+                  type="button"
                   onClick={() => handleTriggerBiometrics('fingerprint')}
                   className="w-7 h-12 flex items-center justify-center text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 active:scale-95 rounded-xl transition-all cursor-pointer border border-amber-200"
-                  title="مسح بصمة الإصبع 👆"
+                  title={t.fingerprintBtn}
                 >
                   <Fingerprint className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleTriggerBiometrics('faceid')}
                   className="w-7 h-12 flex items-center justify-center text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 active:scale-95 rounded-xl transition-all cursor-pointer border border-emerald-200"
-                  title="مسح بصمة الوجه 👤"
+                  title={t.faceIdBtn}
                 >
                   <ScanFace className="w-4 h-4" />
                 </button>
@@ -361,14 +381,15 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
             {/* Back Button and Prompt */}
             <div className="flex items-center justify-between border-t border-[#E2DCC8]/40 pt-3.5 mt-2">
               <button
+                type="button"
                 onClick={() => setViewMode('lockscreen')}
                 className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-[10px] font-bold cursor-pointer transition-colors"
               >
-                <ArrowRight className="w-3.5 h-3.5" />
-                <span>شاشة القفل 📱</span>
+                <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+                <span>{t.lockscreenBtn}</span>
               </button>
               <span className="text-[9px] text-gray-400 font-extrabold">
-                تلميح الـ PIN: <strong className="text-[#D4A373] font-bold font-mono">1234</strong>
+                {t.pinHint}
               </span>
             </div>
           </div>
@@ -377,7 +398,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
       {/* Biometric Active Verification Overlay Modal */}
       {showBiometricModal && (
-        <div className="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+        <div className="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-200" dir={langInfo.dir}>
           <div className="bg-[#FAF8F5] border-2 border-[#E2DCC8] rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 animate-in zoom-in-95">
             <div className="flex justify-center">
               {biometricStatus === 'scanning' && (
@@ -400,7 +421,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
                     <div className="absolute inset-0 border-2 border-emerald-400/40 rounded-[2.3rem] pointer-events-none" />
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_15px_#10B981] animate-[bounce_1.5s_infinite]" />
                     <div className="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-xs py-1 px-2 rounded-xl text-[10px] text-emerald-300 font-bold border border-emerald-500/30">
-                      👤 جاري مسح ملامح الوجه...
+                      👤 {t.faceScanInstruction}
                     </div>
                   </div>
                 ) : (
@@ -426,36 +447,38 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
             <div className="space-y-1.5">
               <h3 className="text-base font-black text-[#2B3E50]">
-                {biometricStatus === 'scanning' && (biometricType === 'faceid' ? 'الكاميرا الأمامية - مسح الوجه 👤' : 'جاري فحص بصمة الإصبع...')}
-                {biometricStatus === 'success' && 'تم التحقق من الوجه بنجاح!'}
-                {biometricStatus === 'failed' && 'فشل مسح الوجه/البصمة!'}
+                {biometricStatus === 'scanning' && (biometricType === 'faceid' ? t.faceScanTitle : t.fingerprintScanTitle)}
+                {biometricStatus === 'success' && t.faceSuccessTitle}
+                {biometricStatus === 'failed' && t.biometricFailedTitle}
               </h3>
 
               <p className="text-xs text-gray-600 font-bold leading-relaxed">
-                {biometricStatus === 'scanning' && (biometricType === 'faceid' ? 'يرجى التوجه مباشرة نحو الكاميرا الأمامية للتحقق من وجهك.' : 'يرجى وضع أصبعك المسجل على مستشعر البصمة.')}
-                {biometricStatus === 'success' && 'أهلاً بك مجدداً، جاري فتح التطبيق...'}
-                {biometricStatus === 'failed' && (biometricErrorMessage || 'لم نتمكن من التعرف على الوجه. تأكد من السماح للكاميرا.')}
+                {biometricStatus === 'scanning' && (biometricType === 'faceid' ? t.faceScanInstruction : t.fingerprintScanInstruction)}
+                {biometricStatus === 'success' && t.welcomeBackOpening}
+                {biometricStatus === 'failed' && (biometricErrorMessage || t.cameraDeniedError)}
               </p>
             </div>
 
             <div className="space-y-2 pt-1">
               {biometricStatus === 'failed' && (
                 <button
+                  type="button"
                   onClick={() => handleTriggerBiometrics(biometricType)}
                   className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl cursor-pointer transition-colors shadow-md"
                 >
-                  إعادة المحاولة 🔄
+                  {t.retryBtn}
                 </button>
               )}
 
               <button
+                type="button"
                 onClick={() => {
                   setShowBiometricModal(false);
                   setViewMode('pinpad');
                 }}
                 className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer transition-colors"
               >
-                استخدام رمز الـ PIN بدلاً من ذلك 🔑
+                {t.usePinInsteadBtn}
               </button>
             </div>
           </div>
@@ -464,7 +487,7 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
       {/* Biometric Not-Enrolled Modal */}
       {showUnenrolledModal && (
-        <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+        <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-200" dir={langInfo.dir}>
           <div className="bg-[#FAF8F5] border-2 border-amber-300 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 animate-in zoom-in-95">
             <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl w-16 h-16 mx-auto flex items-center justify-center border border-amber-200">
               <Fingerprint className="w-8 h-8" />
@@ -472,34 +495,36 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
 
             <div className="space-y-1.5">
               <h3 className="text-base font-black text-[#2B3E50]">
-                البصمة غير ربطها لهذا الجهاز!
+                {t.biometricNotLinkedTitle}
               </h3>
               <p className="text-xs text-gray-600 font-bold leading-relaxed">
-                فتح التطبيق بالبصمة يتطلب ربط بصمة الإصبع أو الوجه الخاصة بهاتفك أولاً لحماية بياناتك:
+                {t.biometricNotLinkedDesc}
               </p>
-              <div className="bg-white p-3 rounded-xl border border-[#E2DCC8] text-[11px] text-[#5A5A40] text-right space-y-1 font-extrabold">
-                <div>1️⃣ افتح التطبيق بواسطة رمز الـ PIN الحالي (1234).</div>
-                <div>2️⃣ اذهب إلى الإعدادات ⚙️ ⬅️ قفل التطبيق.</div>
-                <div>3️⃣ اضغط زر "ربط وتفعيل بصمة الجهاز (Passkey)".</div>
+              <div className="bg-white p-3 rounded-xl border border-[#E2DCC8] text-[11px] text-[#5A5A40] text-start space-y-1 font-extrabold">
+                <div>{t.biometricStep1}</div>
+                <div>{t.biometricStep2}</div>
+                <div>{t.biometricStep3}</div>
               </div>
             </div>
 
             <div className="space-y-2 pt-2">
               <button
+                type="button"
                 onClick={() => {
                   setShowUnenrolledModal(false);
                   setViewMode('pinpad');
                 }}
                 className="w-full py-2.5 bg-[#8B9D83] hover:bg-[#7A8C72] text-white text-xs font-black rounded-xl cursor-pointer transition-colors shadow-md"
               >
-                إدخال رمز PIN الآن (1234) 🔑
+                {t.enterPinNowBtn}
               </button>
 
               <button
+                type="button"
                 onClick={() => setShowUnenrolledModal(false)}
                 className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-xl cursor-pointer transition-colors"
               >
-                إغلاق
+                {t.closeBtn}
               </button>
             </div>
           </div>
@@ -510,10 +535,10 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
       <div 
         onClick={() => setIsScreenOff(prev => !prev)}
         className="fixed right-0 top-[35%] w-3.5 h-16 bg-gradient-to-l from-[#222] to-[#444] rounded-l-lg hover:from-[#333] hover:to-[#555] border border-gray-600 border-r-0 shadow-xl cursor-pointer transition-all hover:w-4 z-[9999] flex items-center justify-center group"
-        title="زر الـ Power (إيقاظ / إغلاق الشاشة)"
+        title={t.powerButtonTooltip}
       >
         <span className="opacity-0 group-hover:opacity-100 absolute right-6 bg-black/85 text-white text-[10px] font-extrabold py-1 px-2 rounded-lg whitespace-nowrap transition-opacity pointer-events-none shadow-md">
-          {isScreenOff ? 'تشغيل الشاشة 🔌' : 'إغلاق الشاشة 🔌'}
+          {isScreenOff ? '🔌' : '🔌'}
         </span>
       </div>
 
@@ -525,8 +550,8 @@ export default function PINLock({ correctPin, biometricCredentialId, onUnlocked,
         >
           <div className="text-center text-gray-500 text-xs font-bold space-y-3 animate-pulse">
             <span className="text-3xl block">💤</span>
-            <p className="text-gray-400">الشاشة مغلقة بالكامل (Screen Off)</p>
-            <p className="text-[10px] text-gray-600">اضغط على زر الـ Power الجانبي أو انقر في أي مكان لتشغيل الشاشة والعودة لشاشة القفل</p>
+            <p className="text-gray-400">{t.screenOffTitle}</p>
+            <p className="text-[10px] text-gray-600">{t.screenOffDesc}</p>
           </div>
         </div>
       )}

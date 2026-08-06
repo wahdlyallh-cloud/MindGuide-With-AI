@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock, LogIn, UserPlus, LogOut, Cloud, RefreshCw, CheckCircle2, AlertCircle, ShieldCheck, X } from 'lucide-react';
-import { AuthUser } from '../types';
+import { AuthUser, AppLanguage } from '../types';
+import { getTranslation, getLanguageInfo } from '../lib/languages';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface AuthModalProps {
   onManualRestore: () => void;
   isSyncing: boolean;
   syncMessage: string | null;
+  appLanguage?: AppLanguage;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -23,8 +25,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onManualSync,
   onManualRestore,
   isSyncing,
-  syncMessage
+  syncMessage,
+  appLanguage = 'ar'
 }) => {
+  const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
+
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -43,7 +49,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMsg(null);
 
     if (!email || !password) {
-      setErrorMsg('يرجى كتابة البريد الإلكتروني وكلمة المرور بشكل صحيح.');
+      setErrorMsg(t.loginErrorEmpty);
       return;
     }
 
@@ -63,7 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             const data = await response.json();
             if (data.success && data.user && data.token) {
               isServerSuccess = true;
-              setSuccessMsg('تم تسجيل الدخول بنجاح! جاري تحميل واستعادة مذكراتك...');
+              setSuccessMsg(t.loginSuccessMsg);
               setTimeout(() => {
                 onLoginSuccess(data.user, data.token, data.userData);
                 onClose();
@@ -89,14 +95,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (foundUser) {
           if (foundUser.password === password) {
             const localToken = `local_token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-            setSuccessMsg('تم تسجيل الدخول بنجاح عبر الحساب المحلي! 🎉');
+            setSuccessMsg(t.loginSuccessMsg);
             setTimeout(() => {
               onLoginSuccess({ id: foundUser.id, name: foundUser.name, email: foundUser.email, createdAt: foundUser.createdAt }, localToken);
               onClose();
             }, 600);
             return;
           } else {
-            setErrorMsg('كلمة المرور غير صحيحة. يرجى التثبت والمحاولة مجدداً.');
+            setErrorMsg(t.incorrectPassword);
             setIsLoading(false);
             return;
           }
@@ -118,7 +124,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         localStorage.setItem('yawmiyati_local_auth_users', JSON.stringify(localUsers));
 
         const localToken = `local_token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-        setSuccessMsg('تم تسجيل الدخول وتفعيل الحساب على هذا الجهاز بنجاح! 🎉');
+        setSuccessMsg(t.loginSuccessMsg);
         setTimeout(() => {
           onLoginSuccess({ id: newUser.id, name: newUser.name, email: newUser.email, createdAt: newUser.createdAt }, localToken);
           onClose();
@@ -126,7 +132,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
     } catch (err: any) {
-      setErrorMsg('عفواً، متعذر الاتصال بالخادم. يرجى التثبت من البيانات والمحاولة مجدداً.');
+      setErrorMsg(t.loginErrorEmpty);
     } finally {
       setIsLoading(false);
     }
@@ -138,17 +144,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMsg(null);
 
     if (!email || !password) {
-      setErrorMsg('يرجى ملء جميع الحقول المطلوبة بشكل صحيح.');
+      setErrorMsg(t.registerErrorEmpty);
       return;
     }
 
     if (password.length < 6) {
-      setErrorMsg('كلمة المرور يجب أن لا تقل عن 6 خانات لحماية معلوماتك.');
+      setErrorMsg(t.passwordTooShort);
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMsg('كلمتا المرور غير متطابقتين.');
+      setErrorMsg(t.passwordsDoNotMatch);
       return;
     }
 
@@ -172,7 +178,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             const data = await response.json();
             if (data.success && data.user && data.token) {
               isServerSuccess = true;
-              setSuccessMsg('تم إنشاء حسابك الشخصي وتفعيل التزامن السحابي بنجاح! 🎉');
+              setSuccessMsg(t.registerSuccessMsg);
               setTimeout(() => {
                 onLoginSuccess(data.user, data.token);
                 onClose();
@@ -196,7 +202,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const existingUser = localUsers.find((u: any) => u.email.toLowerCase() === email.trim().toLowerCase());
 
         if (existingUser) {
-          setErrorMsg('هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول به.');
+          setErrorMsg(t.emailAlreadyRegistered);
           setIsLoading(false);
           return;
         }
@@ -213,29 +219,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         localStorage.setItem('yawmiyati_local_auth_users', JSON.stringify(localUsers));
 
         const localToken = `local_token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-        setSuccessMsg('تم إنشاء حسابك وحفظ بياناتك بنجاح! 🎉');
+        setSuccessMsg(t.registerSuccessMsg);
         setTimeout(() => {
           onLoginSuccess({ id: newUser.id, name: newUser.name, email: newUser.email, createdAt: newUser.createdAt }, localToken);
           onClose();
         }, 800);
       }
     } catch (err: any) {
-      setErrorMsg('تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+      setErrorMsg(t.registerErrorEmpty);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in" dir="rtl">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in" dir={langInfo.dir}>
       <div className="bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 w-full max-w-md overflow-hidden relative transition-all transform scale-100">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-teal-700 via-teal-800 to-emerald-800 p-6 text-white relative">
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-4 left-4 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors"
-            title="إغلاق"
+            className={`absolute top-4 ${langInfo.dir === 'rtl' ? 'left-4' : 'right-4'} text-white/80 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors`}
+            title={t.closeBtn}
           >
             <X className="w-5 h-5" />
           </button>
@@ -245,9 +252,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <ShieldCheck className="w-7 h-7 text-teal-200" />
             </div>
             <div>
-              <h2 className="text-xl font-bold tracking-tight">الحساب الشخصي والتزامن السحابي</h2>
+              <h2 className="text-xl font-bold tracking-tight">{t.authModalTitle}</h2>
               <p className="text-xs text-teal-100/90 mt-0.5">
-                احفظ بياناتك ومذكراتك سحابياً وافتحها من أي جهاز بنفس الحساب
+                {t.authModalSub}
               </p>
             </div>
           </div>
@@ -266,8 +273,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-lg truncate text-stone-900 dark:text-white">{currentUser.name}</h3>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
-                      <Cloud className="w-3 h-3 ml-1" />
-                      متصل ومزامن
+                      <Cloud className="w-3 h-3 me-1" />
+                      {t.connectedSynced}
                     </span>
                   </div>
                   <p className="text-sm text-stone-500 dark:text-stone-400 truncate">{currentUser.email}</p>
@@ -277,26 +284,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Sync controls */}
               <div className="space-y-3">
                 <h4 className="text-xs font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider">
-                  خيارات المزامنة الحالية
+                  {t.syncOptionsTitle}
                 </h4>
 
                 <div className="grid grid-cols-2 gap-3">
                   <button
+                    type="button"
                     onClick={onManualSync}
                     disabled={isSyncing}
                     className="flex items-center justify-center gap-2 p-3 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white font-medium text-sm shadow-sm transition-all disabled:opacity-50"
                   >
                     <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                    <span>رفع المزامنة الآن</span>
+                    <span>{t.syncNowBtn}</span>
                   </button>
 
                   <button
+                    type="button"
                     onClick={onManualRestore}
                     disabled={isSyncing}
                     className="flex items-center justify-center gap-2 p-3 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 active:scale-[0.98] text-stone-700 dark:text-stone-200 font-medium text-sm transition-all disabled:opacity-50"
                   >
                     <Cloud className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                    <span>استعادة البيانات</span>
+                    <span>{t.restoreDataBtn}</span>
                   </button>
                 </div>
 
@@ -311,11 +320,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Logout button */}
               <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
                 <button
+                  type="button"
                   onClick={onLogout}
                   className="w-full flex items-center justify-center gap-2 p-3 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-medium text-sm transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>تسجيل الخروج من الحساب</span>
+                  <span>{t.logoutBtn}</span>
                 </button>
               </div>
             </div>
@@ -338,7 +348,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }`}
                 >
                   <LogIn className="w-4 h-4" />
-                  <span>تسجيل الدخول</span>
+                  <span>{t.loginTab}</span>
                 </button>
 
                 <button
@@ -355,7 +365,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }`}
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>حساب جديد</span>
+                  <span>{t.registerTab}</span>
                 </button>
               </div>
 
@@ -379,17 +389,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1.5">
-                      البريد الإلكتروني
+                      {t.emailLabel}
                     </label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 absolute right-3.5 top-3.5 text-stone-400" />
+                      <Mail className={`w-4 h-4 absolute ${langInfo.dir === 'rtl' ? 'right-3.5' : 'left-3.5'} top-3.5 text-stone-400`} />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="yourname@example.com"
-                        className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+                        className={`w-full ${langInfo.dir === 'rtl' ? 'pl-3 pr-10' : 'pr-3 pl-10'} py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all`}
                         dir="ltr"
                       />
                     </div>
@@ -397,24 +407,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1.5">
-                      كلمة المرور
+                      {t.passwordLabel}
                     </label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 absolute right-3.5 top-3.5 text-stone-400" />
+                      <Lock className={`w-4 h-4 absolute ${langInfo.dir === 'rtl' ? 'right-3.5' : 'left-3.5'} top-3.5 text-stone-400`} />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+                        className={`w-full ${langInfo.dir === 'rtl' ? 'pl-10 pr-10' : 'pr-10 pl-10'} py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3 top-3 text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                        className={`absolute ${langInfo.dir === 'rtl' ? 'left-3' : 'right-3'} top-3 text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-200`}
                       >
-                        {showPassword ? 'إخفاء' : 'إظهار'}
+                        {showPassword ? t.hide : t.show}
                       </button>
                     </div>
                   </div>
@@ -429,7 +439,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     ) : (
                       <>
                         <LogIn className="w-4 h-4" />
-                        <span>دخول ومزامنة مذكراتي</span>
+                        <span>{t.loginSubmit}</span>
                       </>
                     )}
                   </button>
@@ -438,33 +448,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <form onSubmit={handleRegister} className="space-y-3.5">
                   <div>
                     <label className="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">
-                      الاسم الشخصي
+                      {t.nameLabel}
                     </label>
                     <div className="relative">
-                      <User className="w-4 h-4 absolute right-3.5 top-3.5 text-stone-400" />
+                      <User className={`w-4 h-4 absolute ${langInfo.dir === 'rtl' ? 'right-3.5' : 'left-3.5'} top-3.5 text-stone-400`} />
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="مثال: أحمد مصطفى"
-                        className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+                        placeholder={t.nameLabel}
+                        className={`w-full ${langInfo.dir === 'rtl' ? 'pl-3 pr-10' : 'pr-3 pl-10'} py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all`}
                       />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">
-                      البريد الإلكتروني
+                      {t.emailLabel}
                     </label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 absolute right-3.5 top-3.5 text-stone-400" />
+                      <Mail className={`w-4 h-4 absolute ${langInfo.dir === 'rtl' ? 'right-3.5' : 'left-3.5'} top-3.5 text-stone-400`} />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="yourname@example.com"
-                        className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+                        className={`w-full ${langInfo.dir === 'rtl' ? 'pl-3 pr-10' : 'pr-3 pl-10'} py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all`}
                         dir="ltr"
                       />
                     </div>
@@ -472,41 +482,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">
-                      كلمة المرور (6 حروف أو أرقام على الأقل)
+                      {t.passwordLabel}
                     </label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 absolute right-3.5 top-3.5 text-stone-400" />
+                      <Lock className={`w-4 h-4 absolute ${langInfo.dir === 'rtl' ? 'right-3.5' : 'left-3.5'} top-3.5 text-stone-400`} />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+                        className={`w-full ${langInfo.dir === 'rtl' ? 'pl-10 pr-10' : 'pr-10 pl-10'} py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3 top-3 text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                        className={`absolute ${langInfo.dir === 'rtl' ? 'left-3' : 'right-3'} top-3 text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-200`}
                       >
-                        {showPassword ? 'إخفاء' : 'إظهار'}
+                        {showPassword ? t.hide : t.show}
                       </button>
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">
-                      تأكيد كلمة المرور
+                      {t.confirmPasswordLabel}
                     </label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 absolute right-3.5 top-3.5 text-stone-400" />
+                      <Lock className={`w-4 h-4 absolute ${langInfo.dir === 'rtl' ? 'right-3.5' : 'left-3.5'} top-3.5 text-stone-400`} />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+                        className={`w-full ${langInfo.dir === 'rtl' ? 'pl-3 pr-10' : 'pr-3 pl-10'} py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all`}
                       />
                     </div>
                   </div>
@@ -521,7 +531,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     ) : (
                       <>
                         <UserPlus className="w-4 h-4" />
-                        <span>إنشاء الحساب وتفعيل المزامنة</span>
+                        <span>{t.registerSubmit}</span>
                       </>
                     )}
                   </button>

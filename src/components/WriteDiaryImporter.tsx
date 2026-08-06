@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, Check, AlertTriangle, FileText, Calendar, CheckSquare, Square, Search, ArrowRight, HelpCircle } from 'lucide-react';
-import { DiaryEntry } from '../types';
+import { X, Upload, Check, AlertTriangle, FileText, Calendar, CheckSquare, Square, Search, HelpCircle } from 'lucide-react';
+import { DiaryEntry, AppLanguage } from '../types';
+import { getTranslation, getLanguageInfo } from '../lib/languages';
 
 interface WriteDiaryImporterProps {
   isOpen: boolean;
   onClose: () => void;
-  isEn: boolean;
+  appLanguage?: AppLanguage;
+  isEn?: boolean;
   onImportCompleted: (importedEntries: DiaryEntry[]) => void;
 }
 
@@ -20,7 +22,7 @@ interface ParsedEntry {
 export default function WriteDiaryImporter({
   isOpen,
   onClose,
-  isEn,
+  appLanguage = 'ar',
   onImportCompleted
 }: WriteDiaryImporterProps) {
   const [fileContent, setFileContent] = useState<string>('');
@@ -31,6 +33,9 @@ export default function WriteDiaryImporter({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [step, setStep] = useState<1 | 2>(1); // 1: Upload, 2: Preview & Confirm
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
 
   if (!isOpen) return null;
 
@@ -169,8 +174,6 @@ export default function WriteDiaryImporter({
       const line = lines[i].trim();
       if (!line) continue;
 
-      // Handle simple comma separation (ignoring nested commas inside quotes for simplicity, or with basic split)
-      // A slightly smarter regex to split by commas outside quotes
       const cells = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
       
       const rawText = cells[textIndex]?.replace(/^"|"$/g, '') || '';
@@ -201,7 +204,6 @@ export default function WriteDiaryImporter({
   const parseRawText = (text: string): ParsedEntry[] => {
     const entries: ParsedEntry[] = [];
     
-    // Split by standard WriteDiary delimiters or obvious separation lines (====== or ------ or ******)
     const blocks = text.split(/(?:={5,}|-{5,}|\*{5,})/);
     
     let index = 0;
@@ -218,7 +220,6 @@ export default function WriteDiaryImporter({
         const trimmedLine = line.trim();
         if (!trimmedLine) continue;
         
-        // Detect date markers: "Date: 19 July 2026", "التاريخ: 19 يوليو 2026", "19/07/2026", etc.
         const dateMatch = trimmedLine.match(/(?:Date|التاريخ|يوم|تاريخ)\s*:\s*(.+)/i) || 
                           trimmedLine.match(/^(\d{4}[-/]\d{1,2}[-/]\d{1,2})$/) || 
                           trimmedLine.match(/^(\d{1,2}[-/]\d{1,2}[-/]\d{4})$/);
@@ -234,9 +235,7 @@ export default function WriteDiaryImporter({
         }
       }
       
-      // Fallback date finder inside the block if not found in explicit headers
       if (!dateVal) {
-        // Find standard YYYY-MM-DD or DD-MM-YYYY in the first 2 lines
         for (let j = 0; j < Math.min(3, lines.length); j++) {
           const dateRegex = /(\d{4}[-/]\d{1,2}[-/]\d{1,2})|(\d{1,2}[-/]\d{1,2}[-/]\d{4})/g;
           const found = lines[j].match(dateRegex);
@@ -247,10 +246,8 @@ export default function WriteDiaryImporter({
         }
       }
       
-      // Parse the extracted date beautifully
       let parsedDate = new Date();
       if (dateVal) {
-        // Translate Arabic month names to English equivalents for browser parsing
         let dateClean = dateVal;
         const arabicMonths: { [key: string]: string } = {
           'يناير': 'January', 'فبراير': 'February', 'مارس': 'March', 'أبريل': 'April',
@@ -264,10 +261,8 @@ export default function WriteDiaryImporter({
           }
         });
 
-        // Test split parts
         const parts = dateClean.split(/[-/.\s]+/);
         if (parts.length === 3) {
-          // Check if DD-MM-YYYY
           if (parts[2].length === 4) {
             const d = parseInt(parts[0], 10);
             const m = parseInt(parts[1], 10);
@@ -275,7 +270,7 @@ export default function WriteDiaryImporter({
             if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
               parsedDate = new Date(y, m - 1, d);
             }
-          } else if (parts[0].length === 4) { // YYYY-MM-DD
+          } else if (parts[0].length === 4) {
             const y = parseInt(parts[0], 10);
             const m = parseInt(parts[1], 10);
             const d = parseInt(parts[2], 10);
@@ -305,9 +300,7 @@ export default function WriteDiaryImporter({
       }
     }
     
-    // If the split algorithm yielded no distinct entries, let's fall back to line-by-line parsing
     if (entries.length === 0) {
-      // Split entries by any lines containing "يومية جديدة" or dates
       const paragraphs = text.split('\n\n');
       let currentEntryText = '';
       let lastDate = new Date();
@@ -316,12 +309,10 @@ export default function WriteDiaryImporter({
         const paraTrimmed = para.trim();
         if (!paraTrimmed) return;
         
-        // Search for date pattern
         const dateRegex = /(\d{4}[-/]\d{1,2}[-/]\d{1,2})|(\d{1,2}[-/]\d{1,2}[-/]\d{4})/;
         const dateMatch = paraTrimmed.match(dateRegex);
         
         if (dateMatch) {
-          // If we had a previous entry, save it
           if (currentEntryText.trim()) {
             entries.push({
               id: `imported-${Date.now()}-${pIndex}`,
@@ -339,7 +330,6 @@ export default function WriteDiaryImporter({
         }
       });
       
-      // Push last entry
       if (currentEntryText.trim()) {
         entries.push({
           id: `imported-${Date.now()}-last`,
@@ -369,35 +359,28 @@ export default function WriteDiaryImporter({
       
       try {
         let results: ParsedEntry[] = [];
-        
-        // Let's identify file format based on content
         const trimmed = content.trim();
         if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-          // JSON backup
           results = parseJson(content);
         } else if (trimmed.startsWith('<')) {
-          // XML backup
           results = parseXml(content);
         } else if (file.name.endsWith('.csv')) {
-          // CSV backup
           results = parseCsv(content);
         } else {
-          // Raw text / WriteDiary standard backup split
           results = parseRawText(content);
         }
 
         if (results.length === 0) {
-          throw new Error(isEn ? "No valid diary entries could be parsed from the file." : "لم يتم اكتشاف مذكرات صالحة للاستيراد داخل الملف.");
+          throw new Error("No valid diary entries found");
         }
 
-        // Sort entries by date descending
         results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         setParsedEntries(results);
-        setStep(2); // Jump to step 2: Preview & Selection
+        setStep(2);
       } catch (err: any) {
         console.error("Parsing error:", err);
-        setErrorMsg(err.message || (isEn ? "Failed to parse the file. Please make sure it's a valid WriteDiary export." : "فشل تحليل الملف. تأكد من رفعه بشكل صحيح ومن كونه مستخرجاً من تطبيق يومياتي بنجاح."));
+        setErrorMsg(t.importerErrorMsg);
       } finally {
         setIsParsing(false);
       }
@@ -420,20 +403,19 @@ export default function WriteDiaryImporter({
   const handleConfirmImport = () => {
     const selected = parsedEntries.filter(e => e.selected);
     if (selected.length === 0) {
-      alert(isEn ? "Please select at least one diary entry to import!" : "يرجى تحديد يومية واحدة على الأقل للاستيراد!");
+      alert(t.selectAllHint);
       return;
     }
 
-    // Convert to App's DiaryEntry type
     const convertedEntries: DiaryEntry[] = selected.map(entry => ({
       id: `diary-writediary-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       title: entry.title,
       content: entry.content,
       createdAt: entry.createdAt,
       updatedAt: entry.createdAt,
-      moods: ['📝'], // Default mood for WriteDiary imports
+      moods: ['📝'],
       importance: 3,
-      color: 'bg-rose-50 border-rose-200 text-rose-900', // Beautiful warm rose theme for imported old diaries
+      color: 'bg-rose-50 border-rose-200 text-rose-900',
       images: [],
       videos: [],
       audioRecordings: [],
@@ -458,7 +440,7 @@ export default function WriteDiaryImporter({
   const selectedCount = parsedEntries.filter(e => e.selected).length;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-60 font-sans" dir={isEn ? "ltr" : "rtl"}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-60 font-sans" dir={langInfo.dir}>
       <div className="bg-[#FCFAF7] border border-[#E2DCC8] rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl transition-all duration-300 transform scale-100 max-h-[90vh] flex flex-col">
         
         {/* Header with Pink Accent referencing WriteDiary old pink theme */}
@@ -469,14 +451,15 @@ export default function WriteDiaryImporter({
             </div>
             <div>
               <h4 className="font-black text-[#2B3E50] text-sm md:text-base flex items-center gap-1.5">
-                <span>{isEn ? "Import from WriteDiary App" : "الاستيراد من تطبيق يومياتي (WriteDiary)"}</span>
+                <span>{t.writeDiaryImporterTitle}</span>
               </h4>
               <p className="text-[10px] text-gray-500 mt-0.5 font-bold">
-                {isEn ? "Upload exported entries while preserving all original dates" : "ارفع مذكراتك السابقة مع الحفاظ الكامل والدقيق على تاريخ كتابتها"}
+                {t.writeDiaryImporterSub}
               </p>
             </div>
           </div>
           <button 
+            type="button"
             onClick={onClose}
             className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer"
           >
@@ -494,13 +477,13 @@ export default function WriteDiaryImporter({
               <div className="bg-rose-50/40 border border-rose-100/60 rounded-2xl p-4 space-y-2 text-rose-950">
                 <span className="text-xs font-black block flex items-center gap-1.5">
                   <HelpCircle className="w-4 h-4 text-rose-500" />
-                  <span>{isEn ? "How to export from WriteDiary?" : "كيف تستخرج ملف مذكراتك من التطبيق القديم؟"}</span>
+                  <span>{t.howToExportTitle}</span>
                 </span>
                 <ol className="text-[10px] list-decimal list-inside space-y-1.5 font-semibold text-gray-600 leading-relaxed">
-                  <li>{isEn ? "Open the old 'WriteDiary' app on your device." : "افتح تطبيق 'يومياتي' (القديم ذو الأيقونة الوردية)."}</li>
-                  <li>{isEn ? "Open the side drawer menu and tap 'Export' (الإستخراج)." : "افتح القائمة الجانبية للتطبيق واضغط على خيار 'الإستخراج'."}</li>
-                  <li>{isEn ? "Tap 'Export Now' (الإستخراج الآن) and save the file." : "اضغط على زر 'الإستخراج الآن' واحفظ الملف في جهازك."}</li>
-                  <li>{isEn ? "Upload that file (.txt / .json / .csv / .xml) here to parse it instantly." : "قم برفع هذا الملف هنا مباشرة وسنتكفل بتحليله واستخراج الـ 516 يومية دفعة واحدة!"}</li>
+                  <li>{t.howToStep1}</li>
+                  <li>{t.howToStep2}</li>
+                  <li>{t.howToStep3}</li>
+                  <li>{t.howToStep4}</li>
                 </ol>
               </div>
 
@@ -521,7 +504,7 @@ export default function WriteDiaryImporter({
                   <div className="space-y-2">
                     <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
                     <span className="text-xs font-black text-[#2B3E50] block">
-                      {isEn ? "Analyzing file structure..." : "جاري تحليل بنية الملف واستخراج اليوميات..."}
+                      {t.analyzingFile}
                     </span>
                   </div>
                 ) : (
@@ -529,10 +512,10 @@ export default function WriteDiaryImporter({
                     <Upload className="w-10 h-10 text-rose-400 mx-auto group-hover:scale-110 transition-transform duration-200" />
                     <div className="space-y-1">
                       <span className="text-xs font-black text-[#2B3E50] block">
-                        {isEn ? "Click to upload WriteDiary exported file" : "اضغط هنا لرفع ملف اليوميات المستخرج"}
+                        {t.uploadDropZoneText}
                       </span>
                       <span className="text-[10px] text-gray-400 font-bold block">
-                        {isEn ? "Supports .txt, .json, .csv, and .xml formats" : "يدعم صيغ .txt, .json, .csv, و .xml بنسبة 100%"}
+                        {t.supportedFormats}
                       </span>
                     </div>
                   </div>
@@ -558,10 +541,10 @@ export default function WriteDiaryImporter({
                   </span>
                   <div>
                     <span className="text-xs font-black block">
-                      {isEn ? "File analyzed successfully!" : "تم تحليل الملف بنجاح باهر! 🎉"}
+                      {t.importerSuccessMsg} 🎉
                     </span>
                     <span className="text-[10px] font-bold text-emerald-800">
-                      {isEn ? `Discovered ${parsedEntries.length} individual diaries` : `تم اكتشاف ${parsedEntries.length} يومية محفوظة بالتواريخ والترتيب`}
+                      {parsedEntries.length} {t.entriesCountLabel}
                     </span>
                   </div>
                 </div>
@@ -571,22 +554,23 @@ export default function WriteDiaryImporter({
               <div className="flex flex-col sm:flex-row gap-2.5">
                 {/* Search Bar */}
                 <div className="relative flex-1">
-                  <Search className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-2.5" />
+                  <Search className={`w-3.5 h-3.5 text-gray-400 absolute ${langInfo.dir === 'rtl' ? 'right-3' : 'left-3'} top-2.5`} />
                   <input 
                     type="text" 
-                    placeholder={isEn ? "Search parsed diaries..." : "ابحث داخل اليوميات المكتشفة..."}
+                    placeholder={t.searchParsedPlaceholder}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:outline-none font-medium"
+                    className={`w-full bg-white border border-gray-200 rounded-xl ${langInfo.dir === 'rtl' ? 'pl-3 pr-8' : 'pr-3 pl-8'} py-2 text-xs focus:outline-none font-medium`}
                   />
                 </div>
                 {/* Select All Toggle Button */}
                 <button
+                  type="button"
                   onClick={toggleSelectAll}
                   className="px-3.5 py-2 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-black text-[#2B3E50] flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {parsedEntries.every(e => e.selected) ? <CheckSquare className="w-4 h-4 text-rose-500" /> : <Square className="w-4 h-4" />}
-                  <span>{isEn ? "Select All" : "تحديد الكل"}</span>
+                  <span>{t.selectAllBtn}</span>
                 </button>
               </div>
 
@@ -594,7 +578,7 @@ export default function WriteDiaryImporter({
               <div className="border border-gray-100 rounded-2xl bg-white max-h-[30vh] overflow-y-auto divide-y divide-gray-50">
                 {filteredEntries.length === 0 ? (
                   <p className="text-xs text-gray-400 text-center py-8 font-medium">
-                    {isEn ? "No matching entries found." : "لا توجد يوميات تطابق البحث."}
+                    {t.noMatchingEntries}
                   </p>
                 ) : (
                   filteredEntries.map(entry => (
@@ -613,7 +597,7 @@ export default function WriteDiaryImporter({
                           </span>
                           <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                             <Calendar className="w-2.5 h-2.5" />
-                            <span>{new Date(entry.createdAt).toLocaleDateString(isEn ? 'en-US' : 'ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            <span>{new Date(entry.createdAt).toLocaleDateString(langInfo.code === 'ar' ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                           </span>
                         </div>
                         <p className="text-[10px] text-gray-500 font-semibold line-clamp-2 leading-relaxed text-justify">
@@ -626,9 +610,7 @@ export default function WriteDiaryImporter({
               </div>
 
               <div className="bg-amber-50/40 border border-amber-100 rounded-xl p-3 text-[10px] text-amber-900 font-bold leading-normal">
-                ⚠️ {isEn 
-                  ? "Importing will place all these items securely into your primary diary timeline. Original dates will be strictly preserved." 
-                  : "ملاحظة: سيتم إدراج جميع اليوميات المستوردة إلى خطك الزمني الرئيسي مع الحفاظ التام على تواريخها التاريخية الدقيقة."}
+                ⚠️ {t.importNotePreserveDates}
               </div>
 
             </div>
@@ -640,34 +622,35 @@ export default function WriteDiaryImporter({
         <div className="p-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
           {step === 2 && (
             <button
+              type="button"
               onClick={() => {
                 setStep(1);
                 setParsedEntries([]);
               }}
               className="text-xs text-gray-500 hover:text-gray-700 font-bold flex items-center gap-1 cursor-pointer"
             >
-              <span>←</span>
-              <span>{isEn ? "Upload Another File" : "رفع ملف آخر"}</span>
+              <span className="rtl:rotate-180">←</span>
+              <span>{t.uploadAnotherFile}</span>
             </button>
           )}
           
-          <div className="flex gap-2.5 mr-auto">
+          <div className="flex gap-2.5 ms-auto">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 font-black text-xs rounded-xl cursor-pointer"
             >
-              {isEn ? "Cancel" : "إلغاء"}
+              {t.cancelBtn}
             </button>
             {step === 2 && (
               <button
+                type="button"
                 onClick={handleConfirmImport}
                 className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>📥</span>
                 <span>
-                  {isEn 
-                    ? `Import ${selectedCount} Entries` 
-                    : `استيراد ${selectedCount} يومية الآن`}
+                  {t.confirmImportBtn} ({selectedCount})
                 </span>
               </button>
             )}
