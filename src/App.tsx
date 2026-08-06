@@ -6,8 +6,8 @@ import {
   Settings as SettingsIcon, Sparkles, LogOut, CheckSquare, 
   Trash2, Edit3, Trash, Star, Image, Paperclip, Mic, MicOff, 
   Smile, ShieldCheck, Download, Upload, Activity, Moon, Pill,
-  User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key, Archive, RotateCcw, ChevronDown,
-  Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe, Fingerprint, X
+  User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key, Archive, RotateCcw, ChevronDown, ChevronUp, Compass,
+  Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe, Fingerprint, X, Smartphone, BellRing, Info, Maximize, Minimize
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book, AppReminder, AuthUser } from './types';
@@ -148,6 +148,9 @@ const INITIAL_DIARIES: DiaryEntry[] = [
 const DEFAULT_SETTINGS: AppSettings = {
   isDarkMode: false,
   notificationsEnabled: true,
+  lockScreenWidgetEnabled: true,
+  fullscreenModeEnabled: false,
+  autoHideHeaderOnScroll: true,
   appLanguage: 'ar',
   floatingBallEnabled: true,
   appPinCode: '1234',
@@ -547,6 +550,10 @@ export default function App() {
   const [isHeaderCollapsedOnMobile, setIsHeaderCollapsedOnMobile] = useState(false);
   const headerAutoTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Mobile Auto-Hiding Bottom Navigation State
+  const [isBottomNavCollapsedOnMobile, setIsBottomNavCollapsedOnMobile] = useState(false);
+  const bottomNavAutoTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Temporarily reveals header for 3 seconds, then auto-collapses on mobile
   const revealHeaderTemporarily = useCallback(() => {
     setIsHeaderCollapsedOnMobile(false);
@@ -555,6 +562,17 @@ export default function App() {
     }
     headerAutoTimerRef.current = setTimeout(() => {
       setIsHeaderCollapsedOnMobile(true);
+    }, 3000);
+  }, []);
+
+  // Temporarily reveals bottom nav for 3 seconds, then auto-collapses on mobile
+  const revealBottomNavTemporarily = useCallback(() => {
+    setIsBottomNavCollapsedOnMobile(false);
+    if (bottomNavAutoTimerRef.current) {
+      clearTimeout(bottomNavAutoTimerRef.current);
+    }
+    bottomNavAutoTimerRef.current = setTimeout(() => {
+      setIsBottomNavCollapsedOnMobile(true);
     }, 3000);
   }, []);
 
@@ -984,6 +1002,37 @@ export default function App() {
     const interval = setInterval(checkReminder, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  // --- Persistent Lock Screen Notification Widget Helper ---
+  const triggerLockScreenNotification = useCallback(async () => {
+    if (!('Notification' in window)) return;
+
+    if (Notification.permission !== 'granted') {
+      try {
+        await Notification.requestPermission();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    if (Notification.permission === 'granted') {
+      try {
+        new Notification('يومياتي AI • نشط الآن 📱', {
+          body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط هنا للوصول السريع لتدوين المذكرات، التسجيل الصوتي، المستشار، وتحديد المزاج مباشرة من شاشة القفل.',
+          tag: 'yawmiyati-lockscreen-widget',
+          requireInteraction: true
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (settings.lockScreenWidgetEnabled !== false && settings.notificationsEnabled) {
+      triggerLockScreenNotification();
+    }
+  }, [settings.lockScreenWidgetEnabled, settings.notificationsEnabled, triggerLockScreenNotification]);
 
   // --- Smart Reminders Logic ---
   const [showSmartRemindersModal, setShowSmartRemindersModal] = useState(false);
@@ -1423,10 +1472,11 @@ export default function App() {
   const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
-  // Auto-collapse top header on mobile when user navigates or opens main views
+  // Auto-collapse top header & temporarily show bottom nav bar on mobile when user navigates
   useEffect(() => {
     collapseHeaderOnMobile();
-  }, [activeTab, activeDiariesSubTab, editingDiary?.id, showCalendarModal, collapseHeaderOnMobile]);
+    revealBottomNavTemporarily();
+  }, [activeTab, activeDiariesSubTab, editingDiary?.id, showCalendarModal, collapseHeaderOnMobile, revealBottomNavTemporarily]);
 
   // --- Comprehensive Library and Calendar States ---
   const [books, setBooks] = useState<Book[]>(() => {
@@ -1513,6 +1563,7 @@ export default function App() {
   const [showBackupSyncModal, setShowBackupSyncModal] = useState(false);
   const [showWriteDiaryImporter, setShowWriteDiaryImporter] = useState(false);
   const [showLanguagesModal, setShowLanguagesModal] = useState(false);
+  const [showLockScreenWidgetInfoModal, setShowLockScreenWidgetInfoModal] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -3858,6 +3909,37 @@ export default function App() {
           {/* Quick Action Badges matching the requested screenshot EXACTLY 'balmilli' */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full w-full sm:w-auto justify-start sm:justify-end pb-1.5 sm:pb-0">
             
+            {/* 🖥️ Fullscreen / Hide Browser Address Bar Toggle Button */}
+            <button
+              type="button"
+              onClick={async () => {
+                if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+                  try {
+                    if (document.documentElement.requestFullscreen) {
+                      await document.documentElement.requestFullscreen();
+                    } else if ((document.documentElement as any).webkitRequestFullscreen) {
+                      await (document.documentElement as any).webkitRequestFullscreen();
+                    }
+                  } catch (e) {
+                    console.error(e);
+                  }
+                } else {
+                  try {
+                    if (document.exitFullscreen) {
+                      await document.exitFullscreen();
+                    }
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }
+              }}
+              className="flex items-center space-x-1 space-x-reverse px-2.5 py-2 bg-blue-50 text-blue-900 border border-blue-200 rounded-xl text-xs font-black shadow-3xs hover:bg-blue-100 active:scale-95 transition-all cursor-pointer shrink-0"
+              title="تفعيل وضع الشاشة الكاملة وإخفاء شريط المتصفح العلوي"
+            >
+              <Maximize className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+              <span className="text-[11px]">ملء الشاشة</span>
+            </button>
+
             {/* 1. Dhikr / Azkar Button (الأذكار) */}
             <button
               onClick={() => {
@@ -8127,26 +8209,173 @@ export default function App() {
                 </div>
               </div>
 
-              {/* CARD 10: NOTIFICATIONS */}
-              <div className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between transition-all hover:border-[#8B9D83]/30">
-                <div className="flex items-center gap-4">
-                  <div className="p-3.5 bg-[#E8F0FE] text-blue-500 rounded-2xl">
-                    <Bell className="w-5 h-5 text-blue-500" />
+              {/* CARD 10: NOTIFICATIONS & LOCK SCREEN WIDGET */}
+              <div className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs space-y-4 transition-all hover:border-[#8B9D83]/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3.5 bg-[#E8F0FE] text-blue-500 rounded-2xl">
+                      <Bell className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#2B3E50] text-sm">{t.notificationsTitle}</h4>
+                      <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.notificationsSub}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-[#2B3E50] text-sm">{t.notificationsTitle}</h4>
-                    <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.notificationsSub}</p>
+                  
+                  <button
+                    onClick={() => setSettings(prev => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }))}
+                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer ${
+                      settings.notificationsEnabled ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-white shadow-md" />
+                  </button>
+                </div>
+
+                {/* 📱 Sub-Card: Lock Screen Persistent Widget Notification */}
+                <div className="p-4 bg-gradient-to-br from-[#F5F1E6]/80 via-amber-50/50 to-white rounded-2xl border-2 border-[#D4A373]/40 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 space-x-reverse">
+                      <div className="p-2.5 bg-[#D4A373] text-white rounded-2xl shadow-xs shrink-0">
+                        <Smartphone className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs sm:text-sm font-black text-gray-800 flex items-center gap-1.5">
+                          <span>إشعار ويدجت شاشة القفل المثبت</span>
+                          <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-extrabold">مُوصى به 🔥</span>
+                        </span>
+                        <p className="text-[10px] text-gray-500 font-bold mt-0.5">
+                          إظهار لوحة الاختصارات (يومياتي AI) كإشعار مثبّت على شاشة القفل الخارجية عند ضغط زر الباور للهاتف.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        const newState = settings.lockScreenWidgetEnabled === false ? true : false;
+                        setSettings(prev => ({ ...prev, lockScreenWidgetEnabled: newState }));
+                        if (newState) {
+                          triggerLockScreenNotification();
+                        }
+                      }}
+                      className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer shrink-0 ${
+                        settings.lockScreenWidgetEnabled !== false ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
+                      }`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-white shadow-md" />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E1D4] pt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerLockScreenNotification();
+                        alert('تم إرسال وتثبيت الإشعار على شاشة القفل بنجاح! 📌🔔');
+                      }}
+                      className="px-3.5 py-1.5 bg-[#4E685B] hover:bg-[#3F5449] text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-3xs flex items-center gap-1.5 active:scale-95"
+                    >
+                      <BellRing className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+                      <span>تثبيت / تجربة الإشعار على شاشة القفل الآن 📌</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowLockScreenWidgetInfoModal(true)}
+                      className="px-3 py-1.5 bg-amber-100/80 hover:bg-amber-200 text-amber-900 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Info className="w-3.5 h-3.5 text-amber-700" />
+                      <span>كيف تظهر على شاشة القفل؟ ℹ️</span>
+                    </button>
                   </div>
                 </div>
-                
-                <button
-                  onClick={() => setSettings(prev => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }))}
-                  className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer ${
-                    settings.notificationsEnabled ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
-                  }`}
-                >
-                  <span className="w-4 h-4 rounded-full bg-white shadow-md" />
-                </button>
+
+                {/* 🖥️ Sub-Card 2: Fullscreen Mode & Hide Browser Address Bar */}
+                <div className="p-4 bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-white rounded-2xl border-2 border-blue-200/80 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 space-x-reverse">
+                      <div className="p-2.5 bg-blue-600 text-white rounded-2xl shadow-xs shrink-0">
+                        <Maximize className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs sm:text-sm font-black text-gray-800 flex items-center gap-1.5">
+                          <span>وضع الشاشة الكاملة وإخفاء شريط المتصفح العلوي</span>
+                          <span className="text-[10px] bg-blue-100 text-blue-900 px-2 py-0.5 rounded-full font-extrabold">PWA 🖥️</span>
+                        </span>
+                        <p className="text-[10px] text-gray-500 font-bold mt-0.5">
+                          إخفاء شريط عنوان المتصفح (URL) وعناصر القوائم العلوية للحصول على تجربة تطبيق ملء الشاشة بدون تشتيت.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        const newState = !(settings.fullscreenModeEnabled ?? false);
+                        setSettings(prev => ({ ...prev, fullscreenModeEnabled: newState }));
+                        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+                          try {
+                            if (document.documentElement.requestFullscreen) {
+                              await document.documentElement.requestFullscreen();
+                            } else if ((document.documentElement as any).webkitRequestFullscreen) {
+                              await (document.documentElement as any).webkitRequestFullscreen();
+                            }
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        } else {
+                          try {
+                            if (document.exitFullscreen) {
+                              await document.exitFullscreen();
+                            }
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }
+                      }}
+                      className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer shrink-0 ${
+                        settings.fullscreenModeEnabled ? 'bg-[#3F5449] justify-end' : 'bg-gray-200 justify-start'
+                      }`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-white shadow-md" />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-blue-100 pt-2.5">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+                          try {
+                            if (document.documentElement.requestFullscreen) {
+                              await document.documentElement.requestFullscreen();
+                            }
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        } else {
+                          if (document.exitFullscreen) {
+                            await document.exitFullscreen();
+                          }
+                        }
+                      }}
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-3xs flex items-center gap-1.5 active:scale-95"
+                    >
+                      <Maximize className="w-3.5 h-3.5 text-white animate-pulse" />
+                      <span>تفعيل / تبديل الشاشة الكاملة الآن 🖥️</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        alert("💡 كيف تخفي شريط المتصفح العلوي بشكل دائم وحذفه من الشاشة؟\n\n1. افتح قائمة المتصفح (⋮) في أعلى الصفحة أو زر المشاركة.\n2. اختر 'إضافة إلى الشاشة الرئيسية' (Add to Home Screen).\n3. سيتم تثبيت تطبيق (يومياتي AI) كـ PWA مستقل بدون أي شريط عنوان إطلاقاً!");
+                      }}
+                      className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-900 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Info className="w-3.5 h-3.5 text-blue-700" />
+                      <span>طريقة الإخفاء الدائم PWA ℹ️</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* CARD 11: APP LANGUAGES */}
@@ -8221,15 +8450,64 @@ export default function App() {
       </main>
 
       {/* Floating radial assistant ball for quick navigation */}
-      {settings.floatingBallEnabled && <FloatingBall onAction={handleQuickAction} />}
+      {settings.floatingBallEnabled && (
+        <FloatingBall 
+          onAction={handleQuickAction} 
+          isCollapsed={isBottomNavCollapsedOnMobile} 
+        />
+      )}
 
-      {/* Persistent Bottom Tab Navigation Bar with Lucide icons */}
-      <nav className="fixed bottom-0 inset-x-0 bg-[#F9F7F2] border-t border-[#E2DCC8] py-2 z-35 shadow-xs font-sans">
+      {/* Mobile Draggable Floating Button for Bottom Nav (Appears when bottom nav auto-collapses on mobile) */}
+      {isBottomNavCollapsedOnMobile && (
+        <motion.div
+          drag="x"
+          dragMomentum={false}
+          dragElastic={0.1}
+          className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 sm:hidden flex flex-col items-center animate-in fade-in slide-in-from-bottom-2 duration-200 cursor-grab active:cursor-grabbing"
+        >
+          <button
+            type="button"
+            onClick={revealBottomNavTemporarily}
+            className="flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-[#4E685B] text-white rounded-full shadow-xl border border-white/40 active:scale-95 transition-all cursor-pointer group"
+            title="انقر لإظهار الشريط السفلي مجدداً لمدة 3 ثوانٍ (يمكن تحريك هذه الأيقونة أفقياً)"
+          >
+            <Compass className="w-4 h-4 text-[#FEFAE0] animate-pulse shrink-0" />
+            <span className="text-[11px] font-black tracking-tight">
+              {activeTab === 'dashboard' ? 'الرئيسية' :
+               activeTab === 'diaries' ? 'اليوميات والمهام' :
+               activeTab === 'advisor' ? 'المستشار الذكي' :
+               activeTab === 'analytics' ? 'التقدم والاستشارات' : 'الإعدادات'}
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping"></span>
+            <ChevronUp className="w-3.5 h-3.5 text-white/80 group-hover:-translate-y-0.5 transition-transform shrink-0" />
+          </button>
+        </motion.div>
+      )}
+
+      {/* Persistent Bottom Tab Navigation Bar with Lucide icons (Auto-collapses on mobile after 3s of inactivity) */}
+      <nav 
+        className={`fixed bottom-0 inset-x-0 bg-[#F9F7F2] border-t border-[#E2DCC8] py-2 z-35 shadow-xs font-sans transition-all duration-300 transform ${
+          isBottomNavCollapsedOnMobile
+            ? 'max-sm:translate-y-full max-sm:opacity-0 max-sm:pointer-events-none'
+            : 'max-sm:translate-y-0 max-sm:opacity-100'
+        }`}
+        onTouchStart={() => {
+          if (!isBottomNavCollapsedOnMobile) {
+            revealBottomNavTemporarily();
+          }
+        }}
+        onClick={() => {
+          revealBottomNavTemporarily();
+        }}
+      >
         <div className="max-w-md mx-auto px-1.5 sm:px-6 grid grid-cols-5 gap-0.5 text-center font-bold">
           
           {/* Tab 1: Dashboard */}
           <button
-            onClick={() => switchTab('dashboard')}
+            onClick={() => {
+              switchTab('dashboard');
+              revealBottomNavTemporarily();
+            }}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'dashboard' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
@@ -8240,7 +8518,10 @@ export default function App() {
 
           {/* Tab 2: Journal Diaries */}
           <button
-            onClick={() => switchTab('diaries')}
+            onClick={() => {
+              switchTab('diaries');
+              revealBottomNavTemporarily();
+            }}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'diaries' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
@@ -8251,7 +8532,10 @@ export default function App() {
 
           {/* Tab 3: Flagship Smart Advisor */}
           <button
-            onClick={() => switchTab('advisor')}
+            onClick={() => {
+              switchTab('advisor');
+              revealBottomNavTemporarily();
+            }}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'advisor' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
@@ -8265,7 +8549,10 @@ export default function App() {
 
           {/* Tab 4: Interactive Charts & Analytics */}
           <button
-            onClick={() => switchTab('analytics')}
+            onClick={() => {
+              switchTab('analytics');
+              revealBottomNavTemporarily();
+            }}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'analytics' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
@@ -8276,7 +8563,10 @@ export default function App() {
 
           {/* Tab 5: Settings and Backup */}
           <button
-            onClick={() => switchTab('settings')}
+            onClick={() => {
+              switchTab('settings');
+              revealBottomNavTemporarily();
+            }}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
               activeTab === 'settings' ? 'text-[#8B9D83] scale-105 font-bold' : 'text-gray-400 hover:text-[#5A5A40]'
             }`}
@@ -10258,6 +10548,60 @@ export default function App() {
         allDiaries={diaries}
         userApiKey={settings.userApiKey}
       />
+
+      {/* 📱 Lock Screen Widget Instructions Modal */}
+      {showLockScreenWidgetInfoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn" dir="rtl">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border-2 border-[#D4A373] space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="font-extrabold text-base text-gray-900 flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-[#D4A373]" />
+                <span>إشعار شاشة القفل المثبت (Lock Screen Notification)</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowLockScreenWidgetInfoModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 cursor-pointer text-base font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-gray-700 leading-relaxed font-medium">
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl font-bold text-amber-950 flex items-start gap-2.5">
+                <span className="text-xl">📱</span>
+                <div>
+                  <span className="font-extrabold block text-sm">تثبيت الاختصارات السريعة عند ضغط زر الباور:</span>
+                  <span>عند تمكين الخيار، يُثبّت التطبيق إشعاراً دائماً يحوي كافة الاختصارات (كتابة، تسجيل، مستشار، مزاجي) على شاشة القفل الخارجية.</span>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <h4 className="font-black text-gray-900 text-xs">خطوات الضبط لضمان ظهوره بشكل ممتاز:</h4>
+                <ol className="list-decimal list-inside space-y-1.5 text-gray-600 pr-1">
+                  <li><strong>السماح بالإشعارات:</strong> وافق على إذن الإشعارات عندما يطلبه المتصفح.</li>
+                  <li><strong>تثبيت التطبيق PWA:</strong> اضغط على خيار "إضافة إلى الشاشة الرئيسية" في متصفحك ليصبح تطبيقاً ثابتاً بالنظام.</li>
+                  <li><strong>إعدادات شاشة القفل بالهاتف:</strong> تأكد من إظهار محتوى الإشعارات على شاشة قفل جهازك (Show notification content on lock screen).</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLockScreenWidgetInfoModal(false);
+                  triggerLockScreenNotification();
+                }}
+                className="w-full py-3 bg-[#4E685B] hover:bg-[#3F5449] text-white rounded-2xl font-extrabold text-xs transition-all shadow-md cursor-pointer text-center flex items-center justify-center gap-2 active:scale-95"
+              >
+                <BellRing className="w-4 h-4 text-amber-300 animate-bounce" />
+                <span>تثبيت الإشعار الآن على شاشة القفل 📌</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

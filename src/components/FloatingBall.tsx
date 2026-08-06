@@ -1,22 +1,30 @@
 import React, { useState } from 'react';
-import { Plus, PenTool, Mic, Camera, Heart, Brain, FileText, X } from 'lucide-react';
+import { Plus, PenTool, Mic, Camera, Heart, Brain, CheckSquare, X } from 'lucide-react';
 
 interface FloatingBallProps {
-  onAction: (actionType: 'new_note' | 'voice' | 'photo' | 'mood' | 'ai' | 'notes') => void;
+  onAction: (actionType: 'new_note' | 'voice' | 'photo' | 'mood' | 'ai' | 'notes' | 'task') => void;
+  isCollapsed?: boolean;
 }
 
-export default function FloatingBall({ onAction }: FloatingBallProps) {
+export default function FloatingBall({ onAction, isCollapsed = false }: FloatingBallProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  const handleAction = (type: 'new_note' | 'voice' | 'photo' | 'mood' | 'ai' | 'notes') => {
+  const handleAction = (type: 'new_note' | 'voice' | 'photo' | 'mood' | 'ai' | 'notes' | 'task') => {
     onAction(type);
     setIsOpen(false);
   };
 
   return (
-    <div className="fixed bottom-18 sm:bottom-20 left-3 sm:left-6 z-40 font-sans" dir="rtl">
+    <div 
+      className={`fixed bottom-18 sm:bottom-20 left-3 sm:left-6 z-40 font-sans transition-all duration-300 transform ${
+        isCollapsed 
+          ? 'max-sm:translate-y-28 max-sm:opacity-0 max-sm:pointer-events-none' 
+          : 'max-sm:translate-y-0 max-sm:opacity-100'
+      }`} 
+      dir="rtl"
+    >
       {/* Expanded Menu Options with Animations */}
       {isOpen && (
         <div className="flex flex-col items-center space-y-3 mb-4 animate-in fade-in slide-in-from-bottom-5 duration-200">
@@ -31,6 +39,20 @@ export default function FloatingBall({ onAction }: FloatingBallProps) {
               title="مستشار AI"
             >
               <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </div>
+
+          {/* Quick Task */}
+          <div className="flex items-center group">
+            <span className="bg-[#5A5A40] text-[#F9F7F2] text-[11px] py-1 px-2.5 rounded-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity ml-2 border border-[#8B9D83] shadow-lg pointer-events-none whitespace-nowrap">
+              ☑️ إضافة مهمة جديدة
+            </span>
+            <button
+              onClick={() => handleAction('task')}
+              className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:scale-110 hover:rotate-12 transition-transform cursor-pointer"
+              title="مهمة جديدة"
+            >
+              <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
 

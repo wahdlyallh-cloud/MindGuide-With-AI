@@ -26,7 +26,13 @@ import {
   Footprints,
   HeartPulse,
   Zap,
-  Trophy
+  Trophy,
+  Droplets,
+  Bell,
+  BellRing,
+  Smartphone,
+  TrendingUp,
+  X
 } from 'lucide-react';
 import { DiaryEntry, TaskItem, Habit, HabitSettings } from '../types';
 import WeeklyHabitsMoodChart from './WeeklyHabitsMoodChart';
@@ -148,6 +154,99 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // 💧 Water Reminder & Weekly Commitment Engine State
+  const [waterReminderEnabled, setWaterReminderEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('yawmiyati_water_reminder') === 'true';
+  });
+  const [showWaterReminderModal, setShowWaterReminderModal] = useState(false);
+  const [showWaterMobileInfoModal, setShowWaterMobileInfoModal] = useState(false);
+  const waterTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Trigger Notification Function (Supports system notification + in-app gentle visual modal)
+  const triggerWaterReminder = () => {
+    setShowWaterReminderModal(true);
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('💧 حان وقت شرب الماء!', {
+          body: 'تذكير صحي لطيف: شرب كوب من الماء الانتعاش لصحتك وتنشيط عقلك وحمايتك من الجفاف.',
+          tag: 'water-reminder'
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  // Toggle Water Reminder & Request Browser Notification Permission
+  const toggleWaterReminder = async (enabled: boolean) => {
+    setWaterReminderEnabled(enabled);
+    localStorage.setItem('yawmiyati_water_reminder', String(enabled));
+    if (enabled) {
+      if ('Notification' in window && Notification.permission === 'default') {
+        try {
+          await Notification.requestPermission();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      showToast('تم تفعيل التنبيهات الساعية لشرب الماء 💧⏰');
+      setTimeout(() => triggerWaterReminder(), 400);
+    } else {
+      showToast('تم إيقاف تنبيهات شرب الماء 🔕');
+    }
+  };
+
+  // Hourly Water Timer Effect
+  useEffect(() => {
+    if (waterReminderEnabled) {
+      waterTimerRef.current = setInterval(() => {
+        triggerWaterReminder();
+      }, 60 * 60 * 1000);
+    } else if (waterTimerRef.current) {
+      clearInterval(waterTimerRef.current);
+    }
+    return () => {
+      if (waterTimerRef.current) clearInterval(waterTimerRef.current);
+    };
+  }, [waterReminderEnabled]);
+
+  // Helper to calculate 7-Day Weekly Water Intake Stats & Commitment Percentage
+  const getWeeklyWaterStats = () => {
+    const last7Days: { dateStr: string; dayLabel: string; cups: number; target: number }[] = [];
+    const today = new Date();
+    let totalCupsDrunk = 0;
+    const targetPerDay = 8;
+    const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayName = dayNames[d.getDay()];
+      const entry = (diaries || []).find(diary => diary.createdAt && diary.createdAt.split('T')[0] === dateStr);
+      const cups = entry?.waterCups ?? (dateStr === selectedDate ? waterCups : 0);
+      totalCupsDrunk += cups;
+      last7Days.push({
+        dateStr,
+        dayLabel: i === 0 ? 'اليوم' : dayName,
+        cups,
+        target: targetPerDay
+      });
+    }
+
+    const targetTotal = 7 * targetPerDay;
+    const commitmentPercentage = Math.min(100, Math.round((totalCupsDrunk / targetTotal) * 100));
+
+    return {
+      last7Days,
+      totalCupsDrunk,
+      targetTotal,
+      commitmentPercentage
+    };
+  };
+
+  const weeklyWaterStats = getWeeklyWaterStats();
 
   // Workout Timer Control Methods
   const formatTimerTime = (totalSecs: number) => {
@@ -1231,35 +1330,246 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
                     </div>
                   </div>
 
-                  {/* 💧 Water Tracker Counter */}
-                  <div className="p-3 bg-[#F9F7F2] border border-[#E2DCC8]/50 rounded-2xl flex items-center justify-between">
-                    <div className="flex items-center space-x-2.5 space-x-reverse">
-                      <div className="p-2 bg-sky-500/10 text-sky-600 rounded-lg">
-                        <Coffee className="w-4 h-4" />
+                  {/* 💧 Advanced Water Tracker & Hourly Reminder Studio */}
+                  <div className="space-y-4 p-4 sm:p-5 bg-gradient-to-br from-sky-50/70 via-blue-50/40 to-[#F9F7F2] border-2 border-sky-200/80 rounded-3xl shadow-xs transition-all">
+                    {/* Header with Icon, Cups Counter & Target */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-sky-200/60">
+                      <div className="flex items-center space-x-3 space-x-reverse">
+                        <div className="p-3 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-2xl shadow-md shadow-sky-500/20 shrink-0 flex items-center justify-center">
+                          <Droplets className="w-5.5 h-5.5 text-white animate-pulse" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm sm:text-base font-extrabold text-sky-950 flex items-center gap-1.5">
+                            <span>معدل شرب الماء اليومي</span>
+                            <span className="text-xs text-sky-600">💧</span>
+                          </h4>
+                          <p className="text-[11px] text-sky-700/80 font-medium">
+                            تتبع الترطيب اليومي، التنبيهات الساعية، والالتزام الأسبوعي
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-xs font-bold block text-gray-700">معدل شرب الماء اليومي</span>
-                        <span className="text-[9px] text-gray-400 block font-bold">الهدف اليومي: 8 أكواب</span>
+
+                      {/* Dynamic Cup Status Badge */}
+                      <div className="flex items-center space-x-2 space-x-reverse self-start sm:self-auto">
+                        <div className="inline-flex items-center space-x-1.5 space-x-reverse bg-sky-500/15 text-sky-900 border border-sky-300 px-3 py-1.5 rounded-2xl text-xs font-black shadow-2xs">
+                          <span>{waterCups} / 8 كوب اليوم</span>
+                          <span className="text-sky-400">•</span>
+                          <span className="text-sky-700 font-extrabold">
+                            {waterCups >= 8 ? '✨ مكتمل!' : `${Math.round((waterCups / 8) * 100)}%`}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 space-x-reverse">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateHabit('water', Math.max(0, waterCups - 1))}
-                        className="w-7 h-7 rounded-lg bg-white border border-[#E2DCC8]/60 text-gray-600 hover:bg-[#F0EDE4] flex items-center justify-center font-bold text-xs cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="text-xs font-black font-mono w-6 text-center text-gray-700">{waterCups}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateHabit('water', waterCups + 1)}
-                        className="w-7 h-7 rounded-lg bg-white border border-[#E2DCC8]/60 text-gray-600 hover:bg-[#F0EDE4] flex items-center justify-center font-bold text-xs cursor-pointer"
-                      >
-                        +
-                      </button>
+                    {/* Main Incremental Counter & Visual Cups Fill */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 bg-white/90 border border-sky-200/80 rounded-2xl shadow-3xs">
+                      {/* Interactive Visual Glass Icons */}
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center justify-between text-xs font-bold text-sky-900">
+                          <span>مستوى الترطيب الحالي:</span>
+                          <span className="text-[11px] font-mono text-sky-600">{waterCups} من 8 أكواب (الهدف اليومي)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map((cupNum) => {
+                            const isFilled = waterCups >= cupNum;
+                            return (
+                              <button
+                                key={cupNum}
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateHabit('water', cupNum);
+                                  showToast(`تم تحديث شرب الماء إلى ${cupNum} كوب 💧`);
+                                }}
+                                className={`w-8 h-10 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer border ${
+                                  isFilled
+                                    ? 'bg-gradient-to-t from-sky-500 to-sky-400 text-white border-sky-500 shadow-2xs scale-105'
+                                    : 'bg-sky-50/50 border-sky-200/80 text-sky-300 hover:bg-sky-100/50'
+                                }`}
+                                title={`كوب رقم ${cupNum}`}
+                              >
+                                <Droplets className={`w-4 h-4 ${isFilled ? 'fill-white text-white' : 'text-sky-300'}`} />
+                                <span className="text-[9px] font-mono font-black mt-0.5">{cupNum}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Quick Controls & Plus/Minus */}
+                      <div className="flex items-center space-x-2 space-x-reverse justify-end border-t md:border-t-0 md:border-r border-sky-100 pt-2 md:pt-0 md:pr-3 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateHabit('water', Math.max(0, waterCups - 1))}
+                          className="w-8 h-8 rounded-xl bg-white border border-sky-200 text-sky-700 hover:bg-sky-50 flex items-center justify-center font-black text-sm cursor-pointer shadow-3xs active:scale-95"
+                          title="إنقاص كوب"
+                        >
+                          -
+                        </button>
+
+                        <span className="text-sm font-black font-mono w-8 text-center text-sky-950 bg-sky-100/60 py-1 rounded-lg border border-sky-200">
+                          {waterCups}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleUpdateHabit('water', waterCups + 1);
+                            showToast('أحسنت! سُجل كوب ماء جديد 🥛💧');
+                          }}
+                          className="w-8 h-8 rounded-xl bg-sky-500 text-white hover:bg-sky-600 flex items-center justify-center font-black text-sm cursor-pointer shadow-3xs active:scale-95"
+                          title="زيادة كوب"
+                        >
+                          +
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleUpdateHabit('water', waterCups + 1);
+                            showToast('تم شرب كوب ماء بنجاح! 💧');
+                          }}
+                          className="px-2.5 py-1.5 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-xl text-xs font-black shadow-3xs hover:opacity-95 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <span>+1 كوب</span>
+                          <Coffee className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
+
+                    {/* ⏰ Hourly Water Reminder Controls Box */}
+                    <div className="p-3 bg-white/80 border border-sky-200/70 rounded-2xl space-y-2.5 shadow-3xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-sky-100 pb-2">
+                        <div className="flex items-center space-x-2 space-x-reverse">
+                          <div className={`p-1.5 rounded-lg ${waterReminderEnabled ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'}`}>
+                            <BellRing className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-extrabold text-sky-950 block">تنبيهات شرب الماء الدوريّة (كل ساعة) ⏰</span>
+                            <span className="text-[10px] text-gray-500 font-bold block">إشعار لطيف بصري وعلى النظام للتذكير بشرب الماء</span>
+                          </div>
+                        </div>
+
+                        {/* Toggle Switch */}
+                        <div className="flex items-center space-x-2 space-x-reverse self-end sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => toggleWaterReminder(!waterReminderEnabled)}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              waterReminderEnabled ? 'bg-sky-500' : 'bg-gray-200'
+                            }`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                waterReminderEnabled ? 'translate-x-0' : '-translate-x-5'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Reminder Buttons & Info */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center space-x-2 space-x-reverse flex-wrap gap-y-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              triggerWaterReminder();
+                              showToast('تم إرسال تنبيه تجريبي لشرب الماء 💧');
+                            }}
+                            className="px-3 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-xl font-bold border border-sky-200 transition-all cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Bell className="w-3.5 h-3.5 text-sky-600" />
+                            <span>تجربة التنبيه الآن 🔔</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setShowWaterMobileInfoModal(true)}
+                            className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl font-bold border border-amber-200/80 transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Smartphone className="w-3.5 h-3.5 text-amber-600" />
+                            <span>📱 كيف تظهر التنبيهات على الهاتف وباقي التطبيقات؟</span>
+                          </button>
+                        </div>
+
+                        {waterReminderEnabled && (
+                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            <span>التنبيه نشط كل ساعة</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 📊 Weekly Commitment Stats Counter & 7-Day Chart */}
+                    <div className="p-3.5 bg-white border border-sky-200/80 rounded-2xl space-y-3 shadow-3xs">
+                      {/* Weekly Stats Header & Percentage Counter */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+                        <div className="flex items-center space-x-2 space-x-reverse">
+                          <TrendingUp className="w-4.5 h-4.5 text-sky-600" />
+                          <div>
+                            <span className="text-xs font-extrabold text-sky-950 block">مؤشر الالتزام الأسبوعي بشرب الماء 📊</span>
+                            <span className="text-[10px] text-gray-500 font-bold block">مجموع الأكواب المسجلة خلال الـ 7 أيام الماضية</span>
+                          </div>
+                        </div>
+
+                        {/* Percentage Pill */}
+                        <div className="flex items-center space-x-2 space-x-reverse self-start sm:self-auto">
+                          <div className={`px-3 py-1 rounded-2xl text-xs font-black border shadow-3xs ${
+                            weeklyWaterStats.commitmentPercentage >= 80
+                              ? 'bg-emerald-500 text-white border-emerald-600'
+                              : weeklyWaterStats.commitmentPercentage >= 50
+                              ? 'bg-amber-500 text-white border-amber-600'
+                              : 'bg-rose-500 text-white border-rose-600'
+                          }`}>
+                            نسبة الالتزام الأسبوعي: {weeklyWaterStats.commitmentPercentage}%
+                          </div>
+                          <span className="text-xs font-mono font-bold text-sky-800">
+                            ({weeklyWaterStats.totalCupsDrunk} / {weeklyWaterStats.targetTotal} كوب)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 7-Day Mini Day-by-Day Visual Progress Grid */}
+                      <div className="grid grid-cols-7 gap-1.5 text-center">
+                        {weeklyWaterStats.last7Days.map((dayItem, idx) => {
+                          const percent = Math.min(100, Math.round((dayItem.cups / dayItem.target) * 100));
+                          const isSuccess = dayItem.cups >= dayItem.target;
+                          return (
+                            <div
+                              key={idx}
+                              className={`p-1.5 rounded-xl border flex flex-col items-center justify-between space-y-1 transition-all ${
+                                dayItem.dateStr === selectedDate
+                                  ? 'bg-sky-100/80 border-sky-400 font-black ring-2 ring-sky-300/50'
+                                  : 'bg-[#FBF9F5] border-[#E2DCC8]/60'
+                              }`}
+                            >
+                              <span className="text-[10px] font-bold text-gray-600 truncate max-w-full block">
+                                {dayItem.dayLabel}
+                              </span>
+
+                              {/* Progress bar pillar */}
+                              <div className="w-full h-12 bg-sky-100/60 rounded-lg relative overflow-hidden flex flex-col justify-end p-0.5 border border-sky-200/50">
+                                <div
+                                  className={`w-full rounded-md transition-all duration-500 ${
+                                    isSuccess ? 'bg-emerald-500' : percent > 50 ? 'bg-sky-500' : 'bg-amber-400'
+                                  }`}
+                                  style={{ height: `${percent}%` }}
+                                />
+                                <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black font-mono text-sky-950 drop-shadow-2xs">
+                                  {dayItem.cups}
+                                </span>
+                              </div>
+
+                              <span className="text-[9px] font-bold text-gray-500">
+                                {isSuccess ? '✅' : `${percent}%`}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                   </div>
 
                 </div>
@@ -1396,6 +1706,105 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 💧 In-App Gentle Water Reminder Modal */}
+      {showWaterReminderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
+          <div className="bg-gradient-to-br from-sky-50 via-white to-blue-50 rounded-3xl p-6 w-full max-w-sm shadow-2xl border-2 border-sky-300 space-y-4 text-center dir-rtl relative overflow-hidden">
+            <div className="absolute top-0 right-0 left-0 h-2 bg-gradient-to-r from-sky-400 via-blue-500 to-emerald-400 animate-pulse" />
+            
+            <div className="w-16 h-16 bg-gradient-to-br from-sky-400 to-blue-600 text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-sky-400/30 animate-bounce">
+              <Droplets className="w-8 h-8 fill-white" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-black text-sky-950">💧 حان وقت شرب الماء الانتعاش!</h3>
+              <p className="text-xs text-sky-800 font-medium mt-1">
+                تذكير صحي لطيف: شرب كوب من الماء الانتعاش الآن يجدد نشاطك، يغذي خلايا عقلك ويحميك من الإجهاد والجفاف.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  handleUpdateHabit('water', waterCups + 1);
+                  setShowWaterReminderModal(false);
+                  showToast('أحسنت! سُجل +1 كوب ماء بنجاح 🥛💧');
+                }}
+                className="w-full py-3 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-2xl font-black text-sm shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Coffee className="w-4 h-4" />
+                <span>سَجّل +1 كوب ماء الآن 🥛</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowWaterReminderModal(false);
+                  showToast('تم إغلاق التنبيه ⏱️');
+                }}
+                className="w-full py-2 bg-white hover:bg-sky-50 text-sky-800 border border-sky-200 rounded-2xl font-bold text-xs active:scale-95 transition-all cursor-pointer"
+              >
+                لاحقاً (إغلاق التنبيه) ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📱 Mobile Push Notifications Explanation Modal */}
+      {showWaterMobileInfoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-sky-200 space-y-4 dir-rtl text-right">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="font-bold text-base text-sky-950 flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-sky-600" />
+                <span>إظهار التنبيهات على الهاتف وباقي التطبيقات</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowWaterMobileInfoModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-gray-700 leading-relaxed">
+              <div className="p-3 bg-sky-50/80 border border-sky-200/80 rounded-2xl font-bold text-sky-900 flex items-start gap-2">
+                <span className="text-base">✅</span>
+                <div>
+                  <span className="font-extrabold block text-sm">نعم، تظهر في شريط إشعارات الهاتف وعلى شاشة القفل!</span>
+                  <span>عند سماحك بالإشعارات من المتصفح (مثل Google Chrome على Android أو Safari PWA على iPhone)، يستخدم التطبيق نظام إشعارات النظام الرسمية (Web Push Notifications).</span>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <h4 className="font-black text-gray-900">كيف تضمن وصول التنبيهات أثناء استخدام تطبيقات أخرى؟</h4>
+                <ul className="list-disc list-inside space-y-1.5 text-gray-600 pr-1 font-medium">
+                  <li><strong>السماح بالإشعارات:</strong> انقر على تفعيل التنبيهات واقبل الإذن الذي يظهره المتصفح.</li>
+                  <li><strong>تثبيت التطبيق على الشاشة الرئيسية (PWA):</strong> خيار "إضافة إلى الشاشة الرئيسية" من قائمة المتصفح يجعله يعمل كتطبيق مستقل يرسل الإشعارات بدقة.</li>
+                  <li><strong>التنبيه البصري الداخلي:</strong> عند فتح التطبيق يتم إظهار نافذة تذكير تفاعلية شفافة وسريعة لتسجيل شرب الماء بضغطة واحدة.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowWaterMobileInfoModal(false);
+                  toggleWaterReminder(true);
+                }}
+                className="w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-extrabold text-xs transition-all shadow-xs cursor-pointer text-center"
+              >
+                تمكين التنبيهات الآن 🔔
+              </button>
+            </div>
           </div>
         </div>
       )}

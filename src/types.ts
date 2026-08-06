@@ -157,11 +157,17 @@ export interface HabitSettings {
   widgetOpacity: number; // شفافية اختصار الشاشة الرئيسية (0.1 - 1.0)
   firstDayOfWeek: 'saturday' | 'sunday' | 'monday'; // اليوم الأول من الأسبوع
   persistentNotifications: boolean; // جعل الإشعارات ثابتة
+  lockScreenWidgetEnabled?: boolean; // إشعار ويدجت شاشة القفل المثبت
+  fullscreenModeEnabled?: boolean; // وضع الشاشة الكاملة وإخفاء شريط المتصفح
+  autoHideHeaderOnScroll?: boolean; // إخفاء الشريط العلوي والسفلي تلقائياً عند التمرير
 }
 
 export interface AppSettings {
   isDarkMode: boolean;
   notificationsEnabled: boolean;
+  lockScreenWidgetEnabled?: boolean; // إشعار شاشة القفل المثبت
+  fullscreenModeEnabled?: boolean; // وضع الشاشة الكاملة
+  autoHideHeaderOnScroll?: boolean; // إخفاء الشريطين تلقائياً عند التمرير
   appLanguage: 'ar' | 'en';
   floatingBallEnabled: boolean;
   appPinCode?: string; // Screen Lock PIN

@@ -13,7 +13,15 @@ import {
   ShieldCheck,
   Sparkles,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Smartphone,
+  Lock,
+  Info,
+  BellRing,
+  Maximize,
+  Minimize,
+  EyeOff,
+  Globe
 } from 'lucide-react';
 import { HabitSettings, Habit, DiaryEntry } from '../types';
 
@@ -37,7 +45,10 @@ export const DEFAULT_HABIT_SETTINGS: HabitSettings = {
   disableAnimations: false,
   widgetOpacity: 0.9,
   firstDayOfWeek: 'saturday',
-  persistentNotifications: false
+  persistentNotifications: true,
+  lockScreenWidgetEnabled: true,
+  fullscreenModeEnabled: false,
+  autoHideHeaderOnScroll: true
 };
 
 export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
@@ -322,6 +333,64 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
             </select>
           </div>
 
+          {/* Toggle: Fullscreen & Auto-Hide Top Browser Bar */}
+          <div className="p-3.5 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-white rounded-2xl border border-blue-200/80 space-y-2.5 mt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5 space-x-reverse">
+                <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-xs shrink-0">
+                  <Maximize className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-black text-gray-800 block">وضع الشاشة الكاملة وإخفاء شريط المتصفح العلوي</span>
+                  <p className="text-[10px] text-gray-500 font-bold mt-0.5">
+                    إخفاء شريط عنوان المتصفح (URL Bar) وعناصر التحكم العلوية للحصول على تطبيق ملء الشاشة بدون تشتيت.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  const newState = !mergedSettings.fullscreenModeEnabled;
+                  handleToggle('fullscreenModeEnabled', 'وضع الشاشة الكاملة');
+                  if (!document.fullscreenElement) {
+                    try {
+                      if (document.documentElement.requestFullscreen) {
+                        await document.documentElement.requestFullscreen();
+                      }
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  } else {
+                    if (document.exitFullscreen) {
+                      await document.exitFullscreen();
+                    }
+                  }
+                }}
+                className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center shrink-0 ${
+                  mergedSettings.fullscreenModeEnabled ? 'bg-[#3F5449] justify-end' : 'bg-gray-300 justify-start'
+                }`}
+              >
+                <div className="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-blue-100 text-[10px]">
+              <span className="text-blue-900 font-extrabold flex items-center gap-1">
+                <Globe className="w-3 h-3 text-blue-600" />
+                <span>إخفاء شريط المتصفح نهائياً: ثبت التطبيق على الشاشة الرئيسية (PWA)</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  alert("💡 لإخفاء شريط المتصفح العلوي نهائياً وحذفه من الشاشة:\n1. انقر على القائمة (⋮) أو مشاركة بمتصفحك.\n2. اختر 'إضافة إلى الشاشة الرئيسية' (Add to Home Screen).\n3. افتح التطبيق من أيقونة الشاشة الرئيسية وسيعمل كتطبيق كامل بدون شريط متصفح!");
+                }}
+                className="text-blue-700 underline font-black cursor-pointer hover:text-blue-900"
+              >
+                طريقة التثبيت ℹ️
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -330,18 +399,90 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
         <div className="border-b border-gray-100 pb-3">
           <h4 className="font-black text-sm text-[#5A5A40] flex items-center gap-2">
             <Bell className="w-4 h-4 text-[#8B9D83]" />
-            <span>تذكير وإشعارات (Notifications)</span>
+            <span>إعدادات التذكير والإشعارات (Notifications Center)</span>
           </h4>
         </div>
 
-        <div className="flex items-center justify-between">
+        {/* 📱 1. Lock Screen Persistent Widget Notification (إشعار شاشة القفل المثبت) */}
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F5F1E6]/70 via-amber-50/40 to-white border-2 border-[#D4A373]/40 space-y-3 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <div className="p-2.5 bg-[#D4A373] text-white rounded-2xl shadow-xs shrink-0">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs sm:text-sm font-black text-gray-800 block flex items-center gap-1.5">
+                  <span>إشعار ويدجت شاشة القفل المثبت</span>
+                  <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-extrabold">مُوصى به 🔥</span>
+                </span>
+                <p className="text-[10px] sm:text-xs text-gray-500 font-bold mt-0.5">
+                  إظهار بطاقة (يومياتي AI) بجميع الاختصارات السريعة كإشعار مثبّت على شاشة القفل الخارجية وشريط النظام عند ضغط زر الباور للهاتف.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleToggle('lockScreenWidgetEnabled', 'إشعار شاشة القفل المثبت')}
+              className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center shrink-0 ${
+                mergedSettings.lockScreenWidgetEnabled !== false ? 'bg-[#3F5449] justify-end' : 'bg-gray-300 justify-start'
+              }`}
+            >
+              <div className="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform" />
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E1D4] pt-2.5">
+            <button
+              type="button"
+              onClick={async () => {
+                if ('Notification' in window) {
+                  if (Notification.permission !== 'granted') {
+                    try {
+                      await Notification.requestPermission();
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }
+                  if (Notification.permission === 'granted') {
+                    try {
+                      new Notification('يومياتي AI • نشط الآن 📱', {
+                        body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط هنا للوصول السريع لتدوين المذكرات، التسجيل الصوتي، المستشار، وتحديد المزاج مباشرة من شاشة القفل.',
+                        tag: 'yawmiyati-lockscreen-widget',
+                        requireInteraction: true
+                      });
+                      showToast('تم إرسال وتثبيت إشعار لوحة الاختصارات على شاشة القفل بنجاح 📌🔔');
+                    } catch (e) {
+                      showToast('تم تفعيل إشعار شاشة القفل بنجاح 📌');
+                    }
+                  } else {
+                    showToast('يرجى قبول إذن الإشعارات من المتصفح لتثبيته على شاشة القفل 🔔');
+                  }
+                } else {
+                  showToast('تم تفعيل وضع إشعار شاشة القفل 📌');
+                }
+              }}
+              className="px-3.5 py-1.5 bg-[#4E685B] hover:bg-[#3F5449] text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-3xs flex items-center gap-1.5 active:scale-95"
+            >
+              <BellRing className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+              <span>تثبيت / تجربة الإشعار على شاشة القفل الآن 📌</span>
+            </button>
+
+            <span className="text-[10px] text-amber-800 font-extrabold bg-amber-100/80 px-2.5 py-1 rounded-lg flex items-center gap-1">
+              <Lock className="w-3 h-3 text-amber-600" />
+              <span>متاح على Android وiOS عند إضافته للشاشة الرئيسية (PWA)</span>
+            </span>
+          </div>
+        </div>
+
+        {/* 🔒 2. Persistent Notifications Option */}
+        <div className="flex items-center justify-between p-3.5 bg-[#F9F7F2] rounded-2xl border border-[#E2DCC8]/60">
           <div className="space-y-0.5 max-w-md">
-            <span className="text-xs font-bold block text-gray-800">جعل الإشعارات ثابتة</span>
-            <p className="text-[10px] text-gray-400 font-medium">منع الإشعارات من تمريرها بعيداً.</p>
+            <span className="text-xs font-bold block text-gray-800">جعل جميع الإشعارات والتنبيهات ثابتة (Persistent)</span>
+            <p className="text-[10px] text-gray-500 font-medium">تثبيت التنبيهات وإبقاء الخيارات متاحة حتى ينقر عليها المستخدم بنفسه.</p>
           </div>
           <button
             onClick={() => handleToggle('persistentNotifications', 'الإشعارات الثابتة')}
-            className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center ${
+            className={`w-12 h-6 rounded-full transition-colors p-0.5 cursor-pointer flex items-center shrink-0 ${
               mergedSettings.persistentNotifications ? 'bg-[#8B9D83] justify-end' : 'bg-gray-300 justify-start'
             }`}
           >
