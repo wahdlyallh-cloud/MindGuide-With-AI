@@ -3776,7 +3776,7 @@ export default function App() {
           {/* Quick Action Badges matching the requested screenshot EXACTLY 'balmilli' */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full w-full sm:w-auto justify-start sm:justify-end pb-1.5 sm:pb-0">
             
-            {/* 1. Dhikr / Azkar Button (الأذكار 📿) */}
+            {/* 1. Dhikr / Azkar Button (الأذكار) */}
             <button
               onClick={() => {
                 setActiveTab('dashboard');
@@ -3787,11 +3787,13 @@ export default function App() {
                   }
                 }, 100);
               }}
-              className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-black shadow-3xs hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-black shadow-3xs hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer shrink-0"
               title="الأذكار والتسبيح"
             >
               <span>الأذكار</span>
-              <span className="text-sm">📿</span>
+              <span className="flex items-center justify-center w-5 h-5 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-300 shrink-0">
+                <Sparkles className="w-3 h-3 text-emerald-700" />
+              </span>
             </button>
 
             {/* 2. Habits and Tasks Button (المهام اليومية) with red circular badge containing incomplete count on the left */}
@@ -3809,7 +3811,7 @@ export default function App() {
               <span>المهام اليومية</span>
             </button>
 
-            {/* 3. My Diary Thoughts Button (خواطري ✍️) with light orange/yellow background and border */}
+            {/* 3. My Diary Thoughts Button (خواطري) */}
             <button
               onClick={() => {
                 setActiveTab('diaries');
@@ -3820,7 +3822,9 @@ export default function App() {
               className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4] rounded-xl text-xs font-black shadow-3xs hover:bg-[#F9ECC4] active:scale-95 transition-all cursor-pointer shrink-0"
             >
               <span>خواطري</span>
-              <span className="text-sm">✍️</span>
+              <span className="flex items-center justify-center w-5 h-5 bg-[#F8ECB8] text-[#8C6418] rounded-full border border-[#E1D39D] shrink-0">
+                <PenTool className="w-3 h-3 text-[#8C6418]" />
+              </span>
             </button>
 
             {/* 4. Therapist Session Button (جلسة العلاج 🎓) with dark slate/green background and white text */}
@@ -8887,20 +8891,20 @@ export default function App() {
         };
 
         return (
-          <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center p-4 z-50 transition-all font-sans" dir="rtl">
-            <div className="bg-white border border-[#E2DCC8] rounded-3xl max-w-5xl w-full h-[680px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 z-50 transition-all font-sans" dir="rtl">
+            <div className="bg-white border border-[#E2DCC8] rounded-2xl sm:rounded-3xl max-w-5xl w-full max-h-[92vh] md:h-[680px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               
               {/* Header */}
-              <div className="p-5 bg-gradient-to-r from-[#5A5A40] to-[#8B9D83] text-white flex items-center justify-between">
-                <div className="flex items-center space-x-3 space-x-reverse">
-                  <div className="p-2 bg-white/10 rounded-2xl">
-                    <BookOpen className="w-6 h-6 text-[#FEFAE0]" />
+              <div className="p-3.5 sm:p-5 bg-gradient-to-r from-[#5A5A40] to-[#8B9D83] text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center space-x-2 sm:space-x-3 space-x-reverse">
+                  <div className="p-1.5 sm:p-2 bg-white/10 rounded-xl sm:rounded-2xl shrink-0">
+                    <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-[#FEFAE0]" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-extrabold flex items-center">
+                    <h2 className="text-sm sm:text-lg font-extrabold flex items-center">
                       <span>التقويم والمكتبة الشاملة • اقرأً 📖🗓️</span>
                     </h2>
-                    <p className="text-[10px] text-[#E2DCC8]">تصفح اليوميات والكتب المقروءة والتقارير النفسية المتكاملة</p>
+                    <p className="text-[9px] sm:text-[10px] text-[#E2DCC8]">تصفح اليوميات والكتب المقروءة والتقارير النفسية المتكاملة</p>
                   </div>
                 </div>
                 <button 
@@ -8910,23 +8914,23 @@ export default function App() {
                     setSelectedBookDetail(null);
                     setShowAddBookForm(false);
                   }}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white font-bold cursor-pointer transition-colors text-sm"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white font-bold cursor-pointer transition-colors text-xs sm:text-sm shrink-0"
                 >
                   ✕
                 </button>
               </div>
 
               {/* Sub-tab Navigation Switcher */}
-              <div className="flex border-b border-[#E2DCC8]/40 bg-[#F9F7F2] p-1 gap-1">
+              <div className="flex border-b border-[#E2DCC8]/40 bg-[#F9F7F2] p-1 gap-1 shrink-0 overflow-x-auto scrollbar-none">
                 <button
                   type="button"
                   onClick={() => {
                     setCalendarSubTab('calendar');
                     setSelectedBookDetail(null);
                   }}
-                  className={`flex-1 py-3 text-center text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer ${
+                  className={`flex-1 py-2 sm:py-3 px-2 text-[10px] sm:text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-1 sm:space-x-2 space-x-reverse cursor-pointer whitespace-nowrap ${
                     calendarSubTab === 'calendar' 
-                      ? 'bg-white text-[#5A5A40] shadow-sm border border-[#E2DCC8]/55' 
+                      ? 'bg-white text-[#5A5A40] shadow-xs border border-[#E2DCC8]/55' 
                       : 'text-gray-500 hover:text-[#5A5A40]'
                   }`}
                 >
@@ -8935,9 +8939,9 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setCalendarSubTab('library')}
-                  className={`flex-1 py-3 text-center text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer ${
+                  className={`flex-1 py-2 sm:py-3 px-2 text-[10px] sm:text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-1 sm:space-x-2 space-x-reverse cursor-pointer whitespace-nowrap ${
                     calendarSubTab === 'library' 
-                      ? 'bg-white text-[#5A5A40] shadow-sm border border-[#E2DCC8]/55' 
+                      ? 'bg-white text-[#5A5A40] shadow-xs border border-[#E2DCC8]/55' 
                       : 'text-gray-500 hover:text-[#5A5A40]'
                   }`}
                 >
@@ -8949,9 +8953,9 @@ export default function App() {
                     setCalendarSubTab('reports');
                     setSelectedBookDetail(null);
                   }}
-                  className={`flex-1 py-3 text-center text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-2 space-x-reverse cursor-pointer ${
+                  className={`flex-1 py-2 sm:py-3 px-2 text-[10px] sm:text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-1 sm:space-x-2 space-x-reverse cursor-pointer whitespace-nowrap ${
                     calendarSubTab === 'reports' 
-                      ? 'bg-white text-[#5A5A40] shadow-sm border border-[#E2DCC8]/55' 
+                      ? 'bg-white text-[#5A5A40] shadow-xs border border-[#E2DCC8]/55' 
                       : 'text-gray-500 hover:text-[#5A5A40]'
                   }`}
                 >
@@ -8960,11 +8964,11 @@ export default function App() {
               </div>
 
               {/* Main Workspace split into Left (DatePicker) and Right (Details) */}
-              <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
                 
                 {/* LEFT COLUMN: Clean Calendar Widget */}
-                <div className="w-[280px] shrink-0 border-l border-[#E2DCC8]/40 p-4 bg-[#F9F7F2]/40 flex flex-col justify-start space-y-4 overflow-y-auto">
-                  <div className="text-[11px] font-black text-gray-400">التقويم الكامل والبحث التاريخي</div>
+                <div className="w-full md:w-[280px] shrink-0 border-b md:border-b-0 md:border-l border-[#E2DCC8]/40 p-3 sm:p-4 bg-[#F9F7F2]/40 flex flex-col justify-start space-y-3 sm:space-y-4 overflow-y-auto max-h-[380px] md:max-h-none">
+                  <div className="text-[10px] sm:text-[11px] font-black text-gray-400">التقويم الكامل والبحث التاريخي</div>
 
                   <div className="bg-white border border-[#E2DCC8]/60 rounded-2xl p-3.5 space-y-3.5 shadow-3xs">
                     {/* Month Picker Navigation */}
@@ -9062,7 +9066,7 @@ export default function App() {
                 </div>
 
                 {/* RIGHT COLUMN: Interactive Workspaces */}
-                <div className="flex-1 p-6 overflow-y-auto bg-white flex flex-col justify-between">
+                <div className="flex-1 p-3.5 sm:p-6 overflow-y-auto bg-white flex flex-col justify-between min-h-[350px] md:min-h-0">
                   
                   {/* TAB 1: CALENDAR VIEW & DAY ACTIVITIES */}
                   {calendarSubTab === 'calendar' && (
