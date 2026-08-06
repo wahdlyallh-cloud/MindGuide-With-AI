@@ -21,6 +21,25 @@ function safeFormatDate(d: any): string {
   return String(d);
 }
 
+// Helper to enforce user's selected language output in Gemini REST calls
+function getLanguageInstruction(langCode?: string): string {
+  const code = (langCode || 'ar').toLowerCase();
+  const langNames: Record<string, string> = {
+    ar: "Arabic (العربية)",
+    en: "English",
+    fr: "French (Français)",
+    de: "German (Deutsch)",
+    es: "Spanish (Español)",
+    tr: "Turkish (Türkçe)",
+    ur: "Urdu (اردو)",
+    ru: "Russian (Русский)",
+    zh: "Chinese Simplified (中文)",
+    ja: "Japanese (日本語)"
+  };
+  const targetName = langNames[code] || "Arabic (العربية)";
+  return `\n\nCRITICAL LANGUAGE MANDATE: You MUST generate your entire output, analysis, advice, titles, transcription, and explanations ENTIRELY in ${targetName}. Use fluent, natural, and warm language appropriate for ${targetName}.`;
+}
+
 // Client-side fetch interceptor to support production deployment on Vercel
 // This allows the React SPA to work fully offline and serverless if Express is not running.
 
@@ -774,20 +793,23 @@ ${formattedLogs || 'لا يوجد حوار سابق، هذه بداية الجل
 
         for (const modName of modelsToTry) {
           const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modName}:generateContent?key=${key.trim()}`;
-          const promptText = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
-استمع إلى هذا التسجيل الصوتي بدقة عالية وقم بالأتي:
-1. تفريغ الكلام المنطوق إلى نص عربي واضح ومكتوب بدقة.
-2. تحليل المشاعر الصوتية ونبرة المتحدث وتحديد نوع الشعور الرئيسي من القائمة التالية فقط: ["قلق", "فرح", "حزن", "غضب", "هدوء", "طبيعي"].
-3. تحديد حدة المشاعر كنسبة مئوية من 0 إلى 100%، وتصنيف شدتها إلى: ["عالية", "متوسطة", "منخفضة"].
-4. كتابة ملاحظة قصيرة مشوقة ودقيقة توضح الملاحظات العيادية والصوتية لنبرة المتحدث.
+          const promptText = `You are an expert audio transcription specialist and speech emotion recognition analyst.
+Listen to the attached audio recording and do the following:
+1. Provide an accurate transcription of all spoken words in the language spoken in the audio.
+2. Analyze speech emotion and vocal tone.
+3. Determine primary emotion.
+4. Rate emotion intensity score from 0 to 100%.
+5. Write a concise note explaining vocal tone details.
 
-يرجى إرجاع JSON الصرف بالتنسيق التالي:
+${getLanguageInstruction(requestBody.appLanguage)}
+
+Return pure JSON only in the following format:
 {
-  "transcription": "النص المفرغ هنا...",
-  "emotion": "طبيعي",
+  "transcription": "Full transcribed text...",
+  "emotion": "Normal",
   "intensityScore": 75,
-  "intensityLabel": "متوسطة",
-  "vocalToneDetails": "نبرة صوت هادئة ومتزنة تعكس الاطمئنان والسلام",
+  "intensityLabel": "Medium",
+  "vocalToneDetails": "Vocal tone observation...",
   "recommendedColor": "teal"
 }`;
 

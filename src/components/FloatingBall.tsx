@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { Plus, PenTool, Mic, Camera, Heart, Brain, CheckSquare, X } from 'lucide-react';
+import { AppLanguage, getLanguageInfo, getTranslation } from '../lib/languages';
 
 interface FloatingBallProps {
   onAction: (actionType: 'new_note' | 'voice' | 'photo' | 'mood' | 'ai' | 'notes' | 'task') => void;
   isCollapsed?: boolean;
+  appLanguage?: AppLanguage;
 }
 
-export default function FloatingBall({ onAction, isCollapsed = false }: FloatingBallProps) {
+export default function FloatingBall({ onAction, isCollapsed = false, appLanguage = 'ar' }: FloatingBallProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
+  const isEn = appLanguage !== 'ar' && appLanguage !== 'ur';
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
@@ -23,7 +28,7 @@ export default function FloatingBall({ onAction, isCollapsed = false }: Floating
           ? 'max-sm:translate-y-28 max-sm:opacity-0 max-sm:pointer-events-none' 
           : 'max-sm:translate-y-0 max-sm:opacity-100'
       }`} 
-      dir="rtl"
+      dir={langInfo.dir}
     >
       {/* Expanded Menu Options with Animations */}
       {isOpen && (
@@ -31,12 +36,12 @@ export default function FloatingBall({ onAction, isCollapsed = false }: Floating
           {/* Quick AI Advisor */}
           <div className="flex items-center group">
             <span className="bg-[#5A5A40] text-[#F9F7F2] text-[11px] py-1 px-2.5 rounded-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity ml-2 border border-[#8B9D83] shadow-lg pointer-events-none whitespace-nowrap">
-              🧠 اسأل المستشار الذكي
+              🧠 {isEn ? 'Ask AI Advisor' : 'اسأل المستشار الذكي'}
             </span>
             <button
               onClick={() => handleAction('ai')}
               className="p-2.5 sm:p-3 bg-gradient-to-tr from-[#D4A373] to-[#FEFAE0] text-[#5A5A40] rounded-full shadow-lg hover:scale-110 hover:rotate-12 transition-transform cursor-pointer"
-              title="مستشار AI"
+              title={t.aiAdvisor}
             >
               <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -45,12 +50,12 @@ export default function FloatingBall({ onAction, isCollapsed = false }: Floating
           {/* Quick Task */}
           <div className="flex items-center group">
             <span className="bg-[#5A5A40] text-[#F9F7F2] text-[11px] py-1 px-2.5 rounded-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity ml-2 border border-[#8B9D83] shadow-lg pointer-events-none whitespace-nowrap">
-              ☑️ إضافة مهمة جديدة
+              ☑️ {isEn ? 'Add New Task' : 'إضافة مهمة جديدة'}
             </span>
             <button
               onClick={() => handleAction('task')}
               className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:scale-110 hover:rotate-12 transition-transform cursor-pointer"
-              title="مهمة جديدة"
+              title={t.task}
             >
               <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -59,12 +64,12 @@ export default function FloatingBall({ onAction, isCollapsed = false }: Floating
           {/* Quick Mood Log */}
           <div className="flex items-center group">
             <span className="bg-[#5A5A40] text-[#F9F7F2] text-[11px] py-1 px-2.5 rounded-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity ml-2 border border-[#8B9D83] shadow-lg pointer-events-none whitespace-nowrap">
-              😊 تسجيل المزاج اليومي
+              😊 {isEn ? 'Log Daily Mood' : 'تسجيل المزاج اليومي'}
             </span>
             <button
               onClick={() => handleAction('mood')}
               className="p-2.5 sm:p-3 bg-[#D4A373] text-white rounded-full shadow-lg hover:scale-110 hover:rotate-12 transition-transform cursor-pointer"
-              title="تسجيل المزاج"
+              title={t.mood}
             >
               <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -73,12 +78,12 @@ export default function FloatingBall({ onAction, isCollapsed = false }: Floating
           {/* Snap Photo */}
           <div className="flex items-center group">
             <span className="bg-[#5A5A40] text-[#F9F7F2] text-[11px] py-1 px-2.5 rounded-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity ml-2 border border-[#8B9D83] shadow-lg pointer-events-none whitespace-nowrap">
-              📷 إضافة لقطة جديدة
+              📷 {isEn ? 'Add New Photo' : 'إضافة لقطة جديدة'}
             </span>
             <button
               onClick={() => handleAction('photo')}
               className="p-2.5 sm:p-3 bg-[#CCD5AE] text-[#5A5A40] rounded-full shadow-lg hover:scale-110 hover:rotate-12 transition-transform cursor-pointer"
-              title="صورة جديدة"
+              title={t.photo}
             >
               <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -87,12 +92,12 @@ export default function FloatingBall({ onAction, isCollapsed = false }: Floating
           {/* Quick Recording */}
           <div className="flex items-center group">
             <span className="bg-[#5A5A40] text-[#F9F7F2] text-[11px] py-1 px-2.5 rounded-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity ml-2 border border-[#8B9D83] shadow-lg pointer-events-none whitespace-nowrap">
-              🎤 تسجيل صوتي سريع
+              🎤 {isEn ? 'Quick Voice Record' : 'تسجيل صوتي سريع'}
             </span>
             <button
               onClick={() => handleAction('voice')}
               className="p-2.5 sm:p-3 bg-[#8B9D83] text-white rounded-full shadow-lg hover:scale-110 hover:rotate-12 transition-transform cursor-pointer"
-              title="تسجيل سريع"
+              title={t.voiceRecord}
             >
               <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -101,12 +106,12 @@ export default function FloatingBall({ onAction, isCollapsed = false }: Floating
           {/* New Note / Diary */}
           <div className="flex items-center group">
             <span className="bg-[#5A5A40] text-[#F9F7F2] text-[11px] py-1 px-2.5 rounded-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity ml-2 border border-[#8B9D83] shadow-lg pointer-events-none whitespace-nowrap">
-              📝 كتابة يومية جديدة
+              📝 {isEn ? 'Write New Entry' : 'كتابة يومية جديدة'}
             </span>
             <button
               onClick={() => handleAction('new_note')}
               className="p-2.5 sm:p-3 bg-[#5A5A40] text-white rounded-full shadow-lg hover:scale-110 hover:rotate-12 transition-transform cursor-pointer"
-              title="يومية جديدة"
+              title={t.write}
             >
               <PenTool className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>

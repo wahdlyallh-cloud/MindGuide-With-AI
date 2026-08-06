@@ -577,24 +577,25 @@ app.post("/api/gemini/transcribe-audio", async (req, res) => {
 
     if (ai && isValidBase64) {
       try {
-        const prompt = `أنت أخصائي خبير في تفريغ الصوت وتحليل نبرة المشاعر الصوتية (Speech Emotion Recognition - SER) باللغة العربية.
-استمع إلى هذا التسجيل الصوتي المرفق: "${fileName || 'تسجيل صوتي'}" وقم بالأتي:
-1. التفريغ النصي الشامل والكامل لكافة الكلمات والجمل الواردة في هذا التسجيل باللغة العربية بوضوح ودقة عالية.
-2. تحليل المشاعر الصوتية ونبرة المتحدث بدقة (Speech Emotion Recognition) من خلال حدة الصوت والسرعة والتردد.
-3. تحديد نوع الشعور الرئيسي من القائمة التالية فقط: ["قلق", "فرح", "حزن", "غضب", "هدوء", "طبيعي"].
-4. تحديد حدة المشاعر كنسبة مئوية من 0 إلى 100%، وتصنيف شدتها إلى: ["عالية", "متوسطة", "منخفضة"].
-5. كتابة ملاحظة قصيرة ودقيقة توضح الملاحظات الصوتية لنبرة المتحدث (مثال: "نبرة هادئة ومتزنة تعبر عن السلام والاطمئنان").
+        const prompt = `You are an expert audio transcription specialist and speech emotion recognition analyst.
+Listen to the attached audio recording: "${fileName || 'audio recording'}" and do the following:
+1. Provide a accurate and full text transcription of all spoken words in the language spoken in the audio.
+2. Analyze the speech emotion and vocal tone based on pitch, rate, and frequency.
+3. Determine the primary emotion.
+4. Rate the emotion intensity score from 0 to 100%.
+5. Write a concise note explaining the vocal tone details.
 
-يرجى إرجاع JSON الصرف فقط بالتنسيق التالي:
+${getLanguageInstruction(req.body.appLanguage)}
+
+Return pure JSON only in the following format:
 {
-  "transcription": "النص النصي المفرغ بالكامل وبكل دقة من الصوت المرفق...",
-  "emotion": "قلق" | "فرح" | "حزن" | "غضب" | "هدوء" | "طبيعي",
+  "transcription": "Full transcribed text...",
+  "emotion": "Anxious" | "Joyful" | "Sad" | "Angry" | "Calm" | "Normal",
   "intensityScore": 85,
-  "intensityLabel": "عالية" | "متوسطة" | "منخفضة",
-  "vocalToneDetails": "ملاحظة توضيحية حول نبرة الصوت وتذبذب المشاعر",
+  "intensityLabel": "High" | "Medium" | "Low",
+  "vocalToneDetails": "Vocal tone observation note...",
   "recommendedColor": "amber" | "emerald" | "blue" | "red" | "teal" | "stone"
-}
-أرجع JSON الصرف فقط وبدون أي ماركداون خارجي.`;
+}`;
 
         const response = await generateWithGenAI(ai, {
           contents: [
@@ -689,25 +690,15 @@ app.post("/api/gemini/analyze-mood", async (req, res) => {
   const ai = getGenAI(customKey);
   if (ai) {
     try {
-      const prompt = `أنت طبيب نفسي ومحلل مشاعر خبير باللغة العربية. قم بتحليل النص التالي المستخرج من مذكرات يومية للمستخدم واستنتج بدقة النسب المئوية للمشاعر المختلفة التي يمر بها.
-عنوان المذكرة: "${title || 'بدون عنوان'}"
-محتوى المذكرة: "${content}"
+      const prompt = `You are an expert psychiatrist and emotion analyst. Analyze the following user diary text and deduce the percentage distribution of different emotions.
+Entry Title: "${title || 'Untitled'}"
+Entry Content: "${content}"
 
-يجب أن تقوم بتوزيع النسب المئوية على بعض المشاعر العشرة التالية فقط:
-- سعيد جدًا (Very Happy)
-- سعيد (Happy)
-- مرتاح (Relaxed)
-- طبيعي (Normal)
-- حزين (Sad)
-- مكتئب (Depressed)
-- قلق (Anxious)
-- غاضب (Angry)
-- مرهق (Exhausted)
-- ممتن (Grateful)
+${getLanguageInstruction(req.body.appLanguage)}
 
-أرجع النتيجة على شكل مصفوفة JSON تحتوي فقط على كائنات بصيغة:
-[{"mood": "اسم الشعور بالعربية", "percentage": الرقم بين 1 و 100}]
-يجب أن يكون مجموع النسب 100%. أرجع JSON الصرف فقط بدون أي ماركداون أو تعليقات خارجية.`;
+Return a JSON array containing objects in the format:
+[{"mood": "Emotion Name in target language", "percentage": number between 1 and 100}]
+Total sum of percentages must be 100%. Return pure JSON only without markdown formatting.`;
 
       const response = await generateWithGenAI(ai, {
         contents: prompt,
@@ -1404,7 +1395,7 @@ app.post("/api/gemini/gratitude-advisor", async (req, res) => {
 
   if (ai) {
     try {
-      const systemInstruction = "أنت طبيب وخبير نفسي متخصص في علم النفس الإيجابي والامتنان البناء لتعزيز الجودة النفسية باللغة العربية الفصحى.";
+      const systemInstruction = "You are an expert positive psychology advisor specializing in gratitude, mental well-being, and resilience." + getLanguageInstruction(req.body.appLanguage);
       const formattedGratitude = (gratitudeCards || []).map((c: any) => `- ${c.text}`).join("\n");
       const formattedDiaries = (diaries || []).map((d: any) => `- ${d.title}: ${d.content?.slice(0, 150)}...`).join("\n");
 
@@ -1502,21 +1493,21 @@ app.post("/api/gemini/cbt-analyze", async (req, res) => {
   const ai = getGenAI(customKey);
   if (ai) {
     try {
-      const prompt = `أنت معالج نفسي عيادي خبير في العلاج المعرفي السلوكي (CBT) باللغة العربية.
-قم بتحليل الفكرة السلبية التلقائية التالية الناتجة عن الحدث المثير اللاحق:
-الحدث المثير: "${triggerEvent || 'غير محدد'}"
-الفكرة السلبية التلقائية: "${negativeThoughts}"
+      const prompt = `You are a clinical psychotherapist specializing in Cognitive Behavioral Therapy (CBT).
+Analyze the following negative thought resulting from a trigger event:
+Trigger Event: "${triggerEvent || 'Unspecified'}"
+Negative Automatic Thought: "${negativeThoughts}"
 
-المطلوب:
-1. تحديد نوع "التشوه المعرفي" (Cognitive Distortion) الأكثر مطابقة (مثل: التفكير القطبي بالأبيض والأسود، القفز إلى الاستنتاجات، التهويل/الكارثية، شخصنة الأمور، التصفية الذهنية، لوم الذات). مع تقديم شرح بسيط ومقنع له باللغة العربية (في سطرين).
-2. صياغة "الفكرة البديلة الأكثر عقلانية ومنطقية" (Rational Alternative Thought) التي تفكك هذه الفكرة وتساعد المستخدم على الشعور بالهدوء والواقعية (في سطرين أو ثلاثة).
+1. Identify the matching Cognitive Distortion and provide a concise explanation.
+2. Formulate a Rational Alternative Thought to reframe this thinking pattern.
 
-يرجى إرجاع النتيجة ككائن JSON صرف فقط بالتنسيق التالي:
+${getLanguageInstruction(req.body.appLanguage)}
+
+Return pure JSON object only:
 {
-  "cognitiveDistortion": "اسم التشوه المعرفي وشرحه القصير",
-  "rationalAlternative": "الفكرة البديلة العقلانية المقترحة بدقة"
-}
-أرجع JSON الصرف فقط وبدون أي ماركداون أو تعليقات خارجية.`;
+  "cognitiveDistortion": "Distortion name & short explanation",
+  "rationalAlternative": "Proposed rational alternative thought"
+}`;
 
       const response = await generateWithGenAI(ai, {
         contents: prompt,
@@ -1557,15 +1548,16 @@ app.post("/api/gemini/daily-inspiration", async (req, res) => {
   const ai = getGenAI(customKey);
   if (ai) {
     try {
-      const prompt = `أنت طبيب نفسي وأخصائي تنمية ذاتية وبناء مرونة نفسية رائد في الوطن العربي.
-بناءً على المشاعر الراهنة للمستخدم اليوم وهي: (${moodsStr})، قم بتوليد حكمة نفسية بليغة وملهمة أو نصيحة عملية عميقة لراحة البال والسلام الداخلي باللغة العربية الفصحى.
+      const prompt = `You are an inspirational psychotherapist and resilience coach.
+Based on the user's current moods: (${moodsStr}), generate an inspiring quote or practical mindfulness advice.
 
-يرجى إرجاع النتيجة ككائن JSON صرف بالتنسيق التالي:
+${getLanguageInstruction(req.body.appLanguage)}
+
+Return pure JSON object only:
 {
-  "quote": "نص الحكمة أو النصيحة بأسلوب دافئ ومطمئن للنفس يبعث الأمل والسكينة",
-  "author": "اسم القائل أو مصدر الحكمة (مثال: 'طبيبك النفسي الصديق'، 'علم النفس المعرفي'، أو كاتب/فيلسوف معروف)"
-}
-أرجع JSON الصرف فقط وبدون أي ماركداون أو تعليقات خارجية.`;
+  "quote": "Warm and encouraging wisdom text...",
+  "author": "Author name or source..."
+}`;
 
       const response = await generateWithGenAI(ai, {
         contents: prompt,

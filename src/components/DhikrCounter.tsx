@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, RotateCcw, Heart, Volume2, VolumeX } from 'lucide-react';
+import { AppLanguage, getLanguageInfo, getTranslation } from '../lib/languages';
 
 interface DhikrCounterProps {
   compact?: boolean;
   className?: string;
+  appLanguage?: AppLanguage;
 }
 
-export default function DhikrCounter({ compact = false, className = '' }: DhikrCounterProps) {
+export default function DhikrCounter({ compact = false, className = '', appLanguage = 'ar' }: DhikrCounterProps) {
+  const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
+  const isEn = appLanguage !== 'ar' && appLanguage !== 'ur';
   // Read count from localStorage or default to 0
   const [count, setCount] = useState<number>(() => {
     try {
@@ -93,13 +98,13 @@ export default function DhikrCounter({ compact = false, className = '' }: DhikrC
     setShowResetConfirm(false);
   };
 
-  // Convert number to localized Arabic numerals for presentation if desired, or standard digits with nice commas
-  const formattedCount = count.toLocaleString('ar-EG');
+  // Convert number to localized digits for presentation
+  const formattedCount = count.toLocaleString(langInfo.code === 'ar' ? 'ar-EG' : 'en-US');
 
   return (
     <div 
       className={`relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#1c3829]/90 via-[#274e3a]/85 to-[#162d21]/90 backdrop-blur-md border border-emerald-400/30 text-white p-4 sm:p-5 shadow-2xl ${className}`}
-      dir="rtl"
+      dir={langInfo.dir}
     >
       {/* Decorative Golden Spiritual Glow background */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-amber-400/10 rounded-full blur-2xl pointer-events-none" />
@@ -109,14 +114,14 @@ export default function DhikrCounter({ compact = false, className = '' }: DhikrC
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 text-amber-300/90 text-xs font-black">
           <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-          <span>روضة الأذكار والإيمانيات</span>
+          <span>{t.dhikrTitle}</span>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={toggleSound}
             className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-emerald-200 transition-colors cursor-pointer"
-            title={soundEnabled ? 'إيقاف صوت النقر' : 'تشغيل صوت النقر'}
+            title={soundEnabled ? (isEn ? 'Mute click sound' : 'إيقاف صوت النقر') : (isEn ? 'Enable click sound' : 'تشغيل صوت النقر')}
           >
             {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5 text-rose-300" />}
           </button>
@@ -125,24 +130,24 @@ export default function DhikrCounter({ compact = false, className = '' }: DhikrC
             <button
               onClick={(e) => { e.stopPropagation(); setShowResetConfirm(true); }}
               className="p-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 text-emerald-200 hover:text-rose-200 transition-colors cursor-pointer"
-              title="تصفير العداد"
+              title={isEn ? 'Reset counter' : 'تصفير العداد'}
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
           ) : (
             <div className="flex items-center gap-1 bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-full border border-rose-400/30 text-[10px]">
-              <span className="text-rose-200 font-bold">تصفير؟</span>
+              <span className="text-rose-200 font-bold">{isEn ? 'Reset?' : 'تصفير؟'}</span>
               <button
                 onClick={handleReset}
                 className="px-1.5 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-md font-black cursor-pointer"
               >
-                نعم
+                {isEn ? 'Yes' : 'نعم'}
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowResetConfirm(false); }}
                 className="px-1.5 py-0.5 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-bold cursor-pointer"
               >
-                لا
+                {isEn ? 'No' : 'لا'}
               </button>
             </div>
           )}
@@ -151,20 +156,17 @@ export default function DhikrCounter({ compact = false, className = '' }: DhikrC
 
       {/* Main Spiritual Phrase Card */}
       <div className="text-center space-y-2 my-2">
-        {/* Line 1: والباقيات الصالحات خير */}
         <h3 className="text-lg sm:text-xl font-black text-amber-300 tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] font-serif">
-          والباقيات الصالحات خير
+          {isEn ? 'Spiritual Reflection & Mindfulness' : 'والباقيات الصالحات خير'}
         </h3>
 
-        {/* Line 2: ( سبحان الله. الحمد لله. لا إله إلا الله. الله أكبر) */}
         <p className="text-xs sm:text-sm font-extrabold text-emerald-100/95 leading-relaxed bg-white/10 py-1.5 px-3 rounded-2xl border border-emerald-300/20 inline-block shadow-inner">
-          ( سبحان الله. الحمد لله. لا إله إلا الله. الله أكبر )
+          {t.dhikrSub}
         </p>
 
-        {/* Line 3: صلِّ على سيدك النبي */}
         <p className="text-sm sm:text-base font-black text-amber-200/90 flex items-center justify-center gap-1.5 drop-shadow-xs">
           <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400 animate-pulse" />
-          <span>صلِّ على سيدك النبي</span>
+          <span>{isEn ? 'Peace, Gratitude & Serenity' : 'صلِّ على سيدك النبي'}</span>
           <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400 animate-pulse" />
         </p>
       </div>
@@ -185,19 +187,19 @@ export default function DhikrCounter({ compact = false, className = '' }: DhikrC
               <Sparkles className="w-4 h-4" />
             </div>
             <span className="text-xs sm:text-sm font-black tracking-tight">
-              اضغط هنا للتسبيح والصلاة على النبي 📿
+              {t.dhikrCounterBtn}
             </span>
           </div>
 
           {/* Persistent Counter Badge */}
           <div className="flex items-center gap-1.5 bg-slate-900 text-amber-300 py-1 px-3 rounded-xl border border-amber-400/40 font-mono text-sm sm:text-base font-black shadow-md">
-            <span className="text-[10px] text-amber-200 font-sans font-extrabold">العداد:</span>
+            <span className="text-[10px] text-amber-200 font-sans font-extrabold">{t.dhikrCountLabel}</span>
             <span className="text-amber-300 font-extrabold">{formattedCount}</span>
           </div>
         </button>
 
         <p className="text-[10px] text-emerald-200/70 font-semibold mt-2 text-center">
-          ✨ يحتفظ العداد بتسبيحاتك دائماً حتى عند إغلاق أو فتح الموقع
+          ✨ {t.dhikrFooter}
         </p>
       </div>
     </div>
