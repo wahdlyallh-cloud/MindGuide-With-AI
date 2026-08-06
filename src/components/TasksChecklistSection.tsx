@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -16,7 +16,17 @@ import {
   BarChart2,
   ListTodo,
   Grid,
-  Filter
+  Filter,
+  Play,
+  Pause,
+  RotateCcw,
+  Timer,
+  Flame,
+  Dumbbell,
+  Footprints,
+  HeartPulse,
+  Zap,
+  Trophy
 } from 'lucide-react';
 import { DiaryEntry, TaskItem, Habit, HabitSettings } from '../types';
 import WeeklyHabitsMoodChart from './WeeklyHabitsMoodChart';
@@ -27,7 +37,10 @@ import { HabitSettingsScreen, DEFAULT_HABIT_SETTINGS } from './HabitSettingsScre
 interface TasksChecklistSectionProps {
   activeDiaryForSelectedDate: DiaryEntry | undefined;
   selectedDate: string;
-  handleUpdateHabit: (type: 'sleep' | 'sports' | 'medication' | 'water' | 'fastMood' | 'symptoms' | 'cbt', value: any) => void;
+  handleUpdateHabit: (
+    type: 'sleep' | 'sports' | 'sportsType' | 'sportsIntensity' | 'sportsCalories' | 'sportsEnergyBefore' | 'sportsEnergyAfter' | 'sportsNotes' | 'medication' | 'water' | 'fastMood' | 'symptoms' | 'cbt',
+    value: any
+  ) => void;
   handleUpdateTasks: (updatedTasks: TaskItem[]) => void;
   habits: Habit[];
   toggleHabitCompletion: (habitId: string, dateStr: string, customVal?: any) => void;
@@ -96,16 +109,116 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
   const [newMedTime, setNewMedTime] = useState('10:00 ص');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // ⏱️ Integrated Workout Timer & Mode State
+  const [isWorkoutTimerRunning, setIsWorkoutTimerRunning] = useState(false);
+  const [workoutSeconds, setWorkoutSeconds] = useState(0);
+  const [timerMode, setTimerMode] = useState<'stopwatch' | 'tabata'>('stopwatch');
+  const [tabataPhase, setTabataPhase] = useState<'work' | 'rest'>('work');
+  const [tabataCycleCount, setTabataCycleCount] = useState(1);
+  const [showNotesInput, setShowNotesInput] = useState(false);
+  const workoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Workout Timer Interval Effect (supports Tabata 20s work / 10s rest)
+  useEffect(() => {
+    if (isWorkoutTimerRunning) {
+      workoutTimerRef.current = setInterval(() => {
+        setWorkoutSeconds(prev => {
+          const next = prev + 1;
+          if (timerMode === 'tabata') {
+            const cycleSecs = next % 30;
+            if (cycleSecs === 20) {
+              setTabataPhase('rest');
+            } else if (cycleSecs === 0 && next > 0) {
+              setTabataPhase('work');
+              setTabataCycleCount(c => c + 1);
+            }
+          }
+          return next;
+        });
+      }, 1000);
+    } else if (workoutTimerRef.current) {
+      clearInterval(workoutTimerRef.current);
+    }
+    return () => {
+      if (workoutTimerRef.current) clearInterval(workoutTimerRef.current);
+    };
+  }, [isWorkoutTimerRunning, timerMode]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Workout Timer Control Methods
+  const formatTimerTime = (totalSecs: number) => {
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    if (hrs > 0) {
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartWorkoutTimer = () => {
+    setIsWorkoutTimerRunning(true);
+    showToast('بدأ مؤقت التمرين الرياضي! ⏱️🏃');
+  };
+
+  const handlePauseWorkoutTimer = () => {
+    setIsWorkoutTimerRunning(false);
+    showToast('تم إيقاف مؤقت التمرين مؤقتاً ⏸️');
+  };
+
+  const handleResetWorkoutTimer = () => {
+    setIsWorkoutTimerRunning(false);
+    setWorkoutSeconds(0);
+    showToast('تمت إعادة ضبط المؤقت 🔄');
+  };
+
+  const handleSaveWorkoutTimer = (mode: 'add' | 'replace' = 'add') => {
+    setIsWorkoutTimerRunning(false);
+    const elapsedMinutes = Math.max(1, Math.round(workoutSeconds / 60));
+    
+    let newTotal = elapsedMinutes;
+    if (mode === 'add') {
+      const current = typeof sportsDuration === 'number' ? sportsDuration : parseInt(sportsDuration || '0', 10) || 0;
+      newTotal = current + elapsedMinutes;
+    }
+
+    handleUpdateHabit('sports', newTotal);
+    showToast(`تم تسجيل ${elapsedMinutes} دقيقة (${sportsType}) بنجاح! 🏃💪 (المجموع: ${newTotal} دقيقة)`);
+    setWorkoutSeconds(0);
   };
 
   // Extract daily variables
   const tasks = activeDiaryForSelectedDate?.tasks || [];
   const sleepHours = activeDiaryForSelectedDate?.sleepHours ?? 8;
   const sportsDuration = activeDiaryForSelectedDate?.sportsDuration ?? 0;
+  const sportsType = activeDiaryForSelectedDate?.sportsType || 'مشي';
+  const sportsIntensity = activeDiaryForSelectedDate?.sportsIntensity || 'medium';
+  const sportsEnergyBefore = activeDiaryForSelectedDate?.sportsEnergyBefore ?? 3;
+  const sportsEnergyAfter = activeDiaryForSelectedDate?.sportsEnergyAfter ?? 4;
+  const sportsNotes = activeDiaryForSelectedDate?.sportsNotes || '';
   const waterCups = activeDiaryForSelectedDate?.waterCups ?? 0;
+
+  // Dynamic Calorie Estimator
+  const getEstimatedCalories = (durationMins: number, typeStr: string, intensityStr?: string) => {
+    if (!durationMins || durationMins <= 0) return 0;
+    let baseRate = 5.0; // kcal/min
+    if (typeStr.includes('مشي')) baseRate = 4.5;
+    else if (typeStr.includes('قوة') || typeStr.includes('حديد')) baseRate = 7.5;
+    else if (typeStr.includes('يوجا') || typeStr.includes('استطالة')) baseRate = 3.5;
+    else if (typeStr.includes('جري') || typeStr.includes('كارديو')) baseRate = 11.0;
+    else if (typeStr.includes('دراجة')) baseRate = 8.0;
+    else if (typeStr.includes('سباحة')) baseRate = 9.5;
+
+    let intensityMult = 1.0;
+    if (intensityStr === 'light') intensityMult = 0.8;
+    else if (intensityStr === 'high') intensityMult = 1.35;
+
+    return Math.round(durationMins * baseRate * intensityMult);
+  };
   
   // Extract medications list
   const rawMeds = activeDiaryForSelectedDate?.medications;
@@ -755,24 +868,367 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
                     />
                   </div>
 
-                  {/* 🏃 Sports Duration */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center text-xs font-bold text-gray-700">
-                      <span className="flex items-center gap-1">
-                        <Activity className="w-4 h-4 text-amber-500" />
-                        <span>النشاط البدني والرياضة:</span>
-                      </span>
-                      <span className="font-mono text-[#8B9D83]">{sportsDuration} دقيقة</span>
+                  {/* 🏃 Sports Duration & Integrated Comprehensive Workout Studio */}
+                  <div className="space-y-4 p-4 sm:p-5 bg-[#FBF9F5] border-2 border-[#E2DCC8] rounded-3xl shadow-xs transition-all">
+                    {/* Header with Distinctive Icon & Live Calorie Badge */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#E2DCC8]/70">
+                      <div className="flex items-center space-x-3 space-x-reverse">
+                        <div className="p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-emerald-600 text-white rounded-2xl shadow-md shadow-amber-500/20 shrink-0 flex items-center justify-center">
+                          <Dumbbell className="w-5.5 h-5.5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm sm:text-base font-extrabold text-[#3A3A3A] flex items-center gap-1.5">
+                            <span>النشاط البدني واللياقة الرياضية</span>
+                            <span className="text-xs text-amber-600">⚡</span>
+                          </h4>
+                          <p className="text-[11px] text-gray-500 font-medium">
+                            رصد نوع التمرين، الشدة، السعرات، والمزاج النفسي قبل وبعد النشاط
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Current Exercise Status Badges */}
+                      <div className="flex items-center space-x-2 space-x-reverse flex-wrap gap-y-1.5 self-start sm:self-auto">
+                        {/* Calories Badge */}
+                        <div className="inline-flex items-center space-x-1 space-x-reverse bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-900 border border-amber-500/30 px-2.5 py-1 rounded-2xl text-xs font-black shadow-2xs">
+                          <Flame className="w-3.5 h-3.5 text-orange-600 fill-orange-500/20" />
+                          <span>~{getEstimatedCalories(sportsDuration, sportsType, sportsIntensity)} سعرة</span>
+                        </div>
+
+                        {/* Exercise & Duration Badge */}
+                        <div className="inline-flex items-center space-x-1.5 space-x-reverse bg-[#8B9D83]/15 text-[#3F5449] border border-[#8B9D83]/30 px-3 py-1 rounded-2xl text-xs font-black shadow-2xs">
+                          <span>{sportsDuration} دقيقة</span>
+                          <span className="text-[#8B9D83]">•</span>
+                          <span className="text-[#2D3E35] font-extrabold">{sportsType}</span>
+                        </div>
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="120"
-                      step="5"
-                      value={sportsDuration}
-                      onChange={(e) => handleUpdateHabit('sports', e.target.value)}
-                      className="w-full h-1.5 bg-[#E2DCC8]/60 rounded-lg appearance-none cursor-pointer accent-[#8B9D83]"
-                    />
+
+                    {/* 🏋️ Workout Type Selector (نوع التمرين الرياضي) */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-extrabold text-[#5A5A40] flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Trophy className="w-4 h-4 text-amber-600" />
+                          <span>1. اختر نوع التمرين اليوم:</span>
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-bold">محدد: {sportsType}</span>
+                      </label>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                        {[
+                          { id: 'walking', name: 'مشي', emoji: '🚶‍♂️', desc: 'مشي خفيف/سريع' },
+                          { id: 'strength', name: 'تمارين قوة', emoji: '🏋️‍♂️', desc: 'حديد ومقاومة' },
+                          { id: 'yoga', name: 'يوجا واستطالة', emoji: '🧘‍♀️', desc: 'استرخاء وتنفس' },
+                          { id: 'cardio', name: 'جري وكارديو', emoji: '🏃‍♂️', desc: 'لياقة وزيادة نبض' },
+                          { id: 'cycling', name: 'دراجة هوائية', emoji: '🚴‍♂️', desc: 'دراجة ثابتة/خارجية' },
+                          { id: 'swimming', name: 'سباحة', emoji: '🏊‍♂️', desc: 'تمارين مائية' },
+                        ].map((typeItem) => {
+                          const isSelected = sportsType === typeItem.name;
+                          return (
+                            <button
+                              key={typeItem.id}
+                              type="button"
+                              onClick={() => {
+                                handleUpdateHabit('sportsType', typeItem.name);
+                                showToast(`تم تحديد نوع التمرين: ${typeItem.name} ${typeItem.emoji}`);
+                              }}
+                              className={`p-2.5 rounded-2xl border text-right transition-all cursor-pointer flex items-center space-x-2 space-x-reverse ${
+                                isSelected
+                                  ? 'bg-amber-50/90 border-amber-400 text-amber-900 shadow-2xs font-extrabold ring-2 ring-amber-300/60 scale-[1.02]'
+                                  : 'bg-white hover:bg-gray-50 border-[#E2DCC8]/80 text-[#3A3A3A]'
+                              }`}
+                            >
+                              <span className="text-xl shrink-0 p-1 bg-amber-100/50 rounded-xl">{typeItem.emoji}</span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-black truncate">{typeItem.name}</div>
+                                <div className="text-[9px] text-gray-400 font-medium truncate">{typeItem.desc}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* ⚡ Exercise Intensity Level Selector & Duration Slider */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 border-t border-[#E2DCC8]/40">
+                      {/* Intensity Level Selection */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-extrabold text-[#5A5A40] flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Zap className="w-3.5 h-3.5 text-amber-600" />
+                            <span>2. مستوى شدة المجهود البدني:</span>
+                          </span>
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { id: 'light', label: 'خفيف 🟢', desc: 'مجهود بسيط' },
+                            { id: 'medium', label: 'متوسط 🟡', desc: 'معتدل متوازن' },
+                            { id: 'high', label: 'مكثف 🔴', desc: 'عالي الجهد' },
+                          ].map((intItem) => {
+                            const isSelected = sportsIntensity === intItem.id;
+                            return (
+                              <button
+                                key={intItem.id}
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateHabit('sportsIntensity', intItem.id);
+                                  showToast(`تم ضبط شدة التمرين إلى: ${intItem.label}`);
+                                }}
+                                className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[#3A3A3A] text-white border-[#3A3A3A] font-black shadow-2xs scale-[1.02]'
+                                    : 'bg-white text-gray-700 border-[#E2DCC8] hover:bg-gray-50 font-bold'
+                                }`}
+                              >
+                                <div className="text-xs">{intItem.label}</div>
+                                <div className={`text-[9px] mt-0.5 ${isSelected ? 'text-gray-300' : 'text-gray-400'}`}>{intItem.desc}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Duration Slider & Quick Presets */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-xs font-bold text-gray-700">
+                          <span className="flex items-center gap-1.5 text-[#5A5A40]">
+                            <Activity className="w-4 h-4 text-amber-500" />
+                            <span>3. المدة المسجلة (دقائق):</span>
+                          </span>
+                          <span className="font-mono text-[#8B9D83] font-black text-sm">{sportsDuration} دقيقة</span>
+                        </div>
+
+                        <input
+                          type="range"
+                          min="0"
+                          max="120"
+                          step="5"
+                          value={sportsDuration}
+                          onChange={(e) => handleUpdateHabit('sports', Number(e.target.value))}
+                          className="w-full h-1.5 bg-[#E2DCC8]/60 rounded-lg appearance-none cursor-pointer accent-[#8B9D83]"
+                        />
+
+                        {/* Quick Duration Preset Pills */}
+                        <div className="flex items-center space-x-1.5 space-x-reverse overflow-x-auto pb-1 scrollbar-none">
+                          {[15, 30, 45, 60, 90].map((mins) => (
+                            <button
+                              key={mins}
+                              type="button"
+                              onClick={() => {
+                                handleUpdateHabit('sports', mins);
+                                showToast(`تم ضبط مدة التمرين إلى ${mins} دقيقة ⏱️`);
+                              }}
+                              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer border ${
+                                sportsDuration === mins
+                                  ? 'bg-[#8B9D83] text-white border-[#8B9D83] shadow-3xs'
+                                  : 'bg-white text-gray-600 border-[#E2DCC8] hover:bg-gray-50'
+                              }`}
+                            >
+                              {mins} دقيقة
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 🧘 Mental Mood & Energy Tracker Before vs After Workout */}
+                    <div className="p-3 bg-white border border-[#E2DCC8]/80 rounded-2xl space-y-2.5 shadow-3xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-100 pb-2">
+                        <span className="text-xs font-extrabold text-[#5A5A40] flex items-center gap-1.5">
+                          <HeartPulse className="w-4 h-4 text-rose-500" />
+                          <span>مقياس مستوى الطاقة والانتعاش النفسي (قبل وبعد التمرين):</span>
+                        </span>
+                        {sportsEnergyAfter > sportsEnergyBefore && (
+                          <span className="text-[10px] font-black text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-full self-start sm:self-auto">
+                            ✨ تحسن الطاقة: +{sportsEnergyAfter - sportsEnergyBefore} درجات
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        {/* Energy Before */}
+                        <div className="flex items-center justify-between bg-[#FBF9F5] p-2 rounded-xl border border-[#E2DCC8]/50">
+                          <span className="font-bold text-gray-700">⚡ قبل التمرين:</span>
+                          <div className="flex items-center space-x-1 space-x-reverse">
+                            {[1, 2, 3, 4, 5].map((lvl) => (
+                              <button
+                                key={lvl}
+                                type="button"
+                                onClick={() => handleUpdateHabit('sportsEnergyBefore', lvl)}
+                                className={`w-6 h-6 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                                  sportsEnergyBefore === lvl
+                                    ? 'bg-amber-500 text-white scale-110 shadow-2xs'
+                                    : 'bg-white border border-gray-200 text-gray-400 hover:bg-amber-50'
+                                }`}
+                              >
+                                {lvl}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Energy After */}
+                        <div className="flex items-center justify-between bg-[#FBF9F5] p-2 rounded-xl border border-[#E2DCC8]/50">
+                          <span className="font-bold text-gray-700">🚀 بعد التمرين:</span>
+                          <div className="flex items-center space-x-1 space-x-reverse">
+                            {[1, 2, 3, 4, 5].map((lvl) => (
+                              <button
+                                key={lvl}
+                                type="button"
+                                onClick={() => handleUpdateHabit('sportsEnergyAfter', lvl)}
+                                className={`w-6 h-6 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                                  sportsEnergyAfter === lvl
+                                    ? 'bg-emerald-600 text-white scale-110 shadow-2xs'
+                                    : 'bg-white border border-gray-200 text-gray-400 hover:bg-emerald-50'
+                                }`}
+                              >
+                                {lvl}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ⏱️ Integrated Stopwatch & HIIT Tabata Mode Timer Box */}
+                    <div className="pt-2 border-t border-[#E2DCC8]/60 space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center space-x-1.5 space-x-reverse text-xs font-extrabold text-[#5A5A40]">
+                          <Timer className="w-4 h-4 text-amber-600" />
+                          <span>مؤقت التمرين المباشر ({sportsType}):</span>
+                        </div>
+
+                        {/* Mode Switcher: Stopwatch vs Tabata */}
+                        <div className="flex items-center bg-[#E2DCC8]/40 p-0.5 rounded-xl self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTimerMode('stopwatch');
+                              showToast('تم التحويل لنظام مؤقت عادي ⏱️');
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                              timerMode === 'stopwatch' ? 'bg-white text-[#3A3A3A] shadow-3xs font-black' : 'text-gray-600'
+                            }`}
+                          >
+                            مؤقت عادي ⏱️
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTimerMode('tabata');
+                              showToast('تم التحويل لنظام تاباتا HIIT (20ث تمرين / 10ث راحة) ⚡');
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                              timerMode === 'tabata' ? 'bg-amber-500 text-white shadow-3xs font-black' : 'text-gray-600'
+                            }`}
+                          >
+                            تاباتا HIIT ⚡
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Display & Control Buttons */}
+                      <div className="flex flex-col sm:flex-row items-center justify-between bg-white p-3.5 rounded-2xl border border-[#E2DCC8]/80 shadow-3xs gap-3">
+                        {/* Digital Clock View & Mode Indicator */}
+                        <div className="flex items-center space-x-3 space-x-reverse">
+                          <span className="text-xl sm:text-2xl font-black font-mono tracking-wider text-[#3A3A3A] bg-[#F4F2EB] px-3.5 py-1.5 rounded-xl border border-[#E2DCC8]/60 min-w-[95px] text-center shadow-3xs">
+                            {formatTimerTime(workoutSeconds)}
+                          </span>
+
+                          {timerMode === 'tabata' && isWorkoutTimerRunning && (
+                            <div className="flex items-center space-x-1.5 space-x-reverse">
+                              <span className={`px-2.5 py-1 rounded-xl text-xs font-black border ${
+                                tabataPhase === 'work'
+                                  ? 'bg-rose-500 text-white border-rose-600 animate-pulse'
+                                  : 'bg-emerald-500 text-white border-emerald-600'
+                              }`}>
+                                {tabataPhase === 'work' ? '🔥 مجهود (20ث)' : '🧘 راحة (10ث)'}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg">
+                                جولة #{tabataCycleCount}
+                              </span>
+                            </div>
+                          )}
+
+                          {isWorkoutTimerRunning && timerMode === 'stopwatch' && (
+                            <span className="flex h-3 w-3 relative">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Controls */}
+                        <div className="flex items-center space-x-1.5 space-x-reverse flex-wrap justify-end w-full sm:w-auto">
+                          {!isWorkoutTimerRunning ? (
+                            <button
+                              type="button"
+                              onClick={handleStartWorkoutTimer}
+                              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center space-x-1 space-x-reverse shadow-xs transition-all active:scale-95 cursor-pointer"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>{workoutSeconds > 0 ? 'استئناف' : 'بدء التمرين'}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handlePauseWorkoutTimer}
+                              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black flex items-center space-x-1 space-x-reverse shadow-xs transition-all active:scale-95 cursor-pointer"
+                            >
+                              <Pause className="w-3.5 h-3.5 fill-current" />
+                              <span>إيقاف مؤقت</span>
+                            </button>
+                          )}
+
+                          {workoutSeconds > 0 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveWorkoutTimer('add')}
+                                className="px-3.5 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-black flex items-center space-x-1 space-x-reverse shadow-xs transition-all active:scale-95 cursor-pointer"
+                                title="حفظ وتراكم النتيجة تلقائياً في خانة الرياضة للمذكرة"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>تراكم وتحفيظ النتيجة</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleResetWorkoutTimer}
+                                className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                                title="إعادة ضبط المؤقت"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 📝 Workout Session Notes & Record Input */}
+                    <div className="pt-2 border-t border-[#E2DCC8]/40">
+                      <div className="flex items-center justify-between mb-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowNotesInput(!showNotesInput)}
+                          className="text-xs font-extrabold text-[#5A5A40] hover:text-[#3A3A3A] flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                          <span>تعديل/إضافة ملاحظات التمرين والإنجاز الشخصي</span>
+                        </button>
+                      </div>
+
+                      {showNotesInput || sportsNotes ? (
+                        <textarea
+                          rows={2}
+                          value={sportsNotes}
+                          onChange={(e) => handleUpdateHabit('sportsNotes', e.target.value)}
+                          placeholder="مثال: قطع مسافة 4 كم في الهواء الطلق، شعور بالراحة والانتعاش الذهني..."
+                          className="w-full text-xs p-2.5 bg-white border border-[#E2DCC8] rounded-xl text-[#3A3A3A] focus:ring-2 focus:ring-amber-300 outline-none transition-all placeholder:text-gray-400"
+                        />
+                      ) : null}
+                    </div>
                   </div>
 
                   {/* 💧 Water Tracker Counter */}

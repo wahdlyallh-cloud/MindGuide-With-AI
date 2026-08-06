@@ -80,6 +80,12 @@ export interface DiaryEntry {
   // Dynamic life-map elements logged with this diary
   medications?: MedicationTrack[];
   sportsDuration?: number; // Minutes spent on exercise
+  sportsType?: string; // Type of workout (e.g., 'مشي', 'تمارين قوة', 'يوجا واستطالة', etc.)
+  sportsIntensity?: 'light' | 'medium' | 'high'; // Workout intensity
+  sportsCalories?: number; // Estimated calories burned
+  sportsEnergyBefore?: number; // Energy level before exercise (1-5)
+  sportsEnergyAfter?: number; // Energy level after exercise (1-5)
+  sportsNotes?: string; // Exercise notes / achievements
   sleepHours?: number; // Hours slept
   customHabits?: HabitTrack[];
   isArchived?: boolean; // Archived entry flag

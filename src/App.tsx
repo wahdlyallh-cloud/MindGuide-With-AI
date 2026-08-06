@@ -3447,7 +3447,10 @@ export default function App() {
     }
   };
 
-  const handleUpdateHabit = (type: 'sleep' | 'sports' | 'medication' | 'water' | 'fastMood' | 'symptoms' | 'cbt', value: any) => {
+  const handleUpdateHabit = (
+    type: 'sleep' | 'sports' | 'sportsType' | 'sportsIntensity' | 'sportsCalories' | 'sportsEnergyBefore' | 'sportsEnergyAfter' | 'sportsNotes' | 'medication' | 'water' | 'fastMood' | 'symptoms' | 'cbt',
+    value: any
+  ) => {
     // If no diary exists for selected date, auto-create one
     let targetDiary = activeDiaryForSelectedDate;
     if (!targetDiary) {
@@ -3471,6 +3474,11 @@ export default function App() {
         isLocked: false,
         sleepHours: 8,
         sportsDuration: 0,
+        sportsType: 'مشي',
+        sportsIntensity: 'medium',
+        sportsEnergyBefore: 3,
+        sportsEnergyAfter: 4,
+        sportsNotes: '',
         medications: [
           { id: 'm1', name: 'مكمل فيتامين D', time: '10:00 ص', taken: false }
         ],
@@ -3486,6 +3494,18 @@ export default function App() {
       targetDiary.sleepHours = Number(value);
     } else if (type === 'sports') {
       targetDiary.sportsDuration = Number(value);
+    } else if (type === 'sportsType') {
+      targetDiary.sportsType = String(value);
+    } else if (type === 'sportsIntensity') {
+      targetDiary.sportsIntensity = value;
+    } else if (type === 'sportsCalories') {
+      targetDiary.sportsCalories = Number(value);
+    } else if (type === 'sportsEnergyBefore') {
+      targetDiary.sportsEnergyBefore = Number(value);
+    } else if (type === 'sportsEnergyAfter') {
+      targetDiary.sportsEnergyAfter = Number(value);
+    } else if (type === 'sportsNotes') {
+      targetDiary.sportsNotes = String(value);
     } else if (type === 'medication') {
       if (Array.isArray(value)) {
         targetDiary.medications = value;
@@ -9224,7 +9244,9 @@ export default function App() {
                                   <span className="flex items-center gap-1">🏃 النشاط والرياضة البدنية:</span>
                                   <span className="font-extrabold text-[#3A3A3A]">
                                     {dayEntry.sportsDuration && dayEntry.sportsDuration > 0 ? (
-                                      <span className="text-[#8B9D83]">{dayEntry.sportsDuration} دقيقة ممارسة</span>
+                                      <span className="text-[#8B9D83]">
+                                        {dayEntry.sportsDuration} دقيقة ممارسة {dayEntry.sportsType ? `(${dayEntry.sportsType})` : ''}
+                                      </span>
                                     ) : (
                                       <span className="text-gray-400 italic">لا توجد تمارين</span>
                                     )}
