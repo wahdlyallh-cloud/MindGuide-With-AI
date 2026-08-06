@@ -6,7 +6,7 @@ import {
   Settings as SettingsIcon, Sparkles, LogOut, CheckSquare, 
   Trash2, Edit3, Trash, Star, Image, Paperclip, Mic, MicOff, 
   Smile, ShieldCheck, Download, Upload, Activity, Moon, Pill,
-  User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key, Archive, RotateCcw,
+  User, Printer, ChevronRight, ArrowRight, Lock, Eye, EyeOff, Flame, Bell, Key, Archive, RotateCcw, ChevronDown,
   Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe, Fingerprint, X
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -542,6 +542,29 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('yawmiyati_active_tab', activeTab);
   }, [activeTab]);
+
+  // Mobile Auto-Hiding Top Header State
+  const [isHeaderCollapsedOnMobile, setIsHeaderCollapsedOnMobile] = useState(false);
+  const headerAutoTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Temporarily reveals header for 3 seconds, then auto-collapses on mobile
+  const revealHeaderTemporarily = useCallback(() => {
+    setIsHeaderCollapsedOnMobile(false);
+    if (headerAutoTimerRef.current) {
+      clearTimeout(headerAutoTimerRef.current);
+    }
+    headerAutoTimerRef.current = setTimeout(() => {
+      setIsHeaderCollapsedOnMobile(true);
+    }, 3000);
+  }, []);
+
+  // Instantly collapses top header on mobile
+  const collapseHeaderOnMobile = useCallback(() => {
+    setIsHeaderCollapsedOnMobile(true);
+    if (headerAutoTimerRef.current) {
+      clearTimeout(headerAutoTimerRef.current);
+    }
+  }, []);
 
   const diariesSaveDebounceRef = useRef<any>(null);
 
@@ -1399,6 +1422,11 @@ export default function App() {
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+
+  // Auto-collapse top header on mobile when user navigates or opens main views
+  useEffect(() => {
+    collapseHeaderOnMobile();
+  }, [activeTab, activeDiariesSubTab, editingDiary?.id, showCalendarModal, collapseHeaderOnMobile]);
 
   // --- Comprehensive Library and Calendar States ---
   const [books, setBooks] = useState<Book[]>(() => {
@@ -3744,8 +3772,42 @@ export default function App() {
         </div>
       )}
 
+      {/* 📱 Small Floating Draggable Top Pill Icon on Mobile when Header is Collapsed */}
+      {isHeaderCollapsedOnMobile && (
+        <motion.div
+          drag="x"
+          dragConstraints={{ left: -140, right: 140 }}
+          dragElastic={0.1}
+          className="fixed top-2 left-1/2 -translate-x-1/2 z-40 sm:hidden flex flex-col items-center animate-in fade-in slide-in-from-top-2 duration-200"
+        >
+          <button
+            type="button"
+            onClick={revealHeaderTemporarily}
+            className="flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-[#4E685B] text-white rounded-full shadow-lg border border-white/40 active:scale-95 transition-all cursor-pointer group"
+            title="انقر لإظهار الشريط العلوي مجدداً لمدة 3 ثوانٍ (يمكن تحريك هذه الأيقونة أفقياً)"
+          >
+            <Brain className="w-4 h-4 text-[#FEFAE0] animate-pulse shrink-0" />
+            <span className="text-[11px] font-black tracking-tight">يومياتي AI</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <ChevronDown className="w-3.5 h-3.5 text-white/80 group-hover:translate-y-0.5 transition-transform shrink-0" />
+          </button>
+        </motion.div>
+      )}
+
       {/* 🚀 Header bar with branding & Quick Navigation Badges */}
-      <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-[#E2DCC8] z-30 shadow-xs" dir="rtl">
+      <header 
+        className={`sticky top-0 bg-white/95 backdrop-blur-md border-b border-[#E2DCC8] z-30 shadow-xs transition-all duration-300 transform ${
+          isHeaderCollapsedOnMobile 
+            ? 'max-sm:-translate-y-full max-sm:max-h-0 max-sm:opacity-0 max-sm:overflow-hidden max-sm:pointer-events-none' 
+            : 'max-sm:translate-y-0 max-sm:max-h-[500px] max-sm:opacity-100'
+        }`} 
+        dir="rtl"
+        onTouchStart={() => {
+          if (!isHeaderCollapsedOnMobile) {
+            revealHeaderTemporarily();
+          }
+        }}
+      >
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-3 space-x-reverse self-stretch sm:self-auto justify-between sm:justify-start">
             <div className="flex items-center space-x-3 space-x-reverse">
@@ -3780,6 +3842,7 @@ export default function App() {
             <button
               onClick={() => {
                 setActiveTab('dashboard');
+                collapseHeaderOnMobile();
                 setTimeout(() => {
                   const el = document.getElementById('dhikr-counter');
                   if (el) {
@@ -3802,6 +3865,7 @@ export default function App() {
                 setActiveTab('diaries');
                 setActiveDiariesSubTab('tasks');
                 setEditingDiary(null);
+                collapseHeaderOnMobile();
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#EEF1EB] text-[#556E4F] border border-[#DCE4D8] rounded-xl text-xs font-black shadow-3xs hover:bg-[#E2E9DF] active:scale-95 transition-all cursor-pointer shrink-0"
             >
@@ -3818,6 +3882,7 @@ export default function App() {
                 setActiveDiariesSubTab('journal');
                 setDiaryTypeFilter('thought');
                 setEditingDiary(null);
+                collapseHeaderOnMobile();
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4] rounded-xl text-xs font-black shadow-3xs hover:bg-[#F9ECC4] active:scale-95 transition-all cursor-pointer shrink-0"
             >
@@ -3833,6 +3898,7 @@ export default function App() {
                 setActiveTab('analytics');
                 setAnalyticsSubTab('report');
                 setEditingDiary(null);
+                collapseHeaderOnMobile();
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#446A5E] hover:bg-[#3B5A50] text-white rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0"
             >
@@ -3846,7 +3912,10 @@ export default function App() {
 
             {/* 5. Personal Account & Cloud Sync Login Button */}
             <button
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => {
+                setIsAuthModalOpen(true);
+                collapseHeaderOnMobile();
+              }}
               className={`flex items-center space-x-1.5 space-x-reverse px-3 py-2 border rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0 ${
                 currentUser
                   ? 'bg-teal-700 text-white border-teal-800 hover:bg-teal-800'
@@ -3869,7 +3938,10 @@ export default function App() {
 
             {/* 6. Lock Button (🔒) with grey-brown background and border */}
             <button
-              onClick={() => setSettings(prev => ({ ...prev, isAppLocked: true }))}
+              onClick={() => {
+                setSettings(prev => ({ ...prev, isAppLocked: true }));
+                collapseHeaderOnMobile();
+              }}
               className="p-2.5 bg-[#EEECDF] border border-[#D1CCBA] text-[#5A5A40] rounded-xl hover:bg-[#DDD8C3] active:scale-95 transition-all cursor-pointer shadow-3xs shrink-0 flex items-center justify-center"
               title="قفل التطبيق لحماية الخصوصية"
             >
@@ -3880,39 +3952,64 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🔙 Universal Top-Right Back Navigation Bar under fixed header */}
+      {/* 🔙 Universal Back Navigation: Desktop Sticky Bar vs Mobile Draggable Floating Pill */}
       {(activeTab !== 'dashboard' || editingDiary !== null || navHistory.length > 0) && (
-        <div className="bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E2DCC8]/80 py-2 px-4 sticky top-[65px] z-20 transition-all shadow-3xs" dir="rtl">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <>
+          {/* Mobile Floating Draggable Back Button (سهم وعدّد فقط ويمكن سحبه لأي مكان في الشاشة) */}
+          <motion.div
+            drag
+            dragMomentum={false}
+            dragElastic={0.1}
+            className="fixed top-16 right-4 z-40 sm:hidden cursor-grab active:cursor-grabbing"
+          >
             <button
               type="button"
               onClick={handleGoBack}
-              className="inline-flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-white hover:bg-[#8B9D83] text-[#3A3A3A] hover:text-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-2xl text-xs font-black shadow-2xs hover:shadow-md transition-all active:scale-95 cursor-pointer group shrink-0"
-              title="الرجوع إلى الشاشة أو الصفحة السابقة"
+              className="flex items-center space-x-1.5 space-x-reverse p-2.5 bg-[#4E685B] text-white hover:bg-[#3F5449] border-2 border-[#E5E1D4] rounded-full shadow-2xl transition-all active:scale-95 cursor-pointer group"
+              title="رجوع للخلف (يمكنك سحب وتحريك هذه الأيقونة العائمة لأي مكان)"
             >
-              <ArrowRight className="w-4 h-4 text-[#8B9D83] group-hover:text-white group-hover:-translate-x-1 transition-transform" />
-              <span>رجوع للخلف</span>
+              <ArrowRight className="w-5 h-5 text-[#FEFAE0] group-hover:-translate-x-0.5 transition-transform shrink-0" />
               {navHistory.length > 0 && (
-                <span className="text-[10px] bg-[#EEF1EB] group-hover:bg-white/20 text-[#556E4F] group-hover:text-white px-1.5 py-0.5 rounded-full font-black">
+                <span className="text-[11px] bg-white text-[#4E685B] px-2 py-0.5 rounded-full font-black leading-none shadow-xs">
                   {navHistory.length}
                 </span>
               )}
             </button>
+          </motion.div>
 
-            {/* Current Breadcrumb Location */}
-            <div className="text-[11px] font-bold text-gray-500 hidden sm:flex items-center space-x-1.5 space-x-reverse bg-white/80 px-3 py-1 rounded-xl border border-[#E2DCC8]/50 shadow-3xs">
-              <span className="text-gray-400">الصفحة الحالية:</span>
-              <span className="text-[#556E4F] font-black">
-                {editingDiary ? 'تعديل/عرض المذكرة' :
-                 activeTab === 'dashboard' ? 'الرئيسية' :
-                 activeTab === 'diaries' ? `اليوميات والمهام (${activeDiariesSubTab === 'journal' ? 'سجل المذكرات' : activeDiariesSubTab === 'tasks' ? 'المهام' : activeDiariesSubTab === 'gratitude' ? 'الامتنان' : 'CBT'})` :
-                 activeTab === 'advisor' ? 'المستشار النفسي الذكي' :
-                 activeTab === 'analytics' ? 'التقدم والاستشارات' :
-                 activeTab === 'settings' ? 'إعدادات التطبيق' : ''}
-              </span>
+          {/* Desktop Sticky Navigation Bar */}
+          <div className="hidden sm:block bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E2DCC8]/80 py-2 px-4 sticky top-[65px] z-20 transition-all duration-300 shadow-3xs" dir="rtl">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <button
+                type="button"
+                onClick={handleGoBack}
+                className="inline-flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-white hover:bg-[#8B9D83] text-[#3A3A3A] hover:text-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-2xl text-xs font-black shadow-2xs hover:shadow-md transition-all active:scale-95 cursor-pointer group shrink-0"
+                title="الرجوع إلى الشاشة أو الصفحة السابقة"
+              >
+                <ArrowRight className="w-4 h-4 text-[#8B9D83] group-hover:text-white group-hover:-translate-x-1 transition-transform" />
+                <span>رجوع للخلف</span>
+                {navHistory.length > 0 && (
+                  <span className="text-[10px] bg-[#EEF1EB] group-hover:bg-white/20 text-[#556E4F] group-hover:text-white px-1.5 py-0.5 rounded-full font-black">
+                    {navHistory.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Current Breadcrumb Location */}
+              <div className="text-[11px] font-bold text-gray-500 hidden sm:flex items-center space-x-1.5 space-x-reverse bg-white/80 px-3 py-1 rounded-xl border border-[#E2DCC8]/50 shadow-3xs">
+                <span className="text-gray-400">الصفحة الحالية:</span>
+                <span className="text-[#556E4F] font-black">
+                  {editingDiary ? 'تعديل/عرض المذكرة' :
+                   activeTab === 'dashboard' ? 'الرئيسية' :
+                   activeTab === 'diaries' ? `اليوميات والمهام (${activeDiariesSubTab === 'journal' ? 'سجل المذكرات' : activeDiariesSubTab === 'tasks' ? 'المهام' : activeDiariesSubTab === 'gratitude' ? 'الامتنان' : 'CBT'})` :
+                   activeTab === 'advisor' ? 'المستشار النفسي الذكي' :
+                   activeTab === 'analytics' ? 'التقدم والاستشارات' :
+                   activeTab === 'settings' ? 'إعدادات التطبيق' : ''}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
 
