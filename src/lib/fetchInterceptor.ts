@@ -27,17 +27,17 @@ function getLanguageInstruction(langCode?: string): string {
   const langNames: Record<string, string> = {
     ar: "Arabic (العربية)",
     en: "English",
-    fr: "French (Français)",
     de: "German (Deutsch)",
+    fr: "French (Français)",
     es: "Spanish (Español)",
+    it: "Italian (Italiano)",
     tr: "Turkish (Türkçe)",
     ur: "Urdu (اردو)",
-    ru: "Russian (Русский)",
-    zh: "Chinese Simplified (中文)",
-    ja: "Japanese (日本語)"
+    hi: "Hindi (हिंदी)",
+    id: "Indonesian (Bahasa Indonesia)"
   };
   const targetName = langNames[code] || "Arabic (العربية)";
-  return `\n\nCRITICAL LANGUAGE MANDATE: You MUST generate your entire output, analysis, advice, titles, transcription, and explanations ENTIRELY in ${targetName}. Use fluent, natural, and warm language appropriate for ${targetName}.`;
+  return `\n\nCRITICAL LANGUAGE MANDATE: Always respond, analyze, and output purely in the requested language: ${targetName}. Translate all mood tags, insights, and recommendations completely to ${targetName}.`;
 }
 
 // Client-side fetch interceptor to support production deployment on Vercel

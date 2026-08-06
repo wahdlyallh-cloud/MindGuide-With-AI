@@ -35,9 +35,7 @@ export default function LanguagesModal({
   const handleSelectLanguage = (langCode: AppLanguage) => {
     setSelectedTempLang(langCode);
     onChangeLanguage(langCode);
-    if (!isFirstTime) {
-      onClose();
-    }
+    onClose();
   };
 
   return (

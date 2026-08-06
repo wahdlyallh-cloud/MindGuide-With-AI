@@ -10,7 +10,7 @@ import {
   Cloud, RefreshCw, Copy, Check, Mail, Send, Video, Camera, PenTool, Music, ExternalLink, Globe, Fingerprint, X, Smartphone, BellRing, Info, Maximize, Minimize
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book, AppReminder, AuthUser } from './types';
+import { DiaryEntry, AppSettings, TaskItem, AudioRecording, FileAttachment, Habit, GratitudeCard, ChatLogEntry, Book, AppReminder, AuthUser, AppLanguage } from './types';
 import StaticNotification from './components/StaticNotification';
 import FloatingBall from './components/FloatingBall';
 import DrawingCanvas from './components/DrawingCanvas';
@@ -452,6 +452,10 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('yawmiyati_settings');
     const parsed: AppSettings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    const directLang = localStorage.getItem('app_language') as AppLanguage;
+    if (directLang && ['ar', 'en', 'de', 'fr', 'es', 'it', 'tr', 'ur', 'hi', 'id'].includes(directLang)) {
+      parsed.appLanguage = directLang;
+    }
     const savedCredId = localStorage.getItem('yawmiyati_biometric_cred_id');
     if (savedCredId && !parsed.biometricCredentialId) {
       parsed.biometricCredentialId = savedCredId;
@@ -1584,7 +1588,7 @@ export default function App() {
 
   // Auto-open language selector on first visit
   useEffect(() => {
-    const chosen = localStorage.getItem('yawmiyati_language_chosen');
+    const chosen = localStorage.getItem('app_language') || localStorage.getItem('yawmiyati_language_chosen');
     if (!chosen) {
       setShowLanguagesModal(true);
       setIsFirstTimeLangSelect(true);
@@ -8725,11 +8729,13 @@ export default function App() {
           setShowLanguagesModal(false);
           setIsFirstTimeLangSelect(false);
           localStorage.setItem('yawmiyati_language_chosen', 'true');
+          localStorage.setItem('app_language', settings.appLanguage);
         }}
         appLanguage={settings.appLanguage}
         onChangeLanguage={(lang) => {
           setSettings(prev => ({ ...prev, appLanguage: lang }));
           localStorage.setItem('yawmiyati_language_chosen', 'true');
+          localStorage.setItem('app_language', lang);
         }}
         isEn={isEn}
         isFirstTime={isFirstTimeLangSelect}
