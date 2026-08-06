@@ -4,7 +4,8 @@ import {
   History, Search, Plus, Trash2, Edit3, ArrowRightLeft, Clock, CheckCircle2, Stethoscope, UserCheck,
   BookOpen, Filter, Zap, RefreshCw, X, MessageSquare, ListTodo, ShieldCheck, ChevronDown, ChevronUp
 } from 'lucide-react';
-import { DiaryEntry } from '../types';
+import { DiaryEntry, AppLanguage } from '../types';
+import { getLanguageInfo, getTranslation } from '../lib/languages';
 import MonthlyMentalHealthPDFReportModal, { SavedPDFReport, INITIAL_SAVED_REPORTS } from './MonthlyMentalHealthPDFReportModal';
 
 interface IntegratedTherapyReportProps {
@@ -13,9 +14,12 @@ interface IntegratedTherapyReportProps {
   gratitudeCards?: any[];
   books?: any[];
   userApiKey?: string;
+  appLanguage?: AppLanguage;
 }
 
-export default function IntegratedTherapyReport({ diaries, habits = [], gratitudeCards = [], books = [], userApiKey }: IntegratedTherapyReportProps) {
+export default function IntegratedTherapyReport({ diaries, habits = [], gratitudeCards = [], books = [], userApiKey, appLanguage = 'ar' }: IntegratedTherapyReportProps) {
+  const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [selectedReportForModal, setSelectedReportForModal] = useState<SavedPDFReport | null>(null);
   
@@ -830,6 +834,7 @@ export default function IntegratedTherapyReport({ diaries, habits = [], gratitud
         gratitudeCards={gratitudeCards}
         books={books}
         userApiKey={userApiKey}
+        appLanguage={appLanguage}
       />
     </div>
   );

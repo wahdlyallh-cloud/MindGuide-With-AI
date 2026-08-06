@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { DiaryEntry } from '../types';
+import { DiaryEntry, AppLanguage } from '../types';
+import { getLanguageInfo, getTranslation } from '../lib/languages';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend } from 'recharts';
 
 export interface SavedPDFReport {
@@ -290,6 +291,7 @@ interface MonthlyMentalHealthPDFReportModalProps {
   gratitudeCards?: any[];
   books?: any[];
   userApiKey?: string;
+  appLanguage?: AppLanguage;
 }
 
 export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFReportModalProps> = ({
@@ -299,8 +301,11 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
   habits = [],
   gratitudeCards = [],
   books = [],
-  userApiKey
+  userApiKey,
+  appLanguage = 'ar'
 }) => {
+  const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Period Type: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'semi-annually' | 'yearly' | 'custom'
@@ -972,7 +977,7 @@ export const MonthlyMentalHealthPDFReportModal: React.FC<MonthlyMentalHealthPDFR
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#2B3E50]/60 backdrop-blur-md font-sans overflow-y-auto" dir="rtl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#2B3E50]/60 backdrop-blur-md font-sans overflow-y-auto" dir={langInfo.dir}>
       <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col border border-[#E2DCC8] animate-in fade-in zoom-in-95 duration-200 my-auto">
         
         {/* Modal Top Header Bar */}

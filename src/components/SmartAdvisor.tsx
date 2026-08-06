@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Brain, Send, ShieldCheck, HelpCircle, Sparkles, Mic, Trash2, Paperclip, X } from 'lucide-react';
 import { DiaryEntry, AppLanguage } from '../types';
-import { getLanguageInfo } from '../lib/languages';
+import { getLanguageInfo, getTranslation } from '../lib/languages';
 
 export interface AdvisorPermissions {
   diaries: boolean;
@@ -31,19 +31,22 @@ const DEFAULT_ADVISOR_PERMISSIONS: AdvisorPermissions = {
   prosCons: true,
 };
 
-const PERMISSIONS_CONFIG: { key: keyof AdvisorPermissions; title: string; desc: string; icon: string }[] = [
-  { key: 'diaries', title: 'اليوميات والمذكرات الشخصية', desc: 'قراءة المذكرات والملاحظات المكتوبة', icon: '📖' },
-  { key: 'moodLogs', title: 'سجل المزاج والانفعالات اليومية', desc: 'قراءة وتقييم درجات المزاج اليومي', icon: '📊' },
-  { key: 'habits', title: 'قائمة العادات والالتزام اليومي', desc: 'متابعة نسبة إنجاز وتكرار عاداتك', icon: '🎯' },
-  { key: 'tasks', title: 'المهام وقوائم الإنجاز (Tasks)', desc: 'الاطلاع على قائمة مهامك اليومية والأسبوعية', icon: '📝' },
-  { key: 'cbtExercises', title: 'تمارين العلاج المعرفي السلوكي (CBT)', desc: 'قراءة بطاقات التكيف وأفكارك لإعطاء إرشادات', icon: '🧠' },
-  { key: 'therapyReports', title: 'تقارير الصحة النفسية الشاملة', desc: 'قراءة ملخصات التقييم النفسي والتحليلات', icon: '🩺' },
-  { key: 'voiceNotes', title: 'المذكرات والتسجيلات الصوتية', desc: 'تحليل نصوص التسجيلات والملاحظات الصوتية', icon: '🗣️' },
-  { key: 'books', title: 'المكتبة والكتب المفضلة', desc: 'قراءة قائمة قراءاتك واقتباساتك الملهمة', icon: '📚' },
-  { key: 'gratitude', title: 'شجرة الامتنان والتفكير الإيجابي', desc: 'مراجعة أسباب الامتنان والأفكار الإيجابية', icon: '🌟' },
-  { key: 'lifeMap', title: 'خريطة الحياة والأهداف المستقبلية', desc: 'متابعة رؤيتك المستقبلية وأهدافك طويلة المدى', icon: '🗺️' },
-  { key: 'prosCons', title: 'ميزان القرار والموازنات (Pros & Cons)', desc: 'مراجعة الموازنات والقرارات الشخصية', icon: '⚖️' },
-];
+const getPermissionsConfig = (lang: AppLanguage) => {
+  const isArabic = lang === 'ar' || lang === 'ur';
+  return [
+    { key: 'diaries' as const, title: isArabic ? 'اليوميات والمذكرات الشخصية' : 'Diaries & Personal Notes', desc: isArabic ? 'قراءة المذكرات والملاحظات المكتوبة' : 'Read personal diary entries', icon: '📖' },
+    { key: 'moodLogs' as const, title: isArabic ? 'سجل المزاج والانفعالات اليومية' : 'Daily Mood & Emotion Logs', desc: isArabic ? 'قراءة وتقييم درجات المزاج اليومي' : 'Assess daily mood scores', icon: '📊' },
+    { key: 'habits' as const, title: isArabic ? 'قائمة العادات والالتزام اليومي' : 'Habits & Routines Tracker', desc: isArabic ? 'متابعة نسبة إنجاز وتكرار عاداتك' : 'Track habit completion rates', icon: '🎯' },
+    { key: 'tasks' as const, title: isArabic ? 'المهام وقوائم الإنجاز (Tasks)' : 'Tasks & To-Do Checklists', desc: isArabic ? 'الاطلاع على قائمة مهامك اليومية والأسبوعية' : 'Access daily & weekly tasks', icon: '📝' },
+    { key: 'cbtExercises' as const, title: isArabic ? 'تمارين العلاج المعرفي السلوكي (CBT)' : 'CBT Therapy Exercises', desc: isArabic ? 'قراءة بطاقات التكيف وأفكارك لإعطاء إرشادات' : 'Read coping cards for guidance', icon: '🧠' },
+    { key: 'therapyReports' as const, title: isArabic ? 'تقارير الصحة النفسية الشاملة' : 'Mental Health Reports', desc: isArabic ? 'قراءة ملخصات التقييم النفسي والتحليلات' : 'Analyze psychological summaries', icon: '🩺' },
+    { key: 'voiceNotes' as const, title: isArabic ? 'المذكرات والتسجيلات الصوتية' : 'Voice Notes & Recordings', desc: isArabic ? 'تحليل نصوص التسجيلات والملاحظات الصوتية' : 'Analyze audio transcripts', icon: '🗣️' },
+    { key: 'books' as const, title: isArabic ? 'المكتبة والكتب المفضلة' : 'Favorite Books & Library', desc: isArabic ? 'قراءة قائمة قراءاتك واقتباساتك الملهمة' : 'Read reading logs & quotes', icon: '📚' },
+    { key: 'gratitude' as const, title: isArabic ? 'شجرة الامتنان والتفكير الإيجابي' : 'Gratitude & Positive Mindset', desc: isArabic ? 'مراجعة أسباب الامتنان والأفكار الإيجابية' : 'Review gratitude items', icon: '🌟' },
+    { key: 'lifeMap' as const, title: isArabic ? 'خريطة الحياة والأهداف المستقبلية' : 'Life Map & Future Goals', desc: isArabic ? 'متابعة رؤيتك المستقبلية وأهدافك طويلة المدى' : 'Follow long-term goals', icon: '🗺️' },
+    { key: 'prosCons' as const, title: isArabic ? 'ميزان القرار والموازنات (Pros & Cons)' : 'Decision Balance (Pros & Cons)', desc: isArabic ? 'مراجعة الموازنات والقرارات الشخصية' : 'Review decision balances', icon: '⚖️' },
+  ];
+};
 
 interface SmartAdvisorProps {
   diaries: DiaryEntry[];
@@ -63,6 +66,8 @@ interface Message {
 
 export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = [], books = [], userApiKey, appLanguage = 'ar' }: SmartAdvisorProps) {
   const langInfo = getLanguageInfo(appLanguage);
+  const t = getTranslation(appLanguage);
+  const permissionsConfig = getPermissionsConfig(appLanguage);
   const [messages, setMessages] = useState<Message[]>(() => {
     const saved = localStorage.getItem('yawmiyati_chat_messages');
     if (saved) {
@@ -555,7 +560,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
   };
 
   return (
-    <div className="bg-white border border-[#E2DCC8] rounded-3xl overflow-hidden shadow-sm h-[550px] flex flex-col font-sans" dir="rtl">
+    <div className="bg-white border border-[#E2DCC8] rounded-3xl overflow-hidden shadow-sm h-[550px] flex flex-col font-sans" dir={langInfo.dir}>
       
       {/* Top Bar Info & Consent Switch */}
       <div className="p-4 bg-[#F0EDE4] border-b border-[#E2DCC8] flex flex-col md:flex-row md:items-center md:justify-between gap-3 shrink-0">
@@ -564,8 +569,8 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
             <Brain className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-[#5A5A40] text-sm">المستشار الذكي لليوميات Pro</h3>
-            <p className="text-[10px] text-gray-500">تحليل الأنماط السلوكية، التغير المزاجي والعلاقات الزمنية</p>
+            <h3 className="font-bold text-[#5A5A40] text-sm">{appLanguage === 'ar' ? 'المستشار الذكي لليوميات Pro' : 'AI Smart Advisor Pro'}</h3>
+            <p className="text-[10px] text-gray-500">{appLanguage === 'ar' ? 'تحليل الأنماط السلوكية، التغير المزاجي والعلاقات الزمنية' : 'Analyze behavioral patterns, mood trends & timeline correlations'}</p>
           </div>
         </div>
 
@@ -579,23 +584,23 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
             className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-[#8B9D83] hover:bg-[#5A5A40] text-white text-xs font-bold rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer shrink-0"
           >
             <span className="animate-pulse">🎙️</span>
-            <span>بدء محادثة صوتية مستمرة</span>
+            <span className="break-words">{appLanguage === 'ar' ? 'بدء محادثة صوتية مستمرة' : 'Start Voice Chat'}</span>
           </button>
 
-          {/* 🛡️ Advisor Access Permissions Button (Added exactly between the two buttons) */}
+          {/* 🛡️ Advisor Access Permissions Button */}
           <button
             onClick={() => setShowPermissionsModal(true)}
             className="flex items-center space-x-1.5 space-x-reverse px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-black rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer shrink-0"
           >
             <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>صلاحية وصول المستشار</span>
+            <span className="break-words">{appLanguage === 'ar' ? 'صلاحية وصول المستشار' : 'Access Permissions'}</span>
           </button>
 
           {/* User Consent Quick Toggle */}
           <div className="flex items-center justify-between md:justify-end bg-white p-2 rounded-xl border border-[#E2DCC8] shadow-xs gap-3">
             <span className="text-[11px] font-bold text-gray-500 flex items-center space-x-1 space-x-reverse">
               <ShieldCheck className="w-3.5 h-3.5 text-[#8B9D83]" />
-              <span>صلاحية الوصول لليوميات:</span>
+              <span className="break-words">{appLanguage === 'ar' ? 'صلاحية الوصول لليوميات:' : 'Diaries Access:'}</span>
             </span>
             <button
               onClick={toggleDiariesConsent}
@@ -630,7 +635,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
               <div className="whitespace-pre-wrap">{msg.text}</div>
               <div className="flex items-center justify-between gap-4 mt-2 pt-1 border-t border-dashed border-gray-100">
                 <span className={`block text-[9px] ${msg.sender === 'user' ? 'text-[#F9F7F2]/85' : 'text-gray-400'} text-left`}>
-                  {new Date(msg.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(msg.createdAt).toLocaleTimeString(langInfo.code === 'ar' ? 'ar-EG' : langInfo.code, { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 
                 {msg.sender === 'ai' && (
@@ -1035,7 +1040,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
 
             {/* Permissions List */}
             <div className="flex-grow overflow-y-auto space-y-2 pr-1 pl-1">
-              {PERMISSIONS_CONFIG.map((item) => {
+              {permissionsConfig.map((item) => {
                 const isEnabled = advisorPermissions[item.key];
                 return (
                   <div 

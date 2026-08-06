@@ -3,7 +3,8 @@ import {
   Bell, Plus, Trash2, Edit3, Check, X, Clock, Calendar, Sparkles, 
   Volume2, Heart, ShieldCheck, Sun, Moon, Info, Zap
 } from 'lucide-react';
-import { AppReminder } from '../types';
+import { AppReminder, AppLanguage } from '../types';
+import { getLanguageInfo, getTranslation } from '../lib/languages';
 
 interface SmartRemindersModalProps {
   isOpen: boolean;
@@ -50,6 +51,8 @@ export const SmartRemindersModal: React.FC<SmartRemindersModalProps> = ({
   onSaveReminders,
   appLanguage = 'ar'
 }) => {
+  const langInfo = getLanguageInfo(appLanguage as AppLanguage);
+  const t = getTranslation(appLanguage as AppLanguage);
   const isEn = appLanguage !== 'ar' && appLanguage !== 'ur';
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -179,7 +182,7 @@ export const SmartRemindersModal: React.FC<SmartRemindersModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn" dir="rtl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn" dir={langInfo.dir}>
       <div className="bg-[#FAF8F5] border border-[#E2DCC8] rounded-3xl w-full max-w-2xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden">
         
         {/* Header */}
