@@ -7,6 +7,7 @@ import {
   Send, Edit3, MessageSquare
 } from 'lucide-react';
 import { GratitudeCard, AppSettings, DiaryEntry } from '../types';
+import { getLanguageInfo } from '../lib/languages';
 
 export interface AIGratitudeHistoryItem {
   id: string;
@@ -105,7 +106,7 @@ export default function GratitudeJournal({
     }
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = isEn ? 'en-US' : 'ar-SA';
+    utterance.lang = getLanguageInfo(settings.appLanguage).speechLang;
     utterance.rate = 0.9;
     utterance.onend = () => setSpeakingCardId(null);
     utterance.onerror = () => setSpeakingCardId(null);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Brain, Send, ShieldCheck, HelpCircle, Sparkles, Mic, Trash2, Paperclip, X } from 'lucide-react';
-import { DiaryEntry } from '../types';
+import { DiaryEntry, AppLanguage } from '../types';
+import { getLanguageInfo } from '../lib/languages';
 
 export interface AdvisorPermissions {
   diaries: boolean;
@@ -50,6 +51,7 @@ interface SmartAdvisorProps {
   gratitudeCards?: any[];
   books?: any[];
   userApiKey?: string;
+  appLanguage?: AppLanguage;
 }
 
 interface Message {
@@ -59,7 +61,8 @@ interface Message {
   createdAt: string;
 }
 
-export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = [], books = [], userApiKey }: SmartAdvisorProps) {
+export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = [], books = [], userApiKey, appLanguage = 'ar' }: SmartAdvisorProps) {
+  const langInfo = getLanguageInfo(appLanguage);
   const [messages, setMessages] = useState<Message[]>(() => {
     const saved = localStorage.getItem('yawmiyati_chat_messages');
     if (saved) {
@@ -242,7 +245,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
     }
 
     const rec = new SpeechRecognition();
-    rec.lang = 'ar-SA';
+    rec.lang = langInfo.speechLang;
     rec.continuous = false;
     rec.interimResults = true;
 
@@ -327,11 +330,11 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
           window.speechSynthesis.cancel();
           const cleanText = data.answer.replace(/[*#_`~•]/g, '').replace(/🔗|🎥|📄/g, '');
           const utterance = new SpeechSynthesisUtterance(cleanText);
-          utterance.lang = 'ar-SA';
+          utterance.lang = langInfo.speechLang;
           
           const voices = window.speechSynthesis.getVoices();
-          const arabicVoice = voices.find(v => v.lang.startsWith('ar'));
-          if (arabicVoice) utterance.voice = arabicVoice;
+          const langVoice = voices.find(v => v.lang.toLowerCase().startsWith(langInfo.code.toLowerCase()));
+          if (langVoice) utterance.voice = langVoice;
 
           utterance.onend = () => {
             // Once speaking finishes, automatically resume listening!
@@ -366,11 +369,11 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
         window.speechSynthesis.cancel();
         const cleanText = text.replace(/[*#_`~•]/g, '').replace(/🔗|🎥|📄/g, '');
         const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = 'ar-SA';
+        utterance.lang = langInfo.speechLang;
         
         const voices = window.speechSynthesis.getVoices();
-        const arabicVoice = voices.find(v => v.lang.startsWith('ar'));
-        if (arabicVoice) utterance.voice = arabicVoice;
+        const langVoice = voices.find(v => v.lang.toLowerCase().startsWith(langInfo.code.toLowerCase()));
+        if (langVoice) utterance.voice = langVoice;
         
         utterance.onend = () => {
           setCurrentlySpeakingId(null);
@@ -481,7 +484,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
         const rec = new SpeechRecognition();
-        rec.lang = 'ar-SA';
+        rec.lang = langInfo.speechLang;
         rec.continuous = false;
         rec.interimResults = false;
         

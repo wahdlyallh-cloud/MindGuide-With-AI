@@ -28,6 +28,7 @@ import PINLock from './components/PINLock';
 import { registerBiometrics } from './lib/biometrics';
 import { TasksChecklistSection } from './components/TasksChecklistSection';
 import { CBTExercisesSection } from './components/CBTExercisesSection';
+import { MULTI_TRANSLATIONS, SUPPORTED_LANGUAGES, getLanguageInfo } from './lib/languages';
 import IntegratedTherapyReport from './components/IntegratedTherapyReport';
 import WeeklyHabitsMoodChart from './components/WeeklyHabitsMoodChart';
 import SleepMoodCorrelationChart from './components/SleepMoodCorrelationChart';
@@ -458,8 +459,10 @@ export default function App() {
     return parsed;
   });
 
+  const langInfo = getLanguageInfo(settings.appLanguage);
   const isEn = settings.appLanguage === 'en';
-  const t = TRANSLATIONS[settings.appLanguage] || TRANSLATIONS.ar;
+  const isRtl = langInfo.dir === 'rtl';
+  const t = MULTI_TRANSLATIONS[settings.appLanguage] || MULTI_TRANSLATIONS.ar;
 
   const [habits, setHabits] = useState<Habit[]>(() => {
     const saved = localStorage.getItem('yawmiyati_habits');
@@ -1017,8 +1020,22 @@ export default function App() {
 
     if (Notification.permission === 'granted') {
       try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.register('/sw.js').catch(() => null);
+          if (reg && reg.showNotification) {
+            await reg.showNotification('يومياتي AI • نشط الآن 📱', {
+              body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط للوصول السريع لتدوين المذكرات، التسجيل الصوتي، والمستشار الذكي.',
+              tag: 'yawmiyati-lockscreen-widget',
+              requireInteraction: true,
+              renotify: true,
+              icon: '/favicon.ico',
+              badge: '/favicon.ico'
+            });
+            return;
+          }
+        }
         new Notification('يومياتي AI • نشط الآن 📱', {
-          body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط هنا للوصول السريع لتدوين المذكرات، التسجيل الصوتي، المستشار، وتحديد المزاج مباشرة من شاشة القفل.',
+          body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط للوصول السريع لتدوين المذكرات، التسجيل الصوتي، والمستشار الذكي.',
           tag: 'yawmiyati-lockscreen-widget',
           requireInteraction: true
         });
@@ -1563,6 +1580,23 @@ export default function App() {
   const [showBackupSyncModal, setShowBackupSyncModal] = useState(false);
   const [showWriteDiaryImporter, setShowWriteDiaryImporter] = useState(false);
   const [showLanguagesModal, setShowLanguagesModal] = useState(false);
+  const [isFirstTimeLangSelect, setIsFirstTimeLangSelect] = useState(false);
+
+  // Auto-open language selector on first visit
+  useEffect(() => {
+    const chosen = localStorage.getItem('yawmiyati_language_chosen');
+    if (!chosen) {
+      setShowLanguagesModal(true);
+      setIsFirstTimeLangSelect(true);
+    }
+  }, []);
+
+  // Update HTML direction and language attributes on change
+  useEffect(() => {
+    const info = getLanguageInfo(settings.appLanguage);
+    document.documentElement.setAttribute('dir', info.dir);
+    document.documentElement.setAttribute('lang', info.code);
+  }, [settings.appLanguage]);
   const [showLockScreenWidgetInfoModal, setShowLockScreenWidgetInfoModal] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -3908,6 +3942,18 @@ export default function App() {
 
           {/* Quick Action Badges matching the requested screenshot EXACTLY 'balmilli' */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full w-full sm:w-auto justify-start sm:justify-end pb-1.5 sm:pb-0">
+            
+            {/* 🌐 Language Switcher Button */}
+            <button
+              type="button"
+              onClick={() => setShowLanguagesModal(true)}
+              className="flex items-center space-x-1.5 space-x-reverse px-2.5 py-2 bg-amber-50/90 text-amber-950 border border-amber-300 rounded-xl text-xs font-black shadow-3xs hover:bg-amber-100 active:scale-95 transition-all cursor-pointer shrink-0"
+              title="تغيير لغة التطبيق والذكاء الاصطناعي / Switch App & AI Language"
+            >
+              <Globe className="w-3.5 h-3.5 text-amber-700" />
+              <span className="text-sm leading-none">{langInfo.flag}</span>
+              <span className="text-[11px] font-extrabold">{langInfo.nativeName}</span>
+            </button>
             
             {/* 🖥️ Fullscreen / Hide Browser Address Bar Toggle Button */}
             <button
@@ -7396,7 +7442,7 @@ export default function App() {
         {/* --- TAB VIEW 3: FLAGSHIP SMART ADVISOR --- */}
         {activeTab === 'advisor' && (
           <div className="space-y-6">
-            <SmartAdvisor diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
+            <SmartAdvisor diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} appLanguage={settings.appLanguage} />
           </div>
         )}
 
@@ -8384,7 +8430,7 @@ export default function App() {
                 className="bg-white border border-[#E2DCC8] rounded-[24px] p-5 shadow-3xs flex items-center justify-between cursor-pointer hover:bg-[#8B9D83]/5 transition-all hover:border-[#8B9D83]/40 group"
               >
                 <div className="flex items-center gap-4">
-                  <div className="p-3.5 bg-sky-50 text-sky-500 rounded-2xl group-hover:bg-sky-100 transition-all">
+                  <div className="p-3.5 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-amber-100 transition-all">
                     <Globe className="w-5 h-5" />
                   </div>
                   <div>
@@ -8392,7 +8438,13 @@ export default function App() {
                     <p className="text-[10px] text-gray-500 mt-1 font-bold leading-normal">{t.languagesSub}</p>
                   </div>
                 </div>
-                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isEn ? 'rotate-0' : 'rotate-180'}`} />
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-3xs">
+                    <span>{langInfo.flag}</span>
+                    <span>{langInfo.nativeName}</span>
+                  </span>
+                  <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${isRtl ? 'rotate-180' : 'rotate-0'}`} />
+                </div>
               </div>
 
               {/* CARD 12: RATE US */}
@@ -8662,10 +8714,18 @@ export default function App() {
       {/* 🌐 Languages Modal Window */}
       <LanguagesModal
         isOpen={showLanguagesModal}
-        onClose={() => setShowLanguagesModal(false)}
+        onClose={() => {
+          setShowLanguagesModal(false);
+          setIsFirstTimeLangSelect(false);
+          localStorage.setItem('yawmiyati_language_chosen', 'true');
+        }}
         appLanguage={settings.appLanguage}
-        onChangeLanguage={(lang) => setSettings(prev => ({ ...prev, appLanguage: lang }))}
+        onChangeLanguage={(lang) => {
+          setSettings(prev => ({ ...prev, appLanguage: lang }));
+          localStorage.setItem('yawmiyati_language_chosen', 'true');
+        }}
         isEn={isEn}
+        isFirstTime={isFirstTimeLangSelect}
       />
 
       {/* 🔔 Smart Reminders Management Modal */}

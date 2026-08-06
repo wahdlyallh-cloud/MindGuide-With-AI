@@ -162,13 +162,15 @@ export interface HabitSettings {
   autoHideHeaderOnScroll?: boolean; // إخفاء الشريط العلوي والسفلي تلقائياً عند التمرير
 }
 
+export type AppLanguage = 'ar' | 'en' | 'fr' | 'de' | 'es' | 'tr' | 'ur' | 'ru' | 'zh' | 'ja';
+
 export interface AppSettings {
   isDarkMode: boolean;
   notificationsEnabled: boolean;
   lockScreenWidgetEnabled?: boolean; // إشعار شاشة القفل المثبت
   fullscreenModeEnabled?: boolean; // وضع الشاشة الكاملة
   autoHideHeaderOnScroll?: boolean; // إخفاء الشريطين تلقائياً عند التمرير
-  appLanguage: 'ar' | 'en';
+  appLanguage: AppLanguage;
   floatingBallEnabled: boolean;
   appPinCode?: string; // Screen Lock PIN
   isAppLocked: boolean;

@@ -16,6 +16,31 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Service Worker endpoint for Native Web Notifications & Lock Screen Widgets
+app.get("/sw.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+  res.setHeader("Cache-Control", "no-cache");
+  res.send(`
+    self.addEventListener('install', (event) => {
+      self.skipWaiting();
+    });
+    self.addEventListener('activate', (event) => {
+      event.waitUntil(self.clients.claim());
+    });
+    self.addEventListener('notificationclick', (event) => {
+      event.notification.close();
+      event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+          if (clientList.length > 0) {
+            return clientList[0].focus();
+          }
+          return self.clients.openWindow('/');
+        })
+      );
+    });
+  `);
+});
+
 // Cloud Synchronization and User Auth paths setup
 const DATA_DIR = path.join(process.cwd(), "data");
 const SYNC_FILE_PATH = path.join(DATA_DIR, "cloud_sync.json");
@@ -430,6 +455,25 @@ async function generateWithGenAI(aiInstance: GoogleGenAI, config: any) {
   throw lastErr;
 }
 
+// Helper to enforce user's selected language output in Gemini
+function getLanguageInstruction(langCode?: string): string {
+  const code = (langCode || 'ar').toLowerCase();
+  const langNames: Record<string, string> = {
+    ar: "Arabic (العربية)",
+    en: "English",
+    fr: "French (Français)",
+    de: "German (Deutsch)",
+    es: "Spanish (Español)",
+    tr: "Turkish (Türkçe)",
+    ur: "Urdu (اردو)",
+    ru: "Russian (Русский)",
+    zh: "Chinese Simplified (中文)",
+    ja: "Japanese (日本語)"
+  };
+  const targetName = langNames[code] || "Arabic (العربية)";
+  return `\n\nCRITICAL LANGUAGE MANDATE: You MUST generate your entire output, analysis, advice, titles, and explanations ENTIRELY in ${targetName}. Use fluent, natural, and warm language appropriate for ${targetName}.`;
+}
+
 // Check if Gemini is enabled
 app.get("/api/gemini/status", async (req, res) => {
   const customKey = req.headers["x-gemini-key"] as string;
@@ -753,7 +797,7 @@ ${leastHabit ? `تظهر السجلات تراجعاً نسبياً في عاد�
 
   if (ai) {
     try {
-      let systemInstruction = "أنت خبير ومستشار متميز في تحليل السلوكيات وبناء العادات الإيجابية والتنمية الشخصية المستندة للبيانات العلمية باللغة العربية الفصحى. مهمتك هي قراءة قائمة عادات المستخدم ومدى الالتزام وصياغة تقييم رصين ومحفز.";
+      let systemInstruction = "أنت خبير ومستشار متميز في تحليل السلوكيات وبناء العادات الإيجابية والتنمية الشخصية المستندة للبيانات العلمية باللغة العربية الفصحى. مهمتك هي قراءة قائمة عادات المستخدم ومدى الالتزام وصياغة تقييم رصين ومحفز." + getLanguageInstruction(req.body.appLanguage);
       let userPrompt = `بناءً على قائمة العادات والبيانات التالية لفترة: ${period}، وبنسبة التزام عامة بلغت ${overallCompliance}%:
 
 البيانات المسجلة للعادات:
@@ -968,7 +1012,7 @@ ${cbtStr}
 
   if (ai) {
     try {
-      let systemInstruction = "أنت 'المستشار الذكي' (Yawmiyati Genius AI) - رفيق حكيم، صديق متفهم، ومساعد ذكاء اصطناعي عبقري وشامل لكل مجالات المعرفة والتفكير والحياة (داخل التطبيق وخارجه). لديك قدرة فائقة على تقديم الإجابات الأكثر دقة وعمقاً وإبداعاً وسلاسة باللغة العربية الفصحى الدافئة والراقية، مع الحفاظ على روح الحوار البشري الراقي والتعاطف العالي.";
+      let systemInstruction = "أنت 'المستشار الذكي' (Yawmiyati Genius AI) - رفيق حكيم، صديق متفهم، ومساعد ذكاء اصطناعي عبقري وشامل لكل مجالات المعرفة والتفكير والحياة (داخل التطبيق وخارجه). لديك قدرة فائقة على تقديم الإجابات الأكثر دقة وعمقاً وإبداعاً وسلاسة باللغة العربية الفصحى الدافئة والراقية، مع الحفاظ على روح الحوار البشري الراقي والتعاطف العالي." + getLanguageInstruction(req.body.appLanguage);
       let userPrompt = "";
 
       if (reportType === "therapist") {

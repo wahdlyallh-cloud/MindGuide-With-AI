@@ -445,8 +445,23 @@ export const HabitSettingsScreen: React.FC<HabitSettingsScreenProps> = ({
                   }
                   if (Notification.permission === 'granted') {
                     try {
+                      if ('serviceWorker' in navigator) {
+                        const reg = await navigator.serviceWorker.register('/sw.js').catch(() => null);
+                        if (reg && reg.showNotification) {
+                          await reg.showNotification('يومياتي AI • نشط الآن 📱', {
+                            body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط هنا للوصول السريع لتدوين المذكرات، التسجيل الصوتي، المستشار، وتحديد المزاج.',
+                            tag: 'yawmiyati-lockscreen-widget',
+                            requireInteraction: true,
+                            renotify: true,
+                            icon: '/favicon.ico',
+                            badge: '/favicon.ico'
+                          });
+                          showToast('تم إرسال وتثبيت إشعار لوحة الاختصارات على شاشة القفل بنجاح 📌🔔');
+                          return;
+                        }
+                      }
                       new Notification('يومياتي AI • نشط الآن 📱', {
-                        body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط هنا للوصول السريع لتدوين المذكرات، التسجيل الصوتي، المستشار، وتحديد المزاج مباشرة من شاشة القفل.',
+                        body: 'كيف تشعر الآن يا صديقي؟ 😊 | اضغط هنا للوصول السريع لتدوين المذكرات، التسجيل الصوتي، المستشار، وتحديد المزاج.',
                         tag: 'yawmiyati-lockscreen-widget',
                         requireInteraction: true
                       });
