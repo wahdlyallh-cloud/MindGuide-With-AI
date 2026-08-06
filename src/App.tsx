@@ -3684,7 +3684,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen ${settings.isDarkMode ? 'bg-[#121110] text-[#E4E2DD]' : 'bg-[#F9F7F2] text-[#3A3A3A]'} pb-24 font-sans antialiased selection:bg-[#E2DCC8] selection:text-[#5A5A40]`} dir={isEn ? 'ltr' : 'rtl'}>
+    <div className={`min-h-screen ${settings.isDarkMode ? 'bg-[#121110] text-[#E4E2DD]' : 'bg-[#F9F7F2] text-[#3A3A3A]'} pb-24 font-sans antialiased selection:bg-[#E2DCC8] selection:text-[#5A5A40]`} dir={isRtl ? 'rtl' : 'ltr'}>
       
       {/* 🔔 Floating Habit Reminder Notification */}
       {activeHabitReminder && (
