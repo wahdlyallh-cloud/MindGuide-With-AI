@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { X, RefreshCw, Mail, Send } from 'lucide-react';
+import { X, RefreshCw, Mail, Send, Cloud, Settings, FolderOpen, Download, BookOpen, Plug } from 'lucide-react';
 import { AppLanguage, getLanguageInfo, getTranslation } from '../lib/languages';
 
 interface BackupSyncModalProps {
@@ -63,8 +63,8 @@ export default function BackupSyncModal({
         {/* Header */}
         <div className="p-6 pb-2 flex items-center justify-between">
           <h4 className="font-black text-[#2B3E50] text-base md:text-lg flex items-center gap-2">
-            <span>☁️</span>
-            <span>{t.backupSyncTitle} ☁️</span>
+            <Cloud className="w-5 h-5 text-sky-500" />
+            <span>{t.backupSyncTitle}</span>
           </h4>
           <button 
             type="button"
@@ -89,7 +89,7 @@ export default function BackupSyncModal({
             className="w-full py-4 bg-[#3B82F6] hover:bg-[#2563EB] disabled:bg-blue-300 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs hover:shadow-md"
           >
             <RefreshCw className={`w-4 h-4 ${isCloudSyncing ? 'animate-spin' : ''}`} />
-            <span>{t.linkGoogleAccount} 🔑</span>
+            <span>{t.linkGoogleAccount}</span>
           </button>
 
           {/* Cloud Sync message widget */}
@@ -113,8 +113,8 @@ export default function BackupSyncModal({
           {/* Line separator with text header */}
           <div className="relative flex items-center py-2">
             <div className="flex-grow border-t border-[#E2DCC8]"></div>
-            <span className="flex-shrink mx-3 text-[10px] font-black text-gray-400 flex items-center gap-1">
-              <span>⚙️</span>
+            <span className="flex-shrink mx-3 text-[10px] font-black text-gray-400 flex items-center gap-1.5">
+              <Settings className="w-3.5 h-3.5 text-gray-400" />
               <span>{t.manualExportImport}</span>
             </span>
             <div className="flex-grow border-t border-[#E2DCC8]"></div>
@@ -128,7 +128,7 @@ export default function BackupSyncModal({
               onClick={() => fileInputRef.current?.click()}
               className="flex-1 py-3 bg-white hover:bg-gray-50 border-2 border-[#E2DCC8] text-gray-600 font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-3xs"
             >
-              <span>📂</span>
+              <FolderOpen className="w-4 h-4 text-amber-600" />
               <span>{t.importManual}</span>
             </button>
             <input 
@@ -145,7 +145,7 @@ export default function BackupSyncModal({
               onClick={onExportBackup}
               className="flex-1 py-3 bg-[#4E685B] hover:bg-[#3F5449] text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs hover:shadow-md"
             >
-              <span>📥</span>
+              <Download className="w-4 h-4 text-emerald-300" />
               <span>{t.exportAndShare}</span>
             </button>
           </div>
@@ -161,8 +161,8 @@ export default function BackupSyncModal({
             }}
             className="w-full py-3.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] transform"
           >
-            <span>📖</span>
-            <span>{t.importFromWriteDiary} 📖</span>
+            <BookOpen className="w-4 h-4 text-pink-100" />
+            <span>{t.importFromWriteDiary}</span>
           </button>
 
           {/* Import other apps option */}
@@ -171,14 +171,14 @@ export default function BackupSyncModal({
             onClick={() => setShowOtherAppsModal(true)}
             className="w-full py-3.5 bg-[#6D5D6E] hover:bg-[#4F3B51] text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-3xs"
           >
-            <span>🔌</span>
-            <span>{t.importFromOtherApps} 🔌</span>
+            <Plug className="w-4 h-4 text-purple-200" />
+            <span>{t.importFromOtherApps}</span>
           </button>
 
           {/* Auto Backup Select Option */}
           <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-2.5">
             <h5 className="font-extrabold text-[#5A5A40] text-[11px] flex items-center gap-1.5">
-              <span>🔄</span>
+              <RefreshCw className="w-3.5 h-3.5 text-[#8B9D83]" />
               <span>{t.autoBackupFrequency}</span>
             </h5>
             <select
@@ -242,7 +242,7 @@ export default function BackupSyncModal({
           <div className="bg-white border border-gray-200 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center">
               <h5 className="font-black text-gray-800 text-sm flex items-center gap-1.5">
-                <span>🔌</span>
+                <Plug className="w-4 h-4 text-purple-600" />
                 <span>{t.importFromOtherAppsTitle}</span>
               </h5>
               <button type="button" onClick={() => setShowOtherAppsModal(false)} className="text-gray-400 hover:text-gray-600">

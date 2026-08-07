@@ -20,6 +20,8 @@ import ContactOwnerModal from './components/ContactOwnerModal';
 import GeminiKeyModal from './components/GeminiKeyModal';
 import BackupSyncModal from './components/BackupSyncModal';
 import LanguagesModal from './components/LanguagesModal';
+import TypographySettingsSection from './components/TypographySettingsSection';
+import { getFontCss, getLineHeightCss } from './lib/fonts';
 import WriteDiaryImporter from './components/WriteDiaryImporter';
 import SmartAdvisor from './components/SmartAdvisor';
 import GratitudeJournal from './components/GratitudeJournal';
@@ -153,6 +155,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   fullscreenModeEnabled: false,
   autoHideHeaderOnScroll: true,
   appLanguage: 'ar',
+  appFont: 'cairo',
+  appLineHeight: 'relaxed',
   floatingBallEnabled: true,
   appPinCode: '1234',
   isAppLocked: false, // Default to false so user can preview and test all features instantly
@@ -552,6 +556,16 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('yawmiyati_active_tab', activeTab);
   }, [activeTab]);
+
+  // Dynamic Font Family & Line Height Styling Effect
+  useEffect(() => {
+    const fontCss = getFontCss(settings.appFont);
+    const lhCss = getLineHeightCss(settings.appLineHeight);
+    document.documentElement.style.fontFamily = fontCss;
+    document.documentElement.style.lineHeight = `${lhCss}`;
+    document.body.style.fontFamily = fontCss;
+    document.body.style.lineHeight = `${lhCss}`;
+  }, [settings.appFont, settings.appLineHeight]);
 
   // Mobile Auto-Hiding Top Header State
   const [isHeaderCollapsedOnMobile, setIsHeaderCollapsedOnMobile] = useState(false);
@@ -3684,7 +3698,14 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen ${settings.isDarkMode ? 'bg-[#121110] text-[#E4E2DD]' : 'bg-[#F9F7F2] text-[#3A3A3A]'} pb-24 font-sans antialiased selection:bg-[#E2DCC8] selection:text-[#5A5A40]`} dir={isRtl ? 'rtl' : 'ltr'}>
+    <div 
+      className={`min-h-screen ${settings.isDarkMode ? 'bg-[#121110] text-[#E4E2DD]' : 'bg-[#F9F7F2] text-[#3A3A3A]'} pb-24 font-sans antialiased selection:bg-[#E2DCC8] selection:text-[#5A5A40] app-font-${settings.appFont || 'cairo'} app-lh-${settings.appLineHeight || 'relaxed'}`} 
+      dir={isRtl ? 'rtl' : 'ltr'}
+      style={{
+        fontFamily: getFontCss(settings.appFont),
+        lineHeight: getLineHeightCss(settings.appLineHeight)
+      }}
+    >
       
       {/* 🔔 Floating Habit Reminder Notification */}
       {activeHabitReminder && (
@@ -8457,7 +8478,16 @@ export default function App() {
                 </div>
               </div>
 
-              {/* CARD 12: RATE US */}
+              {/* CARD 12: TYPOGRAPHY & FONT CUSTOMIZATION */}
+              <TypographySettingsSection
+                appFont={settings.appFont || 'cairo'}
+                appLineHeight={settings.appLineHeight || 'relaxed'}
+                appLanguage={settings.appLanguage}
+                onChangeFont={(font) => setSettings(prev => ({ ...prev, appFont: font }))}
+                onChangeLineHeight={(lh) => setSettings(prev => ({ ...prev, appLineHeight: lh }))}
+              />
+
+              {/* CARD 13: RATE US */}
               <div 
                 onClick={() => {
                   setRatingSuccess(false);
@@ -8739,6 +8769,10 @@ export default function App() {
           localStorage.setItem('yawmiyati_language_chosen', 'true');
           localStorage.setItem('app_language', lang);
         }}
+        appFont={settings.appFont || 'cairo'}
+        appLineHeight={settings.appLineHeight || 'relaxed'}
+        onChangeFont={(font) => setSettings(prev => ({ ...prev, appFont: font }))}
+        onChangeLineHeight={(lh) => setSettings(prev => ({ ...prev, appLineHeight: lh }))}
         isFirstTime={isFirstTimeLangSelect}
       />
 

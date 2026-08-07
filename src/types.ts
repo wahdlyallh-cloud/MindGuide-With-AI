@@ -163,6 +163,8 @@ export interface HabitSettings {
 }
 
 export type AppLanguage = 'ar' | 'en' | 'fr' | 'de' | 'es' | 'tr' | 'ur' | 'ru' | 'zh' | 'ja';
+export type AppFontFamily = 'cairo' | 'tajawal' | 'almarai' | 'amiri' | 'noto_naskh' | 'jakarta' | 'system';
+export type AppLineHeight = 'compact' | 'normal' | 'relaxed' | 'spacious';
 
 export interface AppSettings {
   isDarkMode: boolean;
@@ -171,6 +173,8 @@ export interface AppSettings {
   fullscreenModeEnabled?: boolean; // وضع الشاشة الكاملة
   autoHideHeaderOnScroll?: boolean; // إخفاء الشريطين تلقائياً عند التمرير
   appLanguage: AppLanguage;
+  appFont?: AppFontFamily; // تخصيص خط التطبيق بالكامل
+  appLineHeight?: AppLineHeight; // تباعد الأسطر وراحة القراءة
   floatingBallEnabled: boolean;
   appPinCode?: string; // Screen Lock PIN
   isAppLocked: boolean;
