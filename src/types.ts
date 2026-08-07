@@ -221,6 +221,8 @@ export interface GratitudeCard {
   text: string;
   color: string;
   createdAt: string;
+  likes?: number;
+  tags?: string[];
 }
 
 export interface Book {

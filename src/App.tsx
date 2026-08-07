@@ -450,6 +450,355 @@ export const TRANSLATIONS = {
   }
 };
 
+const TAG_DICTIONARY_EN: Record<string, string> = {
+  'دراسة': 'study',
+  'عائلة': 'family',
+  'أمل': 'hope',
+  'أرق': 'insomnia',
+  'تحدي': 'challenge',
+  'نجاح': 'success',
+  'قراءة': 'reading',
+  'سعادة': 'happiness',
+  'امتنان': 'gratitude',
+  'تأمل_إيجابي': 'positive_reflection',
+  'خواطر': 'thoughts',
+  'صفاء': 'serenity',
+  'إلهام': 'inspiration',
+  'صحة': 'health',
+  'رياضة': 'sports',
+  'عام': 'general',
+  'تنمية ذاتية': 'self_development',
+  'علم نفس': 'psychology',
+  'صحة نفسية': 'mental_health'
+};
+
+const TAG_DICTIONARY_AR: Record<string, string> = {
+  'study': 'دراسة',
+  'family': 'عائلة',
+  'hope': 'أمل',
+  'insomnia': 'أرق',
+  'challenge': 'تحدي',
+  'success': 'نجاح',
+  'reading': 'قراءة',
+  'happiness': 'سعادة',
+  'gratitude': 'امتنان',
+  'positive_reflection': 'تأمل_إيجابي',
+  'thoughts': 'خواطر',
+  'serenity': 'صفاء',
+  'inspiration': 'إلهام',
+  'health': 'صحة',
+  'sports': 'رياضة',
+  'general': 'عام',
+  'self_development': 'تنمية ذاتية',
+  'psychology': 'علم نفس',
+  'mental_health': 'صحة نفسية'
+};
+
+export function getTranslatedTag(tag: string, isAr: boolean): string {
+  if (!tag) return '';
+  if (isAr) {
+    return TAG_DICTIONARY_AR[tag] || tag;
+  } else {
+    return TAG_DICTIONARY_EN[tag] || tag;
+  }
+}
+
+export function getInitialDiaries(lang: AppLanguage): DiaryEntry[] {
+  const isAr = lang === 'ar';
+  if (isAr) {
+    return [
+      {
+        id: 'diary-1',
+        title: 'تخطيط للأسبوع الدراسي الجديد وغداء عائلي ومشاعر أمل',
+        content: 'بدأت اليوم ببعض القلق والتوتر بشأن تراكم المواد الدراسية والامتحانات القادمة في الجامعة. جلست مع عائلتي لاحقاً وتناولنا الغداء معاً في جو دافئ، وتحدثنا في مواضيع ممتعة فخفت حدة القلق تماماً وتحول شعوري للامتنان والأمل. أحس أن التحدث مع من نحب هو أفضل علاج سلوكي مهدئ للروح.',
+        createdAt: '2026-07-15T21:30:00.000Z',
+        updatedAt: '2026-07-15T21:30:00.000Z',
+        moods: ['قلق', 'ممتن', 'سعيد'],
+        aiMoodAnalysis: [
+          { mood: 'سعيد', percentage: 40 },
+          { mood: 'قلق', percentage: 30 },
+          { mood: 'ممتن', percentage: 30 }
+        ],
+        importance: 4,
+        color: 'bg-[#CCD5AE]/15 border-[#CCD5AE]',
+        images: [],
+        videos: [],
+        audioRecordings: [],
+        files: [],
+        tasks: [
+          { id: 't1', text: 'مراجعة أول فصلين في الكيمياء', completed: true },
+          { id: 't2', text: 'شراء الدواء الشهري', completed: true }
+        ],
+        tags: ['دراسة', 'عائلة', 'أمل'],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 7.5,
+        sportsDuration: 30,
+        medications: [
+          { id: 'm1', name: 'فيتامين D3 جرعة أسبوعية', time: '10:00 ص', taken: true }
+        ]
+      },
+      {
+        id: 'diary-2',
+        title: 'نوبة أرق في منتصف الليل وتفكير زائد في المستقبل',
+        content: 'لم أستطع النوم جيداً الليلة الماضية بسبب كثرة التفكير والسيناريوهات الكارثية حول مستقبلي المهني والجامعي. استيقظت في الصباح وأنا أشعر بخمول شديد وإرهاق وضيق في الصدر. قررت في المساء تحدي نفسي والذهاب لممارسة المشي السريع لمدة 45 دقيقة، والحمد لله أحسست ببعض الارتياح والهدوء التدريجي بعد الرياضة.',
+        createdAt: '2026-07-14T09:45:00.000Z',
+        updatedAt: '2026-07-14T09:45:00.000Z',
+        moods: ['مرهق', 'قلق', 'حزين'],
+        aiMoodAnalysis: [
+          { mood: 'قلق', percentage: 50 },
+          { mood: 'مرهق', percentage: 35 },
+          { mood: 'حزين', percentage: 15 }
+        ],
+        importance: 3,
+        color: 'bg-[#FAEDCD]/30 border-[#E2DCC8]',
+        images: [],
+        videos: [],
+        audioRecordings: [
+          {
+            id: 'rec-1',
+            name: 'فضفضة الأرق وتفريغ الأفكار.mp3',
+            dataUrl: '#',
+            duration: 48,
+            transcription: 'أنا أسجل هذا المقطع الصوتي لأني أشعر بخوف شديد ولا أستطيع تهدئة نبضات قلبي بسبب التفكير في الامتحانات القادمة...'
+          }
+        ],
+        files: [],
+        tasks: [
+          { id: 't3', text: 'تمرين تنفس بطني دقيقتين قبل النوم', completed: false }
+        ],
+        tags: ['أرق', 'قلق', 'تحدي'],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 4.5,
+        sportsDuration: 45,
+        medications: [
+          { id: 'm1', name: 'فيتامين D3 جرعة أسبوعية', time: '10:00 ص', taken: false }
+        ]
+      },
+      {
+        id: 'diary-3',
+        title: 'إنجاز كبير في المشروع وقراءة كتاب رائع قبل النوم',
+        content: 'الحمد لله اليوم كان استثنائياً ومبهجاً جداً! أنجزت العرض التقديمي لمشروع الجامعة وحصلت على ثناء كبير جداً من زملائي والدكتور المشرف. غمرتني طاقة مذهلة من الحماس والفرح والرضا عن نفسي. قبل النوم، أعددت كوب بابونج دافئ وقرأت فصلاً ممتعاً للغاية من كتاب العلاج السلوكي المعرفي للتغلب على القلق النفسي.',
+        createdAt: '2026-07-12T22:00:00.000Z',
+        updatedAt: '2026-07-12T22:00:00.000Z',
+        moods: ['سعيد جدًا', 'متحمس', 'مرتاح'],
+        aiMoodAnalysis: [
+          { mood: 'سعيد جدًا', percentage: 60 },
+          { mood: 'متحمس', percentage: 30 },
+          { mood: 'مرتاح', percentage: 10 }
+        ],
+        importance: 5,
+        color: 'bg-[#F0EDE4] border-[#E2DCC8]',
+        images: [],
+        videos: [],
+        audioRecordings: [],
+        files: [],
+        tasks: [
+          { id: 't4', text: 'قراءة الفصل الرابع من كتاب CBT', completed: true }
+        ],
+        tags: ['نجاح', 'قراءة', 'سعادة'],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 8.0,
+        sportsDuration: 0,
+        medications: []
+      }
+    ];
+  } else {
+    return [
+      {
+        id: 'diary-1',
+        title: 'Weekly Academic Planning, Family Lunch & Hopeful Feelings',
+        content: 'Started the day with some anxiety regarding accumulated coursework and upcoming university exams. Later sat with my family for a warm lunch and engaging conversations, which completely eased my anxiety and filled me with gratitude and hope. Talking with loved ones is truly a comforting remedy.',
+        createdAt: '2026-07-15T21:30:00.000Z',
+        updatedAt: '2026-07-15T21:30:00.000Z',
+        moods: ['Anxious', 'Grateful', 'Happy'],
+        aiMoodAnalysis: [
+          { mood: 'Happy', percentage: 40 },
+          { mood: 'Anxious', percentage: 30 },
+          { mood: 'Grateful', percentage: 30 }
+        ],
+        importance: 4,
+        color: 'bg-[#CCD5AE]/15 border-[#CCD5AE]',
+        images: [],
+        videos: [],
+        audioRecordings: [],
+        files: [],
+        tasks: [
+          { id: 't1', text: 'Review first 2 chemistry chapters', completed: true },
+          { id: 't2', text: 'Purchase monthly medication', completed: true }
+        ],
+        tags: ['study', 'family', 'hope'],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 7.5,
+        sportsDuration: 30,
+        medications: [
+          { id: 'm1', name: 'Vitamin D3 Weekly Supplement', time: '10:00 AM', taken: true }
+        ]
+      },
+      {
+        id: 'diary-2',
+        title: 'Midnight Insomnia & Overthinking the Future',
+        content: 'Could not sleep well last night due to catastrophic scenarios about my academic and career future. Woke up feeling fatigued and exhausted. In the evening, I challenged myself to a 45-minute brisk walk, which brought gradual relief and calm.',
+        createdAt: '2026-07-14T09:45:00.000Z',
+        updatedAt: '2026-07-14T09:45:00.000Z',
+        moods: ['Exhausted', 'Anxious', 'Sad'],
+        aiMoodAnalysis: [
+          { mood: 'Anxious', percentage: 50 },
+          { mood: 'Exhausted', percentage: 35 },
+          { mood: 'Sad', percentage: 15 }
+        ],
+        importance: 3,
+        color: 'bg-[#FAEDCD]/30 border-[#E2DCC8]',
+        images: [],
+        videos: [],
+        audioRecordings: [
+          {
+            id: 'rec-1',
+            name: 'Insomnia Venting & Thought Dump.mp3',
+            dataUrl: '#',
+            duration: 48,
+            transcription: 'Recording this voice note because I feel anxious and cannot quiet my racing heart...'
+          }
+        ],
+        files: [],
+        tasks: [
+          { id: 't3', text: '2-minute deep breathing exercise before bed', completed: false }
+        ],
+        tags: ['insomnia', 'anxiety', 'challenge'],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 4.5,
+        sportsDuration: 45,
+        medications: [
+          { id: 'm1', name: 'Vitamin D3 Weekly Supplement', time: '10:00 AM', taken: false }
+        ]
+      },
+      {
+        id: 'diary-3',
+        title: 'Project Achievement & Mindful Evening Reading',
+        content: 'Finished my university project presentation and received great praise from my peers and supervisor. Felt an overwhelming surge of excitement, joy, and self-satisfaction. Read a chapter on CBT before bed with a warm chamomile tea.',
+        createdAt: '2026-07-12T22:00:00.000Z',
+        updatedAt: '2026-07-12T22:00:00.000Z',
+        moods: ['Very Happy', 'Excited', 'Relaxed'],
+        aiMoodAnalysis: [
+          { mood: 'Very Happy', percentage: 60 },
+          { mood: 'Excited', percentage: 30 },
+          { mood: 'Relaxed', percentage: 10 }
+        ],
+        importance: 5,
+        color: 'bg-[#F0EDE4] border-[#E2DCC8]',
+        images: [],
+        videos: [],
+        audioRecordings: [],
+        files: [],
+        tasks: [
+          { id: 't4', text: 'Read Chapter 4 of CBT book', completed: true }
+        ],
+        tags: ['success', 'reading', 'happiness'],
+        chatLogs: [],
+        isLocked: false,
+        sleepHours: 8.0,
+        sportsDuration: 0,
+        medications: []
+      }
+    ];
+  }
+}
+
+export function getInitialHabits(lang: AppLanguage): Habit[] {
+  const isAr = lang === 'ar';
+  return [
+    {
+      id: 'habit-1',
+      name: isAr ? 'شرب 2 لتر ماء دافئ' : 'Drink 2L Warm Water',
+      category: 'health',
+      frequency: 'daily',
+      reminderTime: '08:00',
+      reminderEnabled: true,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      history: {
+        '2026-07-14': true,
+        '2026-07-15': true,
+        '2026-07-16': true,
+      }
+    },
+    {
+      id: 'habit-2',
+      name: isAr ? 'تأمل واسترخاء العضلات (10 د)' : '10 min Meditation & Muscle Relaxation',
+      category: 'mind',
+      frequency: 'daily',
+      reminderTime: '07:30',
+      reminderEnabled: true,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      history: {
+        '2026-07-15': true,
+        '2026-07-16': false,
+      }
+    },
+    {
+      id: 'habit-3',
+      name: isAr ? 'المشي السريع أو تمرين منزلي' : 'Brisk Walking or Home Workout',
+      category: 'sport',
+      frequency: 'daily',
+      reminderTime: '17:00',
+      reminderEnabled: false,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      history: {
+        '2026-07-14': true,
+        '2026-07-15': true,
+        '2026-07-16': true,
+      }
+    },
+    {
+      id: 'habit-4',
+      name: isAr ? 'قراءة 10 صفحات في كتاب' : 'Read 10 Pages of a Book',
+      category: 'culture',
+      frequency: 'daily',
+      reminderTime: '21:00',
+      reminderEnabled: true,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      history: {
+        '2026-07-14': true,
+        '2026-07-15': false,
+        '2026-07-16': true,
+      }
+    }
+  ];
+}
+
+export function getInitialGratitudeCards(lang: AppLanguage): GratitudeCard[] {
+  const isAr = lang === 'ar';
+  return [
+    {
+      id: 'grat-1',
+      text: isAr ? 'رؤية شروق الشمس اليوم والبدء بيوم جديد مليء بالفرص والأمل' : 'Watching the warm morning sun rise and starting a brand new day with peace and hope',
+      color: 'bg-[#FEF9E7]',
+      createdAt: '2026-08-01T08:00:00.000Z',
+      likes: 3,
+      tags: isAr ? ['امتنان', 'صباح'] : ['gratitude', 'morning']
+    },
+    {
+      id: 'grat-2',
+      text: isAr ? 'شرب فنجان قهوة ساخن وممتع بمشاركة صديق مقرب والحديث الدافئ معه' : 'Drinking a hot, perfect cup of coffee with my family and having a warm chat',
+      color: 'bg-[#F4ECF7]',
+      createdAt: '2026-08-02T16:30:00.000Z',
+      likes: 5,
+      tags: isAr ? ['عائلة', 'دفء'] : ['family', 'warmth']
+    },
+    {
+      id: 'grat-3',
+      text: isAr ? 'الوصول لحل مشكلة معقدة في العمل والشعور بالرضا والانجاز' : 'Finding solutions to a tough coding challenge and feeling the joy of personal progress',
+      color: 'bg-[#EBF5FB]',
+      createdAt: '2026-08-03T20:15:00.000Z',
+      likes: 2,
+      tags: isAr ? ['إنجاز', 'تطور'] : ['achievement', 'growth']
+    }
+  ];
+}
+
 function localizeDiaryEntry(entry: DiaryEntry, isAr: boolean): DiaryEntry {
   if (isAr) return entry;
   if (entry.id === 'diary-1') {
@@ -458,7 +807,7 @@ function localizeDiaryEntry(entry: DiaryEntry, isAr: boolean): DiaryEntry {
       title: 'Weekly Academic Planning, Family Lunch & Hopeful Feelings',
       content: 'Started the day with some anxiety regarding accumulated coursework and upcoming university exams. Later sat with my family for a warm lunch and engaging conversations, which completely eased my anxiety and filled me with gratitude and hope. Talking with loved ones is truly a comforting remedy.',
       moods: ['Anxious', 'Grateful', 'Happy'],
-      tags: ['Study', 'Family', 'Hope'],
+      tags: ['study', 'family', 'hope'],
       tasks: [
         { id: 't1', text: 'Review first 2 chemistry chapters', completed: true },
         { id: 't2', text: 'Purchase monthly medication', completed: true }
@@ -474,7 +823,7 @@ function localizeDiaryEntry(entry: DiaryEntry, isAr: boolean): DiaryEntry {
       title: 'Midnight Insomnia & Overthinking the Future',
       content: 'Could not sleep well last night due to catastrophic scenarios about my academic and career future. Woke up feeling fatigued and exhausted. In the evening, I challenged myself to a 45-minute brisk walk, which brought gradual relief and calm.',
       moods: ['Exhausted', 'Anxious', 'Sad'],
-      tags: ['Insomnia', 'Anxiety', 'Challenge'],
+      tags: ['insomnia', 'anxiety', 'challenge'],
       audioRecordings: entry.audioRecordings?.map(r => ({
         ...r,
         name: 'Insomnia Venting & Thought Dump.mp3',
@@ -494,7 +843,7 @@ function localizeDiaryEntry(entry: DiaryEntry, isAr: boolean): DiaryEntry {
       title: 'Project Achievement & Mindful Evening Reading',
       content: 'Today was exceptional and joyful! Finished my university project presentation and received great praise from my peers and supervisor. Felt an overwhelming surge of excitement, joy, and self-satisfaction. Read a chapter on CBT before bed with a warm chamomile tea.',
       moods: ['Joyful', 'Excited', 'Satisfied'],
-      tags: ['Success', 'Reading', 'Happiness'],
+      tags: ['success', 'reading', 'happiness'],
       tasks: [
         { id: 't4', text: 'Read Chapter 4 of CBT book', completed: true }
       ]
@@ -504,22 +853,22 @@ function localizeDiaryEntry(entry: DiaryEntry, isAr: boolean): DiaryEntry {
   const arabicToEnMap: Record<string, string> = {
     'امتنان 🌸': 'Gratitude 🌸',
     'سكينة ✨': 'Serenity ✨',
-    'امتنان': 'Gratitude',
-    'تأمل_إيجابي': 'Positive Reflection',
+    'امتنان': 'gratitude',
+    'تأمل_إيجابي': 'positive_reflection',
     'صفاء 🧘‍♂️': 'Serenity 🧘‍♂️',
     'إلهام 💡': 'Inspiration 💡',
-    'خواطر': 'Thoughts',
-    'يوميات': 'Journal',
+    'خواطر': 'thoughts',
+    'يوميات': 'journal',
     'قلق': 'Anxious',
     'ممتن': 'Grateful',
     'سعيد': 'Happy',
     'مرهق': 'Exhausted',
     'حزين': 'Sad',
-    'دراسة': 'Study',
-    'عائلة': 'Family',
-    'أمل': 'Hope',
-    'أرق': 'Insomnia',
-    'تحدي': 'Challenge'
+    'دراسة': 'study',
+    'عائلة': 'family',
+    'أمل': 'hope',
+    'أرق': 'insomnia',
+    'تحدي': 'challenge'
   };
 
   const hasArabic = /[\u0600-\u06FF]/.test(entry.title || '') || /[\u0600-\u06FF]/.test(entry.content || '');
@@ -535,24 +884,39 @@ function localizeDiaryEntry(entry: DiaryEntry, isAr: boolean): DiaryEntry {
 function localizeGratitudeCard(card: GratitudeCard, isAr: boolean): GratitudeCard {
   if (isAr) return card;
   if (card.id === 'grat-1') {
-    return { ...card, text: 'Watching the warm morning sun rise and starting a brand new day with peace and hope' };
+    return { ...card, text: 'Watching the warm morning sun rise and starting a brand new day with peace and hope', tags: ['gratitude', 'morning'] };
   }
   if (card.id === 'grat-2') {
-    return { ...card, text: 'Drinking a hot, perfect cup of coffee with my family and having a warm chat' };
+    return { ...card, text: 'Drinking a hot, perfect cup of coffee with my family and having a warm chat', tags: ['family', 'warmth'] };
   }
   if (card.id === 'grat-3') {
-    return { ...card, text: 'Finding solutions to a tough coding challenge and feeling the joy of personal progress' };
+    return { ...card, text: 'Finding solutions to a tough coding challenge and feeling the joy of personal progress', tags: ['achievement', 'growth'] };
   }
   return card;
 }
 
+function localizeHabit(habit: Habit, isAr: boolean): Habit {
+  const habitMapEn: Record<string, string> = {
+    'شرب 2 لتر ماء دافئ': 'Drink 2L Warm Water',
+    'تأمل واسترخاء العضلات (10 د)': '10 min Meditation & Muscle Relaxation',
+    'المشي السريع أو تمرين منزلي': 'Brisk Walking or Home Workout',
+    'قراءة 10 صفحات في كتاب': 'Read 10 Pages of a Book',
+  };
+  const habitMapAr: Record<string, string> = {
+    'Drink 2L Warm Water': 'شرب 2 لتر ماء دافئ',
+    '10 min Meditation & Muscle Relaxation': 'تأمل واسترخاء العضلات (10 د)',
+    'Brisk Walking or Home Workout': 'المشي السريع أو تمرين منزلي',
+    'Read 10 Pages of a Book': 'قراءة 10 صفحات في كتاب',
+  };
+  if (isAr) {
+    return { ...habit, name: habitMapAr[habit.name] || habit.name };
+  } else {
+    return { ...habit, name: habitMapEn[habit.name] || habit.name };
+  }
+}
+
 export default function App() {
   // --- Persistent State Hooks ---
-  const [diaries, setDiaries] = useState<DiaryEntry[]>(() => {
-    const saved = localStorage.getItem('yawmiyati_diaries');
-    return saved ? JSON.parse(saved) : INITIAL_DIARIES;
-  });
-
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('yawmiyati_settings');
     const parsed: AppSettings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
@@ -573,21 +937,23 @@ export default function App() {
   const isRtl = langInfo.dir === 'rtl';
   const t = MULTI_TRANSLATIONS[settings.appLanguage] || MULTI_TRANSLATIONS.ar;
 
+  const [diaries, setDiaries] = useState<DiaryEntry[]>(() => {
+    const saved = localStorage.getItem('yawmiyati_diaries');
+    return saved ? JSON.parse(saved) : getInitialDiaries(settings.appLanguage || 'ar');
+  });
+
   const [habits, setHabits] = useState<Habit[]>(() => {
     const saved = localStorage.getItem('yawmiyati_habits');
-    return saved ? JSON.parse(saved) : INITIAL_HABITS;
+    return saved ? JSON.parse(saved) : getInitialHabits(settings.appLanguage || 'ar');
   });
 
   const [gratitudeCards, setGratitudeCards] = useState<GratitudeCard[]>(() => {
     const saved = localStorage.getItem('yawmiyati_gratitude_cards');
-    return saved ? JSON.parse(saved) : [
-      { id: 'grat-1', text: 'رؤية الشمس تشرق بنورها الدافئ وبدء يوم جديد بسلام وأمل', color: 'bg-amber-50 border-amber-200 text-amber-900', createdAt: new Date(Date.now() - 3600000 * 24).toISOString() },
-      { id: 'grat-2', text: 'شرب فنجان قهوة ساخن ومثالي مع عائلتي والحديث الدافئ معهم', color: 'bg-emerald-50 border-emerald-200 text-emerald-900', createdAt: new Date(Date.now() - 3600000 * 5).toISOString() },
-      { id: 'grat-3', text: 'إيجاد حلول لمشكلة برمجية صعبة والشعور ببهجة الإنجاز والتقدم الذاتي', color: 'bg-blue-50 border-blue-200 text-blue-900', createdAt: new Date(Date.now() - 3600000 * 1).toISOString() }
-    ];
+    return saved ? JSON.parse(saved) : getInitialGratitudeCards(settings.appLanguage || 'ar');
   });
 
   const displayedDiaries = useMemo(() => diaries.map(d => localizeDiaryEntry(d, isAr)), [diaries, isAr]);
+  const displayedHabits = useMemo(() => habits.map(h => localizeHabit(h, isAr)), [habits, isAr]);
   const displayedGratitudeCards = useMemo(() => gratitudeCards.map(c => localizeGratitudeCard(c, isAr)), [gratitudeCards, isAr]);
 
   const [activeDiariesSubTab, setActiveDiariesSubTab] = useState<'journal' | 'gratitude' | 'cbt' | 'tasks'>('journal');
@@ -6976,7 +7342,7 @@ export default function App() {
                             {msg.text}
                           </div>
                           <span className="text-[9px] text-gray-400 mt-1 px-1 font-medium">
-                            {msg.sender === 'user' ? (t.meLabel || (isEn ? "Me" : "أنا")) : (t.aiPsychAdvisor || (isEn ? "AI Counselor" : "مستشارك النفسي AI"))} • {new Date(msg.createdAt).toLocaleTimeString(appLanguage === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                            {msg.sender === 'user' ? (t.meLabel || (isEn ? "Me" : "أنا")) : (t.aiPsychAdvisor || (isEn ? "AI Counselor" : "مستشارك النفسي AI"))} • {new Date(msg.createdAt).toLocaleTimeString(settings.appLanguage === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                       ))
@@ -7512,7 +7878,7 @@ export default function App() {
                                       <div className="shrink-0">
                                         {diary.tags && diary.tags.length > 0 ? (
                                           <span className="text-[9px] text-[#8B9D83] font-black">
-                                            #{diary.tags[0]}
+                                            #{getTranslatedTag(diary.tags[0], isAr)}
                                           </span>
                                         ) : (
                                           <span className="text-[9px] text-gray-300 font-bold">#{t.generalTag || (isEn ? "general" : "عام")}</span>
@@ -7558,10 +7924,10 @@ export default function App() {
                   </div>
                 ) : activeDiariesSubTab === 'gratitude' ? (
                   <GratitudeJournal
-                    gratitudeCards={gratitudeCards}
+                    gratitudeCards={displayedGratitudeCards}
                     setGratitudeCards={setGratitudeCards}
                     settings={settings}
-                    diaries={diaries}
+                    diaries={displayedDiaries}
                     setDiaries={setDiaries}
                     setActiveTab={setActiveTab}
                     setActiveDiariesSubTab={setActiveDiariesSubTab}
@@ -7582,7 +7948,7 @@ export default function App() {
                 ) : activeDiariesSubTab === 'cbt' ? (
                   /* Comprehensive CBT & Psychological Therapy Suite */
                   <CBTExercisesSection
-                    diaries={diaries}
+                    diaries={displayedDiaries}
                     selectedDate={selectedDate}
                     handleUpdateHabit={handleUpdateHabit}
                     isDarkMode={settings.isDarkMode}
@@ -7594,7 +7960,7 @@ export default function App() {
                     selectedDate={selectedDate}
                     handleUpdateHabit={handleUpdateHabit}
                     handleUpdateTasks={handleUpdateTasks}
-                    habits={habits}
+                    habits={displayedHabits}
                     toggleHabitCompletion={toggleHabitCompletion}
                     setHabits={setHabits}
                     habitSettings={settings.habitSettings}
@@ -7609,7 +7975,7 @@ export default function App() {
                       if (importedDiaries && importedDiaries.length > 0) setDiaries(importedDiaries);
                     }}
                     isDarkMode={settings.isDarkMode}
-                    diaries={diaries}
+                    diaries={displayedDiaries}
                     appLanguage={settings.appLanguage}
                   />
                 )}
