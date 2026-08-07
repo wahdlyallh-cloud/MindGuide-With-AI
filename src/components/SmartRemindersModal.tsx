@@ -136,7 +136,7 @@ export const SmartRemindersModal: React.FC<SmartRemindersModalProps> = ({
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('هل أنت متأكد من حذف هذا التذكير؟')) {
+    if (confirm(isEn ? 'Are you sure you want to delete this reminder?' : 'هل أنت متأكد من حذف هذا التذكير؟')) {
       const updated = reminders.filter(r => r.id !== id);
       onSaveReminders(updated);
     }
@@ -172,13 +172,13 @@ export const SmartRemindersModal: React.FC<SmartRemindersModalProps> = ({
   };
 
   const getFrequencyLabel = (reminder: AppReminder) => {
-    if (reminder.frequency === 'daily') return 'يومياً (كل يوم)';
-    if (reminder.frequency === 'weekly') return 'أسبوعياً';
+    if (reminder.frequency === 'daily') return isEn ? 'Daily (Every day)' : 'يومياً (كل يوم)';
+    if (reminder.frequency === 'weekly') return isEn ? 'Weekly' : 'أسبوعياً';
     if (reminder.frequency === 'custom_days') {
-      if (!reminder.selectedDays || reminder.selectedDays.length === 7) return 'يومياً';
-      return reminder.selectedDays.map(d => ARABIC_DAYS.find(ad => ad.id === d)?.short).join('، ');
+      if (!reminder.selectedDays || reminder.selectedDays.length === 7) return isEn ? 'Daily' : 'يومياً';
+      return reminder.selectedDays.map(d => ARABIC_DAYS.find(ad => ad.id === d)?.[isEn ? 'shortEn' : 'short']).join(', ');
     }
-    return 'يومياً';
+    return isEn ? 'Daily' : 'يومياً';
   };
 
   return (

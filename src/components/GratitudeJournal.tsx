@@ -29,6 +29,7 @@ interface GratitudeJournalProps {
   setActiveDiariesSubTab?: (subTab: 'journal' | 'gratitude') => void;
   setDiaryTypeFilter?: (filter: 'all' | 'diary' | 'thought') => void;
   triggerGratitudeNotificationNow?: () => void;
+  onOpenShareModal?: (data?: { text?: string; category?: string }) => void;
 }
 
 const PASTEL_COLORS = [
@@ -66,6 +67,7 @@ export default function GratitudeJournal({
   setActiveDiariesSubTab,
   setDiaryTypeFilter,
   triggerGratitudeNotificationNow,
+  onOpenShareModal,
 }: GratitudeJournalProps) {
   const isEn = settings.appLanguage === 'en';
   
@@ -523,6 +525,16 @@ export default function GratitudeJournal({
             </div>
 
             <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onOpenShareModal?.()}
+                className="px-2.5 py-1.5 bg-[#8B9D83] hover:bg-[#7A8C72] text-white rounded-xl text-[10px] font-extrabold flex items-center space-x-1 space-x-reverse shadow-2xs cursor-pointer"
+                title={isEn ? "Design Shareable Gratitude Card" : "تضمين وتصميم بطاقات امتنان قابلة للمشاركة 🎨"}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isEn ? "Export Card 🎨" : "تصميم بطاقة للنشر 🎨"}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleShowRandomMemory}
@@ -1197,6 +1209,16 @@ export default function GratitudeJournal({
                           title={isEn ? "Listen to Card" : "استماع للبطاقة بصوت واضح"}
                         >
                           <Volume2 className="w-3 h-3" />
+                        </button>
+
+                        {/* Export Shareable Card Image Button */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenShareModal?.({ text: card.text, category: 'امتنان اليوم' })}
+                          className="p-1.5 bg-white/85 hover:bg-purple-50 text-purple-600 rounded-lg transition-colors cursor-pointer border border-[#E2DCC8]/40 shadow-3xs"
+                          title={isEn ? "Design Shareable Image Card" : "تصميم وتصدير بطاقة بصرية للنشر"}
+                        >
+                          <Sparkles className="w-3 h-3 text-purple-600" />
                         </button>
 
                         {/* Copy Card Text Button */}

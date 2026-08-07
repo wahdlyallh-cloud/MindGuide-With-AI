@@ -39,6 +39,10 @@ import { AuthModal } from './components/AuthModal';
 import DailyProsConsModal from './components/DailyProsConsModal';
 import ProsConsHistoryLog from './components/ProsConsHistoryLog';
 import DhikrCounter from './components/DhikrCounter';
+import PsychologicalGrowthTree from './components/PsychologicalGrowthTree';
+import ShareableGratitudeCardModal, { CardExportData } from './components/ShareableGratitudeCardModal';
+import BehavioralCorrelationCard from './components/BehavioralCorrelationCard';
+import OfflineSyncBanner from './components/OfflineSyncBanner';
 
 // Recharts components for gorgeous analytics
 import { 
@@ -1599,6 +1603,10 @@ export default function App() {
   const [showWriteDiaryImporter, setShowWriteDiaryImporter] = useState(false);
   const [showLanguagesModal, setShowLanguagesModal] = useState(false);
   const [isFirstTimeLangSelect, setIsFirstTimeLangSelect] = useState(false);
+
+  // Shareable Gratitude Cards Exporter
+  const [showGratitudeShareModal, setShowGratitudeShareModal] = useState(false);
+  const [gratitudeShareData, setGratitudeShareData] = useState<CardExportData | undefined>(undefined);
 
   // Auto-open language selector on first visit
   useEffect(() => {
@@ -3937,7 +3945,7 @@ export default function App() {
             ? 'max-sm:-translate-y-full max-sm:max-h-0 max-sm:opacity-0 max-sm:overflow-hidden max-sm:pointer-events-none' 
             : 'max-sm:translate-y-0 max-sm:max-h-[500px] max-sm:opacity-100'
         }`} 
-        dir="rtl"
+        dir={isRtl ? 'rtl' : 'ltr'}
         onTouchStart={() => {
           if (!isHeaderCollapsedOnMobile) {
             revealHeaderTemporarily();
@@ -4157,7 +4165,7 @@ export default function App() {
           </motion.div>
 
           {/* Desktop Sticky Navigation Bar */}
-          <div className="hidden sm:block bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E2DCC8]/80 py-2 px-4 sticky top-[65px] z-20 transition-all duration-300 shadow-3xs" dir="rtl">
+          <div className="hidden sm:block bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E2DCC8]/80 py-2 px-4 sticky top-[65px] z-20 transition-all duration-300 shadow-3xs" dir={isRtl ? 'rtl' : 'ltr'}>
             <div className="max-w-4xl mx-auto flex items-center justify-between">
               <button
                 type="button"
@@ -4196,6 +4204,9 @@ export default function App() {
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto px-4 pt-6 pb-28 md:pb-12 space-y-6">
         
+        {/* Offline & Cloud Background Sync Status Banner */}
+        <OfflineSyncBanner appLanguage={settings.appLanguage} />
+
         {/* Mock Android Notification Widget at the top of the Home Dashboard for simulation */}
         {activeTab === 'dashboard' && (
           <StaticNotification onAction={handleQuickAction} appLanguage={settings.appLanguage} />
@@ -4241,6 +4252,32 @@ export default function App() {
                 </p>
               </div>
             </div>
+
+            {/* 🌱 Psychological Growth Tree (Visual Gamification Component) */}
+            <PsychologicalGrowthTree
+              appLanguage={settings.appLanguage}
+              diariesCount={diaries.length}
+              cbtCount={diaries.filter(d => (d.cbtWorksheets && d.cbtWorksheets.length > 0)).length}
+              gratitudeCount={gratitudeCards.length}
+              habitsCount={habits.filter(h => h.isCompleted).length}
+              activeStreak={streakInfo.currentStreak}
+              onQuickAction={(action) => {
+                if (action === 'journal') startNewDiary();
+                else if (action === 'gratitude') {
+                  setActiveTab('diaries');
+                  setActiveDiariesSubTab('gratitude');
+                } else if (action === 'cbt') {
+                  setActiveTab('diaries');
+                  setActiveDiariesSubTab('cbt');
+                } else if (action === 'habits') {
+                  setActiveTab('diaries');
+                  setActiveDiariesSubTab('tasks');
+                }
+              }}
+            />
+
+            {/* 🧠 Advanced Behavioral Correlation Engine Card */}
+            <BehavioralCorrelationCard entries={diaries} appLanguage={settings.appLanguage} />
 
             {/* 📁 شريط التدوين السريع والوصول المباشر للملفات */}
             <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-3">
@@ -7430,6 +7467,17 @@ export default function App() {
                     setActiveDiariesSubTab={setActiveDiariesSubTab}
                     setDiaryTypeFilter={setDiaryTypeFilter}
                     triggerGratitudeNotificationNow={() => setActiveGratitudeReminderNotification(true)}
+                    onOpenShareModal={(data) => {
+                      if (data) {
+                        setGratitudeShareData({
+                          text: data.text || '',
+                          category: data.category || 'امتنان'
+                        });
+                      } else {
+                        setGratitudeShareData(undefined);
+                      }
+                      setShowGratitudeShareModal(true);
+                    }}
                   />
                 ) : activeDiariesSubTab === 'cbt' ? (
                   /* Comprehensive CBT & Psychological Therapy Suite */
@@ -7524,6 +7572,9 @@ export default function App() {
               <ProsConsHistoryLog diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
             ) : (
               <div className="space-y-6">
+                {/* 🧠 Behavioral Correlation Analysis Card */}
+                <BehavioralCorrelationCard entries={diaries} appLanguage={settings.appLanguage} />
+
                 {/* Visual Intro card */}
                 <div className="bg-white border border-[#E2DCC8] rounded-3xl p-5 shadow-xs space-y-2">
                   <h3 className="font-extrabold text-[#3A3A3A] text-sm flex items-center space-x-2 space-x-reverse">
@@ -8774,6 +8825,14 @@ export default function App() {
         onChangeFont={(font) => setSettings(prev => ({ ...prev, appFont: font }))}
         onChangeLineHeight={(lh) => setSettings(prev => ({ ...prev, appLineHeight: lh }))}
         isFirstTime={isFirstTimeLangSelect}
+      />
+
+      {/* 🎨 Shareable Gratitude & Quote Cards Exporter Modal */}
+      <ShareableGratitudeCardModal
+        isOpen={showGratitudeShareModal}
+        onClose={() => setShowGratitudeShareModal(false)}
+        appLanguage={settings.appLanguage}
+        initialData={gratitudeShareData}
       />
 
       {/* 🔔 Smart Reminders Management Modal */}

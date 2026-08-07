@@ -883,7 +883,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
       {/* 🎙️ Interactive Hands-free Voice Chat Overlay Modal */}
       {showVoiceModal && (
         <div className="fixed inset-0 bg-[#5A5A40]/45 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E2DCC8] rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-6 text-center relative animate-fade-in font-sans" dir="rtl">
+          <div className="bg-white border border-[#E2DCC8] rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-6 text-center relative animate-fade-in font-sans" dir={appLanguage === 'ar' || appLanguage === 'ur' ? 'rtl' : 'ltr'}>
             
             {/* Close Button */}
             <button
@@ -893,21 +893,21 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
                 setShowVoiceModal(false);
                 setVoiceStatus('idle');
               }}
-              className="absolute top-4 left-4 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-xl transition-all cursor-pointer text-sm font-bold"
+              className={`absolute top-4 ${appLanguage === 'ar' || appLanguage === 'ur' ? 'left-4' : 'right-4'} p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-xl transition-all cursor-pointer text-sm font-bold`}
             >
-              إغلاق ×
+              ×
             </button>
 
             {/* Header Status */}
             <div className="space-y-1.5 pt-4">
               <span className="text-xs bg-[#8B9D83]/15 text-[#8B9D83] px-3 py-1 rounded-full font-bold">
-                مكالمة صوتية مستمرة وعيادية
+                {t.voiceCompanionTitle || 'المساعد الصوتي العيادي المستمر'}
               </span>
               <h3 className="font-extrabold text-[#3A3A3A] text-lg">
-                {voiceStatus === 'listening' && '🎤 جاري الاستماع بإنصات...'}
-                {voiceStatus === 'analyzing' && '🧠 جاري التفكير وصياغة الدعم...'}
-                {voiceStatus === 'speaking' && '🔊 يتحدث الآن...'}
-                {voiceStatus === 'idle' && '💤 مستعد للبدء'}
+                {voiceStatus === 'listening' && `🎤 ${t.voiceStatusListening || 'جاري الاستماع بإنصات...'}`}
+                {voiceStatus === 'analyzing' && `🧠 ${t.voiceStatusAnalyzing || 'جاري التفكير وصياغة الدعم...'}`}
+                {voiceStatus === 'speaking' && `🔊 ${t.voiceStatusSpeaking || 'يتحدث الآن...'}`}
+                {voiceStatus === 'idle' && `💤 ${t.voiceStatusIdle || 'مستعد للبدء'}`}
               </h3>
             </div>
 
@@ -942,9 +942,9 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
 
             {/* Live Transcript / Response display area */}
             <div className="bg-[#F0EDE4]/45 p-4 rounded-2xl border border-[#E2DCC8]/50 max-h-40 overflow-y-auto">
-              <p className="text-xs text-gray-500 font-medium mb-1">النسخ التلقائي المحادثة:</p>
+              <p className="text-xs text-gray-500 font-medium mb-1">{t.voiceLiveTranscript || 'النسخ التلقائي للمحادثة:'}</p>
               <p className="text-sm text-[#3A3A3A] font-medium leading-relaxed">
-                {voiceTranscript || 'تكلم بطلاقة، وسيقوم المساعد بقراءة تدويناتك وتحليلها والرد عليك فوراً بالصوت...'}
+                {voiceTranscript || (appLanguage === 'ar' || appLanguage === 'ur' ? 'تكلم بطلاقة، وسيقوم المساعد بقراءة تدويناتك وتحليلها والرد عليك فوراً بالصوت...' : 'Speak freely, the assistant will process your entries and speak back to you...')}
               </p>
             </div>
 
@@ -959,7 +959,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
                   }}
                   className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                 >
-                  ⏹️ مقاطعة والحديث الآن
+                  {t.voiceInterruptAndSpeak || 'مقاطعة والحديث الآن ⏹️'}
                 </button>
               )}
 
@@ -968,7 +968,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
                   onClick={startListeningVoiceChat}
                   className="px-6 py-2.5 bg-[#8B9D83] hover:bg-[#5A5A40] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                 >
-                  🎙️ بدء الاستماع والتحدث
+                  {t.voiceStartSpeaking || 'بدء الاستماع والتحدث 🎙️'}
                 </button>
               )}
 
@@ -981,7 +981,7 @@ export default function SmartAdvisor({ diaries, habits = [], gratitudeCards = []
                 }}
                 className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold cursor-pointer"
               >
-                إنهاء المكالمة
+                {t.voiceEndSession || 'إنهاء المكالمة 📞'}
               </button>
             </div>
           </div>

@@ -26,7 +26,7 @@ export default function TypographySettingsSection({
   const currentLhObj = LINE_HEIGHT_OPTIONS.find(l => l.id === appLineHeight) || LINE_HEIGHT_OPTIONS[2];
 
   return (
-    <div className="bg-white border-2 border-[#D4A373]/40 rounded-[28px] p-5 sm:p-6 shadow-sm space-y-6">
+    <div className="bg-white border-2 border-[#D4A373]/40 rounded-[28px] p-5 sm:p-6 shadow-sm space-y-6" dir={langInfo.dir}>
       
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#E2DCC8] pb-4">

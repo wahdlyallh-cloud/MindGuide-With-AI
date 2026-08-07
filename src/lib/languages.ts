@@ -1,4 +1,225 @@
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
 export type AppLanguage = 'ar' | 'en' | 'fr' | 'de' | 'es' | 'tr' | 'ur' | 'ru' | 'zh' | 'ja';
+
+export interface TranslationKeys {
+  common: {
+    appName: string;
+    yes: string;
+    no: string;
+    closeBtn: string;
+    retryBtn: string;
+    homeTab: string;
+    diariesTab: string;
+    advisorTab: string;
+    analyticsTab: string;
+    settingsTab: string;
+  };
+  auth: {
+    personalAccountTitle: string;
+    guestUser: string;
+    registeredUser: string;
+    accountSubGuest: string;
+    accountSubUser: string;
+  };
+  cbt: {
+    cbtExercisesTab: string;
+    cbtWorksheets: string;
+    thoughtRecord: string;
+  };
+  analytics: {
+    behavioralCorrelationsTitle: string;
+    behavioralCorrelationsSub: string;
+    balanceIndex: string;
+    sleepQuality: string;
+    exerciseActivity: string;
+  };
+  modals: {
+    rateModalTitle: string;
+    rateModalThanks: string;
+    contactOwnerTitle: string;
+    welcomeModalTitle: string;
+  };
+  settings: {
+    settingsTitle: string;
+    settingsSubtitle: string;
+    apiKeyTitle: string;
+    languagesTitle: string;
+    darkModeTitle: string;
+  };
+}
+
+export const BASELINE_DICTIONARIES: Record<'ar' | 'en', TranslationKeys> = {
+  ar: {
+    common: {
+      appName: "حياة AI",
+      yes: "نعم",
+      no: "لا",
+      closeBtn: "إغلاق",
+      retryBtn: "إعادة المحاولة",
+      homeTab: "الرئيسية",
+      diariesTab: "اليوميات",
+      advisorTab: "المستشار",
+      analyticsTab: "التقدم والبيانات",
+      settingsTab: "الإعدادات",
+    },
+    auth: {
+      personalAccountTitle: "الحساب الشخصي 👤",
+      guestUser: "مستخدم زائر 👤",
+      registeredUser: "مستخدم موثق 👤",
+      accountSubGuest: "حساب محلي آمن، سجل دخولك للتزامن السحابي",
+      accountSubUser: "مفعل ومزامن سحابياً تلقائياً",
+    },
+    cbt: {
+      cbtExercisesTab: "تمارين العلاج المعرفي السلوكي (CBT)",
+      cbtWorksheets: "استمارات تفكيك الأفكار",
+      thoughtRecord: "سجل الأفكار التلقائية",
+    },
+    analytics: {
+      behavioralCorrelationsTitle: "محرك التحليلات السلوكية المتقدمة",
+      behavioralCorrelationsSub: "اكتشاف العلاقات بين عاداتك ونسب التوتر والمزاج",
+      balanceIndex: "مؤشر الاتزان النفسي",
+      sleepQuality: "جودة النوم",
+      exerciseActivity: "النشاط البدني",
+    },
+    modals: {
+      rateModalTitle: "⭐ تقييم التطبيق",
+      rateModalThanks: "شكراً لتقييمك! ❤️",
+      contactOwnerTitle: "تواصل مع المطوّر 📬",
+      welcomeModalTitle: "مرحباً بك في حياة AI 👋",
+    },
+    settings: {
+      settingsTitle: "الإعدادات العامة",
+      settingsSubtitle: "تخصيص المساعد الذكي والأمان ولغة التطبيق",
+      apiKeyTitle: "مفتاح API الخاص بك 🔑",
+      languagesTitle: "لغات التطبيق 🌐",
+      darkModeTitle: "الوضع الداكن ☀️/🌙",
+    },
+  },
+  en: {
+    common: {
+      appName: "Hayat AI",
+      yes: "Yes",
+      no: "No",
+      closeBtn: "Close",
+      retryBtn: "Retry",
+      homeTab: "Home",
+      diariesTab: "Journal",
+      advisorTab: "Advisor",
+      analyticsTab: "Analytics",
+      settingsTab: "Settings",
+    },
+    auth: {
+      personalAccountTitle: "Personal Account 👤",
+      guestUser: "Guest User 👤",
+      registeredUser: "Verified User 👤",
+      accountSubGuest: "Local secure mode. Sign in to enable cloud sync",
+      accountSubUser: "Active and automatically synced to cloud",
+    },
+    cbt: {
+      cbtExercisesTab: "CBT Exercises",
+      cbtWorksheets: "Thought Reframing Worksheets",
+      thoughtRecord: "Automatic Thought Record",
+    },
+    analytics: {
+      behavioralCorrelationsTitle: "Behavioral Correlation Engine",
+      behavioralCorrelationsSub: "Discover statistical links between health habits and mood/anxiety",
+      balanceIndex: "Mental Balance Index",
+      sleepQuality: "Sleep Quality",
+      exerciseActivity: "Physical Activity",
+    },
+    modals: {
+      rateModalTitle: "⭐ Rate Application",
+      rateModalThanks: "Thank you for rating! ❤️",
+      contactOwnerTitle: "Contact Developer 📬",
+      welcomeModalTitle: "Welcome to Hayat AI 👋",
+    },
+    settings: {
+      settingsTitle: "General Settings",
+      settingsSubtitle: "Customize AI advisor, security lock, and app language",
+      apiKeyTitle: "Your API Key 🔑",
+      languagesTitle: "App Languages 🌐",
+      darkModeTitle: "Dark Mode ☀️/🌙",
+    },
+  },
+};
+
+export interface LanguageContextType {
+  currentLanguage: AppLanguage;
+  setLanguage: (lang: AppLanguage | string) => void;
+  t: (key: string) => string;
+  isRTL: boolean;
+}
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export function LanguageProvider({
+  children,
+  initialLanguage = 'ar',
+}: {
+  children: ReactNode;
+  initialLanguage?: AppLanguage;
+}) {
+  const [currentLanguage, setCurrentLanguageState] = useState<AppLanguage>(initialLanguage);
+
+  const setLanguage = (lang: string) => {
+    const validLang = (SUPPORTED_LANGUAGES.some((l) => l.code === lang) ? lang : 'ar') as AppLanguage;
+    setCurrentLanguageState(validLang);
+  };
+
+  const isRTL = getLanguageInfo(currentLanguage).dir === 'rtl';
+
+  const t = (key: string): string => {
+    // Check key in flat dictionary
+    const dict = getTranslation(currentLanguage);
+    if (dict && dict[key] !== undefined) {
+      return String(dict[key]);
+    }
+
+    // Check nested section key (e.g. "common.appName" or "analytics.balanceIndex")
+    if (key.includes('.')) {
+      const [section, subkey] = key.split('.');
+      const langKey = (currentLanguage === 'en' ? 'en' : 'ar') as 'ar' | 'en';
+      const secObj = (BASELINE_DICTIONARIES[langKey] as any)?.[section];
+      if (secObj && secObj[subkey] !== undefined) {
+        return String(secObj[subkey]);
+      }
+    }
+
+    // Fallback to English dictionary
+    const enDict = getTranslation('en');
+    if (enDict && enDict[key] !== undefined) {
+      return String(enDict[key]);
+    }
+
+    // Fallback to Arabic dictionary
+    const arDict = getTranslation('ar');
+    if (arDict && arDict[key] !== undefined) {
+      return String(arDict[key]);
+    }
+
+    return key;
+  };
+
+  return React.createElement(
+    LanguageContext.Provider,
+    { value: { currentLanguage, setLanguage, t, isRTL } },
+    children
+  );
+}
+
+export function useLanguage(): LanguageContextType {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    return {
+      currentLanguage: 'ar',
+      setLanguage: () => {},
+      t: (key: string) => key,
+      isRTL: true,
+    };
+  }
+  return context;
+}
 
 export interface LanguageInfo {
   code: AppLanguage;
@@ -518,6 +739,34 @@ export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
     deletePermanently: "حذف نهائي",
     searchArchivedPlaceholder: "ابحث في اليوميات والخواطر المؤرشفة...",
     archiveEmpty: "أرشيف المذكرات والخواطر فارغ حالياً.",
+    psychologicalGrowthTreeTitle: "شجرة النمو النفسي والوعي",
+    treeStage1: "بذرة النية 🌱",
+    treeStage2: "برعم السلام الداخلي 🌿",
+    treeStage3: "شجرة التوازن النفسي 🌳",
+    treeStage4: "شجرة الوعي المزهرة 🌸🌳",
+    treeStage5: "شجرة الحكمة المعمرة 🌲👑✨",
+    treeDesc1: "بداية رحلتك نحو السلام الداخلي والوعي الذاتي",
+    treeDesc2: "نمو ناعم ومستمر مع كل فكرة تدوّنها",
+    treeDesc3: "جذورك النفسية تترسخ يوماً بعد يوم",
+    treeDesc4: "أثمرت مواظبتك اليومية هدوءاً وثباتاً",
+    treeDesc5: "إنجاز 365 يوماً متتالياً! شجرة معمرة بالحكمة والسكينة والوعي الخالد",
+    shareableGratitudeTitle: "بطاقات الامتنان القابلة للمشاركة 🎨",
+    shareableGratitudeSub: "صمم بطاقتك البصرية الخاصة وشارك أفكارك الملهمة مع أصدقائك",
+    behavioralCorrelationsTitle: "محرك التحليلات السلوكية المتقدمة",
+    behavioralCorrelationsSub: "اكتشاف العلاقات الرياضية بين عاداتك الصحية ومستويات القلق والمزاج",
+    offlineStatusOnline: "متصل بالإنترنت - المزامنة السحابية مفعّلة",
+    offlineStatusOffline: "وضع عدم الاتصال بالإنترنت - يتم حفظ بياناتك محلياً بآمان",
+    offlineSyncNow: "مزامنة الآن 🔄",
+    offlineSyncSuccess: "تمت مزامنة جميع البيانات المحفوظة محلياً بنجاح ✨",
+    voiceCompanionTitle: "المساعد الصوتي العيادي المستمر",
+    voiceStatusListening: "جاري الاستماع بإنصات...",
+    voiceStatusAnalyzing: "جاري التفكير وصياغة الدعم...",
+    voiceStatusSpeaking: "يتحدث الآن...",
+    voiceStatusIdle: "مستعد للبدء",
+    voiceLiveTranscript: "النسخ التلقائي للمحادثة:",
+    voiceInterruptAndSpeak: "مقاطعة والحديث الآن ⏹️",
+    voiceStartSpeaking: "بدء الاستماع والتحدث 🎙️",
+    voiceEndSession: "إنهاء المكالمة 📞",
   },
   en: {
     appName: "Hayat AI",
@@ -717,6 +966,34 @@ export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
     deletePermanently: "Delete Permanently",
     searchArchivedPlaceholder: "Search archived entries...",
     archiveEmpty: "Archive is currently empty.",
+    psychologicalGrowthTreeTitle: "Mind Growth Tree & Consciousness",
+    treeStage1: "Seedling of Intent 🌱",
+    treeStage2: "Sprout of Peace 🌿",
+    treeStage3: "Tree of Balance 🌳",
+    treeStage4: "Blooming Mind Tree 🌸🌳",
+    treeStage5: "Ancient Tree of Wisdom 🌲👑✨",
+    treeDesc1: "Beginning your journey to inner peace and awareness",
+    treeDesc2: "Gentle progress with every logged thought",
+    treeDesc3: "Your mental roots grow deeper every single day",
+    treeDesc4: "Daily consistency blossoms into serenity and strength",
+    treeDesc5: "365 consecutive days milestone! An ancient tree of wisdom, serenity, and eternal peace.",
+    shareableGratitudeTitle: "Shareable Gratitude Cards 🎨",
+    shareableGratitudeSub: "Design beautiful visual cards for social media sharing",
+    behavioralCorrelationsTitle: "Behavioral Correlation Engine",
+    behavioralCorrelationsSub: "Discover statistical links between health habits and anxiety/mood stability",
+    offlineStatusOnline: "Online - Cloud Sync Active",
+    offlineStatusOffline: "Offline Mode - Data saved safely locally",
+    offlineSyncNow: "Sync Now 🔄",
+    offlineSyncSuccess: "All offline data synchronized successfully ✨",
+    voiceCompanionTitle: "Continuous Clinical Voice Companion",
+    voiceStatusListening: "Listening attentively...",
+    voiceStatusAnalyzing: "Analyzing & formulating support...",
+    voiceStatusSpeaking: "Speaking now...",
+    voiceStatusIdle: "Ready to start",
+    voiceLiveTranscript: "Live Speech Transcript:",
+    voiceInterruptAndSpeak: "Interrupt & Speak Now ⏹️",
+    voiceStartSpeaking: "Start Voice Conversation 🎙️",
+    voiceEndSession: "End Call 📞",
   },
   fr: {
     appName: "Hayat AI",
@@ -916,6 +1193,25 @@ export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
     deletePermanently: "Supprimer définitivement",
     searchArchivedPlaceholder: "Rechercher dans les archives...",
     archiveEmpty: "L'archive est actuellement vide.",
+    psychologicalGrowthTreeTitle: "Arbre de Croissance Psychologique",
+    treeStage1: "Graine d'Intention 🌱",
+    treeStage2: "Pousse de Paix 🌿",
+    treeStage3: "Arbre d'Équilibre 🌳",
+    treeStage4: "Arbre de Sagesse en Fleur 🌸🌳",
+    treeStage5: "Arbre de Sagesse Millénaire 🌲👑✨",
+    treeDesc1: "Début de votre voyage vers la paix intérieure",
+    treeDesc2: "Progrès doux à chaque pensée enregistrée",
+    treeDesc3: "Vos racines mentales s'enracinent chaque jour",
+    treeDesc4: "La régularité quotidienne s'épanouit en sérénité",
+    treeDesc5: "Défi des 365 jours consécutifs accompli ! Un arbre séculaire de sagesse et de sérénité.",
+    shareableGratitudeTitle: "Cartes de Gratitude Partageables 🎨",
+    shareableGratitudeSub: "Créez de superbes cartes visuelles à partager",
+    behavioralCorrelationsTitle: "Moteur de Corrélation Comportementale",
+    behavioralCorrelationsSub: "Découvrez les liens statistiques entre vos habitudes et l'anxiété",
+    offlineStatusOnline: "En ligne - Synchronisation active",
+    offlineStatusOffline: "Mode hors ligne - Données enregistrées localement",
+    offlineSyncNow: "Synchroniser 🔄",
+    offlineSyncSuccess: "Données hors ligne synchronisées avec succès ✨",
   },
   de: {
     appName: "Hayat AI",
@@ -1115,6 +1411,19 @@ export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
     deletePermanently: "Endgültig löschen",
     searchArchivedPlaceholder: "Archivierte Einträge durchsuchen...",
     archiveEmpty: "Das Archiv ist derzeit leer.",
+    psychologicalGrowthTreeTitle: "Psychologischer Wachstumsbaum",
+    treeStage1: "Samen der Absicht 🌱",
+    treeStage2: "Spross des Friedens 🌿",
+    treeStage3: "Baum der Balance 🌳",
+    treeStage4: "Blühender Geistbaum 🌸🌳",
+    treeStage5: "Uralter Weisheitsbaum 🌲👑✨",
+    treeDesc1: "Beginn Ihrer Reise zu innerer Ruhe",
+    treeDesc2: "Sanfter Fortschritt mit jedem Eintrag",
+    treeDesc3: "Ihre geistigen Wurzeln wachsen jeden Tag tiefer",
+    treeDesc4: "Tägliche Beständigkeit erblüht in Gelassenheit",
+    treeDesc5: "365 Tage in Folge erreicht! Ein uralter Baum voller Weisheit, Seelenruhe und ewiger Harmonie.",
+    shareableGratitudeTitle: "Teilbare Dankbarkeitskarten 🎨",
+    shareableGratitudeSub: "Gestalten Sie visuelle Karten für soziale Medien",
   },
   es: {
     appName: "Hayat AI",
@@ -1314,6 +1623,19 @@ export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
     deletePermanently: "Eliminar permanentemente",
     searchArchivedPlaceholder: "Buscar en el archivo...",
     archiveEmpty: "El archivo está actualmente vacío.",
+    psychologicalGrowthTreeTitle: "Árbol de Crecimiento Psicológico",
+    treeStage1: "Semilla de Intención 🌱",
+    treeStage2: "Brote de Paz 🌿",
+    treeStage3: "Árbol de Equilibrio 🌳",
+    treeStage4: "Árbol Floreciente de la Mente 🌸🌳",
+    treeStage5: "Árbol Milenario de la Sabiduría 🌲👑✨",
+    treeDesc1: "Inicio de tu viaje hacia la paz interior",
+    treeDesc2: "Progreso suave con cada pensamiento registrado",
+    treeDesc3: "Tus raíces mentales crecen más profundas cada día",
+    treeDesc4: "La constancia diaria florece en serenidad",
+    treeDesc5: "¡Hito de 365 días consecutivos alcanzado! Un árbol milenario de sabiduría, paz eterna y armonía.",
+    shareableGratitudeTitle: "Tarjetas de Gratitud Compartibles 🎨",
+    shareableGratitudeSub: "Diseña hermosas tarjetas visuales para redes sociales",
   },
   tr: {
     appName: "Hayat AI",
