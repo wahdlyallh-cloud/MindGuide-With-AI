@@ -538,6 +538,98 @@ export interface TranslationSet {
   deletePermanently: string;
   searchArchivedPlaceholder: string;
   archiveEmpty: string;
+
+  // Modals & Authentication & Gemini Keys
+  geminiKeyTitle?: string;
+  geminiKeyDesc?: string;
+  geminiKeyNotice?: string;
+  geminiKeyPlaceholder?: string;
+  getFreeKeyLink?: string;
+  deleteKeyBtn?: string;
+  saveKeyBtn?: string;
+  verifyingKey?: string;
+  apiKeyVerified?: string;
+  apiKeyVerifyFailed?: string;
+
+  rateAppModalTitle?: string;
+  rateAppQuestion?: string;
+  rateAppFeedbackLabel?: string;
+  rateAppPlaceholder?: string;
+  rateAppSubmit?: string;
+  rateAppThankYou?: string;
+  rateAppThankYouDesc?: string;
+  cancelBtn?: string;
+
+  authModalTitle?: string;
+  authModalSub?: string;
+  connectedSynced?: string;
+  syncOptionsTitle?: string;
+  syncNowBtn?: string;
+  restoreDataBtn?: string;
+  logoutBtn?: string;
+  loginTab?: string;
+  registerTab?: string;
+  emailLabel?: string;
+  passwordLabel?: string;
+  hide?: string;
+  show?: string;
+  loginSubmit?: string;
+  nameLabel?: string;
+  confirmPasswordLabel?: string;
+  registerSubmit?: string;
+  loginErrorEmpty?: string;
+  loginSuccessMsg?: string;
+  incorrectPassword?: string;
+  registerErrorEmpty?: string;
+  passwordTooShort?: string;
+  passwordsDoNotMatch?: string;
+  registerSuccessMsg?: string;
+  emailAlreadyRegistered?: string;
+
+  backupSyncTitle?: string;
+  backupSyncDesc?: string;
+  linkGoogleAccount?: string;
+  syncInProgress?: string;
+  restoreCloudBackup?: string;
+  manualExportImport?: string;
+  importManual?: string;
+  exportAndShare?: string;
+  importFromWriteDiary?: string;
+  importFromOtherApps?: string;
+  autoBackupFrequency?: string;
+  backupHourly?: string;
+  backupDaily?: string;
+  backupWeekly?: string;
+  backupOff?: string;
+  secureEmailBackup?: string;
+  emailBackupDesc?: string;
+  emailPlaceholder?: string;
+  sendBtn?: string;
+  importFromOtherAppsTitle?: string;
+  importFromOtherAppsDesc?: string;
+  importNoteAiNotice?: string;
+  understoodBtn?: string;
+
+  writeDiaryImporterTitle?: string;
+  writeDiaryImporterSub?: string;
+  uploadDropZoneText?: string;
+  supportedFormats?: string;
+  analyzingFile?: string;
+  howToExportTitle?: string;
+  howToStep1?: string;
+  howToStep2?: string;
+  howToStep3?: string;
+  howToStep4?: string;
+  entriesCountLabel?: string;
+  selectAllBtn?: string;
+  selectAllHint?: string;
+  searchParsedPlaceholder?: string;
+  noMatchingEntries?: string;
+  importNotePreserveDates?: string;
+  confirmImportBtn?: string;
+  uploadAnotherFile?: string;
+  importerSuccessMsg?: string;
+  importerErrorMsg?: string;
 }
 
 export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
@@ -767,6 +859,97 @@ export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
     voiceInterruptAndSpeak: "مقاطعة والحديث الآن ⏹️",
     voiceStartSpeaking: "بدء الاستماع والتحدث 🎙️",
     voiceEndSession: "إنهاء المكالمة 📞",
+
+    geminiKeyTitle: "إعداد مفتاح Gemini API 🔑",
+    geminiKeyDesc: "أدخل مفتاح Gemini API الخاص بك لتشغيل قدرات المساعد الذكي والتحليل السلوكي والاستشارات النفسية المتقدمة.",
+    geminiKeyNotice: "ملاحظة أمان: يتم حفظ مفتاحك محلياً بشكل مشفر على جهازك فقط ولا يتم مشاركته مع أي طرف ثالث.",
+    geminiKeyPlaceholder: "أدخل مفتاح API هنا (AIzaSy...)",
+    getFreeKeyLink: "احصل على مفتاح مجاني من Google AI Studio 🌐",
+    deleteKeyBtn: "حذف المفتاح 🗑️",
+    saveKeyBtn: "حفظ واختبار 💾",
+    verifyingKey: "جاري التحقق من المفتاح...",
+    apiKeyVerified: "تم التحقق من المفتاح بنجاح! 🟢",
+    apiKeyVerifyFailed: "فشل التحقق من المفتاح، يرجى التأكد من صحته.",
+
+    rateAppModalTitle: "تقييم تطبيق حياة AI ⭐",
+    rateAppQuestion: "كيف تقيم تجربتك مع التطبيق حتى الآن؟",
+    rateAppFeedbackLabel: "ملاحظاتك واقتراحاتك للتطوير (اختياري):",
+    rateAppPlaceholder: "اكتب اقتراحك أو انطباعك القيمة...",
+    rateAppSubmit: "إرسال التقييم ✨",
+    rateAppThankYou: "شكراً جزيلاً لتقييمك الرائع!",
+    rateAppThankYouDesc: "نقدر رأيك الغالي وسنعمل دائماً على تحسين تجربتك في التطبيق.",
+    cancelBtn: "إلغاء",
+
+    authModalTitle: "الحساب الشخصي والمزامنة السحابية 👤",
+    authModalSub: "سجل دخولك لحفظ وتزامن يومياتك وملاحظاتك بأمان من جميع أجهزتك",
+    connectedSynced: "متصل ومزامن ☁️",
+    syncOptionsTitle: "خيارات المزامنة والنسخ الاحتياطي",
+    syncNowBtn: "مزامنة الآن 🔄",
+    restoreDataBtn: "استعادة البيانات ☁️",
+    logoutBtn: "تسجيل الخروج 🚪",
+    loginTab: "تسجيل الدخول",
+    registerTab: "إنشاء حساب جديد",
+    emailLabel: "البريد الإلكتروني",
+    passwordLabel: "كلمة المرور",
+    hide: "إخفاء",
+    show: "إظهار",
+    loginSubmit: "دخول 🚀",
+    nameLabel: "الاسم الكامل",
+    confirmPasswordLabel: "تأكيد كلمة المرور",
+    registerSubmit: "إنشاء الحساب 🚀",
+    loginErrorEmpty: "يرجى ملء جميع الحقول المطلوبة.",
+    loginSuccessMsg: "تم تسجيل الدخول بنجاح! جاري تحميل بياناتك...",
+    incorrectPassword: "كلمة المرور غير صحيحة.",
+    registerErrorEmpty: "يرجى إدخال البريد الإلكتروني وكلمة المرور.",
+    passwordTooShort: "يجب أن تكون كلمة المرور 6 أحرف على الأقل.",
+    passwordsDoNotMatch: "كلمتا المرور غير متطابقتين.",
+    registerSuccessMsg: "تم إنشاء الحساب بنجاح! مرحباً بك.",
+    emailAlreadyRegistered: "هذا البريد الإلكتروني مسجل بالفعل.",
+
+    backupSyncTitle: "النسخ الاحتياطي والمزامنة السحابية ☁️",
+    backupSyncDesc: "قم بمزامنة بياناتك وسجلاتك مع السحابة أو تصدير نسخة احتياطية محلية لحفظ أفكارك ويومياتك بأمان.",
+    linkGoogleAccount: "ربط الحساب والمزامنة السحابية 🔄",
+    syncInProgress: "جاري معالجة النسخ الاحتياطي والمزامنة...",
+    restoreCloudBackup: "استعادة آخر نسخة سحابية ☁️",
+    manualExportImport: "التصدير والاستيراد اليدوي",
+    importManual: "استيراد ملف (.json) 📂",
+    exportAndShare: "تصدير ومشاركة 📤",
+    importFromWriteDiary: "استيراد يوميات من WriteDiary 📖",
+    importFromOtherApps: "استيراد من تطبيقات أخرى 🔌",
+    autoBackupFrequency: "تكرار النسخ الاحتياطي التلقائي:",
+    backupHourly: "كل ساعة",
+    backupDaily: "يومياً",
+    backupWeekly: "أسبوعياً",
+    backupOff: "إيقاف التلقائي",
+    secureEmailBackup: "إرسال نسخة احتياطية للبريد الإلكتروني 📧",
+    emailBackupDesc: "أدخل بريدك ليصلك ملف النسخة الاحتياطية مباشرة إلى صندوق بريدك.",
+    emailPlaceholder: "yourname@example.com",
+    sendBtn: "إرسال",
+    importFromOtherAppsTitle: "استيراد اليوميات من التطبيقات والأدوات 🔌",
+    importFromOtherAppsDesc: "اختر المنصة التي ترغب باستيراد مذكراتك السابقة منها:",
+    importNoteAiNotice: "يقوم الذكاء الاصطناعي بتحليل وإعادة تنظيم البيانات المستوردة تلقائياً.",
+    understoodBtn: "فهمت ذلك",
+
+    writeDiaryImporterTitle: "مستورد يوميات WriteDiary 📖",
+    writeDiaryImporterSub: "استورد مذكراتك المحفوظة من تطبيق WriteDiary بسهولة ودمجها مع حسابك",
+    uploadDropZoneText: "اضغط هنا لاختيار ملف النسخة الاحتياطية (.json / .txt)",
+    supportedFormats: "الملفات المدعومة: JSON, TXT, WriteDiary Backup",
+    analyzingFile: "جاري فحص وتحليل الملف...",
+    howToExportTitle: "كيف تصدر ملفك من تطبيق WriteDiary؟",
+    howToStep1: "1. افتح تطبيق WriteDiary القديم.",
+    howToStep2: "2. اذهب إلى الإعدادات ⚙️ ⬅️ النسخ الاحتياطي والتصدير.",
+    howToStep3: "3. اختر 'تصدير النسخة الاحتياطية (JSON)' وحفظ الملف.",
+    howToStep4: "4. قم بحديده ورفعه هنا في مستورد حياة AI.",
+    entriesCountLabel: "عدد المذكرات التي تم العثور عليها:",
+    selectAllBtn: "تحديد الكل",
+    selectAllHint: "حدد المذكرات التي ترغب باستيرادها إلى يومياتك",
+    searchParsedPlaceholder: "بحث في المذكرات المستخرجة...",
+    noMatchingEntries: "لا توجد مذكرات تطابق كلمة البحث",
+    importNotePreserveDates: "سيتم الحفاظ على التواريخ وأوقات التدوين الأصلية للمذكرات.",
+    confirmImportBtn: "تأكيد واستيراد المذكرات المختارة 🚀",
+    uploadAnotherFile: "رفع ملف آخر 🔄",
+    importerSuccessMsg: "تم استيراد المذكرات بنجاح! ✨",
+    importerErrorMsg: "حدث خطأ أثناء قراءة الملف، يرجى التأكد من الصيغة الصحيحة.",
   },
   en: {
     appName: "Hayat AI",
@@ -994,6 +1177,97 @@ export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
     voiceInterruptAndSpeak: "Interrupt & Speak Now ⏹️",
     voiceStartSpeaking: "Start Voice Conversation 🎙️",
     voiceEndSession: "End Call 📞",
+
+    geminiKeyTitle: "Gemini API Key Setup 🔑",
+    geminiKeyDesc: "Enter your Gemini API key to power smart assistant features, behavioral analytics, and psychological guidance.",
+    geminiKeyNotice: "Security Note: Your key is stored locally on your device in encrypted format and is never shared.",
+    geminiKeyPlaceholder: "Enter API key here (AIzaSy...)",
+    getFreeKeyLink: "Get a free API key from Google AI Studio 🌐",
+    deleteKeyBtn: "Delete Key 🗑️",
+    saveKeyBtn: "Save & Test 💾",
+    verifyingKey: "Verifying API key...",
+    apiKeyVerified: "API key verified successfully! 🟢",
+    apiKeyVerifyFailed: "API key verification failed. Please check your key.",
+
+    rateAppModalTitle: "Rate Hayat AI App ⭐",
+    rateAppQuestion: "How would you rate your experience with the app?",
+    rateAppFeedbackLabel: "Your feedback and suggestions (optional):",
+    rateAppPlaceholder: "Write your feedback or thoughts...",
+    rateAppSubmit: "Submit Rating ✨",
+    rateAppThankYou: "Thank you so much for your rating!",
+    rateAppThankYouDesc: "We value your input and will keep working to improve your experience.",
+    cancelBtn: "Cancel",
+
+    authModalTitle: "Personal Account & Cloud Sync 👤",
+    authModalSub: "Log in to safely save and sync your diaries and notes across all your devices",
+    connectedSynced: "Connected & Synced ☁️",
+    syncOptionsTitle: "Sync & Backup Options",
+    syncNowBtn: "Sync Now 🔄",
+    restoreDataBtn: "Restore Data ☁️",
+    logoutBtn: "Log Out 🚪",
+    loginTab: "Log In",
+    registerTab: "Register Account",
+    emailLabel: "Email Address",
+    passwordLabel: "Password",
+    hide: "Hide",
+    show: "Show",
+    loginSubmit: "Log In 🚀",
+    nameLabel: "Full Name",
+    confirmPasswordLabel: "Confirm Password",
+    registerSubmit: "Create Account 🚀",
+    loginErrorEmpty: "Please fill in all required fields.",
+    loginSuccessMsg: "Logged in successfully! Loading your data...",
+    incorrectPassword: "Incorrect password.",
+    registerErrorEmpty: "Please enter email and password.",
+    passwordTooShort: "Password must be at least 6 characters long.",
+    passwordsDoNotMatch: "Passwords do not match.",
+    registerSuccessMsg: "Account created successfully! Welcome.",
+    emailAlreadyRegistered: "This email address is already registered.",
+
+    backupSyncTitle: "Backup & Cloud Sync ☁️",
+    backupSyncDesc: "Sync your records with the cloud or export a local backup to keep your notes safe.",
+    linkGoogleAccount: "Link Account & Sync 🔄",
+    syncInProgress: "Processing backup & sync...",
+    restoreCloudBackup: "Restore Cloud Backup ☁️",
+    manualExportImport: "Manual Export & Import",
+    importManual: "Import File (.json) 📂",
+    exportAndShare: "Export & Share 📤",
+    importFromWriteDiary: "Import from WriteDiary 📖",
+    importFromOtherApps: "Import from Other Apps 🔌",
+    autoBackupFrequency: "Auto Backup Frequency:",
+    backupHourly: "Hourly",
+    backupDaily: "Daily",
+    backupWeekly: "Weekly",
+    backupOff: "Off",
+    secureEmailBackup: "Send Backup to Email 📧",
+    emailBackupDesc: "Enter your email to receive your backup file directly in your inbox.",
+    emailPlaceholder: "yourname@example.com",
+    sendBtn: "Send",
+    importFromOtherAppsTitle: "Import Diaries from Other Apps 🔌",
+    importFromOtherAppsDesc: "Select the platform you want to import your notes from:",
+    importNoteAiNotice: "AI automatically reorganizes and parses imported records.",
+    understoodBtn: "Understood",
+
+    writeDiaryImporterTitle: "WriteDiary Importer 📖",
+    writeDiaryImporterSub: "Easily import your notes from WriteDiary app and merge them with your account",
+    uploadDropZoneText: "Click here to choose backup file (.json / .txt)",
+    supportedFormats: "Supported formats: JSON, TXT, WriteDiary Backup",
+    analyzingFile: "Analyzing file contents...",
+    howToExportTitle: "How to export from WriteDiary app?",
+    howToStep1: "1. Open your WriteDiary app.",
+    howToStep2: "2. Go to Settings ⚙️ ➡️ Backup & Export.",
+    howToStep3: "3. Tap 'Export Backup (JSON)' and save the file.",
+    howToStep4: "4. Select and upload that file here in Hayat AI.",
+    entriesCountLabel: "Total diary entries found:",
+    selectAllBtn: "Select All",
+    selectAllHint: "Select entries you want to import into your diary",
+    searchParsedPlaceholder: "Search extracted notes...",
+    noMatchingEntries: "No matching notes found",
+    importNotePreserveDates: "Original creation dates and timestamps will be preserved.",
+    confirmImportBtn: "Confirm & Import Selected Notes 🚀",
+    uploadAnotherFile: "Upload Another File 🔄",
+    importerSuccessMsg: "Diary entries imported successfully! ✨",
+    importerErrorMsg: "An error occurred while reading file. Please check file format.",
   },
   fr: {
     appName: "Hayat AI",
@@ -2651,6 +2925,11 @@ export function getTranslation(code: AppLanguage): TranslationSet {
         if (arDict && prop in arDict && arDict[prop] !== undefined) {
           return arDict[prop];
         }
+        if (prop === 'then' || prop === 'toJSON' || prop === 'constructor' || prop === 'prototype' || prop === '@@toStringTag' || typeof (target as any)[prop] === 'function') {
+          return Reflect.get(target, prop, receiver);
+        }
+        // Fallback string so React UI components NEVER render blank/undefined text
+        return prop.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
       }
       return Reflect.get(target, prop, receiver);
     }

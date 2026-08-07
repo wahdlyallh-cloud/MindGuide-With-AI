@@ -211,6 +211,17 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
     };
   }, [waterReminderEnabled]);
 
+  // Extract daily variables
+  const tasks = activeDiaryForSelectedDate?.tasks || [];
+  const sleepHours = activeDiaryForSelectedDate?.sleepHours ?? 8;
+  const sportsDuration = activeDiaryForSelectedDate?.sportsDuration ?? 0;
+  const sportsType = activeDiaryForSelectedDate?.sportsType || 'مشي';
+  const sportsIntensity = activeDiaryForSelectedDate?.sportsIntensity || 'medium';
+  const sportsEnergyBefore = activeDiaryForSelectedDate?.sportsEnergyBefore ?? 3;
+  const sportsEnergyAfter = activeDiaryForSelectedDate?.sportsEnergyAfter ?? 4;
+  const sportsNotes = activeDiaryForSelectedDate?.sportsNotes || '';
+  const waterCups = activeDiaryForSelectedDate?.waterCups ?? 0;
+
   // Helper to calculate 7-Day Weekly Water Intake Stats & Commitment Percentage
   const getWeeklyWaterStats = () => {
     const last7Days: { dateStr: string; dayLabel: string; cups: number; target: number }[] = [];
@@ -289,17 +300,6 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
     showToast(`تم تسجيل ${elapsedMinutes} دقيقة (${sportsType}) بنجاح! 🏃💪 (المجموع: ${newTotal} دقيقة)`);
     setWorkoutSeconds(0);
   };
-
-  // Extract daily variables
-  const tasks = activeDiaryForSelectedDate?.tasks || [];
-  const sleepHours = activeDiaryForSelectedDate?.sleepHours ?? 8;
-  const sportsDuration = activeDiaryForSelectedDate?.sportsDuration ?? 0;
-  const sportsType = activeDiaryForSelectedDate?.sportsType || 'مشي';
-  const sportsIntensity = activeDiaryForSelectedDate?.sportsIntensity || 'medium';
-  const sportsEnergyBefore = activeDiaryForSelectedDate?.sportsEnergyBefore ?? 3;
-  const sportsEnergyAfter = activeDiaryForSelectedDate?.sportsEnergyAfter ?? 4;
-  const sportsNotes = activeDiaryForSelectedDate?.sportsNotes || '';
-  const waterCups = activeDiaryForSelectedDate?.waterCups ?? 0;
 
   // Dynamic Calorie Estimator
   const getEstimatedCalories = (durationMins: number, typeStr: string, intensityStr?: string) => {
