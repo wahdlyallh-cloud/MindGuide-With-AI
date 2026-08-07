@@ -34,7 +34,7 @@ import {
   TrendingUp,
   X
 } from 'lucide-react';
-import { DiaryEntry, TaskItem, Habit, HabitSettings } from '../types';
+import { DiaryEntry, TaskItem, Habit, HabitSettings, AppLanguage } from '../types';
 import WeeklyHabitsMoodChart from './WeeklyHabitsMoodChart';
 import { HabitFormModal } from './HabitFormModal';
 import { HabitsMatrixGrid } from './HabitsMatrixGrid';
@@ -56,14 +56,23 @@ interface TasksChecklistSectionProps {
   onImportData?: (importedHabits: Habit[], importedDiaries?: DiaryEntry[]) => void;
   isDarkMode?: boolean;
   diaries?: DiaryEntry[];
+  appLanguage?: AppLanguage;
 }
 
-const CATEGORY_NAMES: Record<string, string> = {
+const CATEGORY_NAMES_AR: Record<string, string> = {
   health: 'صحة بدنية 🥦',
   mind: 'تأمل وذهن 🧠',
   sport: 'رياضة ونشاط 🏃',
   culture: 'ثقافة وقراءة 📚',
   custom: 'أهداف أخرى 🎯'
+};
+
+const CATEGORY_NAMES_EN: Record<string, string> = {
+  health: 'Physical Health 🥦',
+  mind: 'Mindfulness 🧠',
+  sport: 'Sports & Activity 🏃',
+  culture: 'Culture & Reading 📚',
+  custom: 'Other Goals 🎯'
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -86,8 +95,11 @@ export const TasksChecklistSection: React.FC<TasksChecklistSectionProps> = ({
   onUpdateHabitSettings,
   onImportData,
   isDarkMode = false,
-  diaries = []
+  diaries = [],
+  appLanguage = "ar"
 }) => {
+  const isAr = appLanguage === "ar";
+  const CATEGORY_NAMES = isAr ? CATEGORY_NAMES_AR : CATEGORY_NAMES_EN;
   // Sub-view inside Tasks & Activities
   const [subView, setSubView] = useState<'daily_checklist' | 'habits_matrix' | 'habit_settings'>('daily_checklist');
 

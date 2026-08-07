@@ -7,7 +7,7 @@ import {
   Send, Edit3, MessageSquare
 } from 'lucide-react';
 import { GratitudeCard, AppSettings, DiaryEntry } from '../types';
-import { getLanguageInfo } from '../lib/languages';
+import { getLanguageInfo, getTranslation } from '../lib/languages';
 
 export interface AIGratitudeHistoryItem {
   id: string;
@@ -33,12 +33,12 @@ interface GratitudeJournalProps {
 }
 
 const PASTEL_COLORS = [
-  { id: 'yellow', name: 'أصفر ذهبي', class: 'bg-[#FEF9E7] border-[#FADBD8] text-[#78281F] shadow-amber-100/50 hover:bg-[#FDF2E9]' },
-  { id: 'green', name: 'أخضر نعناعي', class: 'bg-[#E8F8F5] border-[#A3E4D7] text-[#117864] shadow-teal-100/50 hover:bg-[#D1F2EB]' },
-  { id: 'peach', name: 'خوخي ناعم', class: 'bg-[#FBEEE6] border-[#F5CBA7] text-[#6E2C00] shadow-orange-100/50 hover:bg-[#F5CBA7]/30' },
-  { id: 'lavender', name: 'لافندر هادئ', class: 'bg-[#F4ECF7] border-[#D7BDE2] text-[#5B2C6F] shadow-purple-100/50 hover:bg-[#EBDEF0]' },
-  { id: 'blue', name: 'أزرق سماوي', class: 'bg-[#EBF5FB] border-[#AED6F1] text-[#1B4F72] shadow-blue-100/50 hover:bg-[#D4E6F1]' },
-  { id: 'pink', name: 'وردي لطيف', class: 'bg-[#FDEDEC] border-[#F2D7D5] text-[#641E16] shadow-red-100/50 hover:bg-[#FADBD8]' },
+  { id: 'yellow', nameAr: 'أصفر ذهبي', nameEn: 'Golden Yellow', class: 'bg-[#FEF9E7] border-[#FADBD8] text-[#78281F] shadow-amber-100/50 hover:bg-[#FDF2E9]' },
+  { id: 'green', nameAr: 'أخضر نعناعي', nameEn: 'Mint Green', class: 'bg-[#E8F8F5] border-[#A3E4D7] text-[#117864] shadow-teal-100/50 hover:bg-[#D1F2EB]' },
+  { id: 'peach', nameAr: 'خوخي ناعم', nameEn: 'Soft Peach', class: 'bg-[#FBEEE6] border-[#F5CBA7] text-[#6E2C00] shadow-orange-100/50 hover:bg-[#F5CBA7]/30' },
+  { id: 'lavender', nameAr: 'لافندر هادئ', nameEn: 'Calm Lavender', class: 'bg-[#F4ECF7] border-[#D7BDE2] text-[#5B2C6F] shadow-purple-100/50 hover:bg-[#EBDEF0]' },
+  { id: 'blue', name: 'أزرق سماوي', nameEn: 'Sky Blue', class: 'bg-[#EBF5FB] border-[#AED6F1] text-[#1B4F72] shadow-blue-100/50 hover:bg-[#D4E6F1]' },
+  { id: 'pink', nameAr: 'وردي لطيف', nameEn: 'Soft Pink', class: 'bg-[#FDEDEC] border-[#F2D7D5] text-[#641E16] shadow-red-100/50 hover:bg-[#FADBD8]' },
 ];
 
 const ARABIC_PROMPTS = [
@@ -69,7 +69,10 @@ export default function GratitudeJournal({
   triggerGratitudeNotificationNow,
   onOpenShareModal,
 }: GratitudeJournalProps) {
-  const isEn = settings.appLanguage === 'en';
+  const isAr = settings.appLanguage === 'ar';
+  const t = getTranslation(settings.appLanguage || 'ar');
+  const langInfo = getLanguageInfo(settings.appLanguage || 'ar');
+  const isEn = !isAr;
   
   // Input states
   const [newText, setNewText] = useState('');
@@ -317,7 +320,7 @@ export default function GratitudeJournal({
       content: bodyText.trim(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      moods: ['امتنان 🌸', 'سكينة ✨'],
+      moods: isEn ? ['Gratitude 🌸', 'Serenity ✨'] : ['امتنان 🌸', 'سكينة ✨'],
       importance: 4,
       color: 'bg-[#FEF9E7]',
       images: [],
@@ -325,7 +328,7 @@ export default function GratitudeJournal({
       audioRecordings: [],
       files: [],
       tasks: [],
-      tags: ['امتنان', 'تأمل_إيجابي'],
+      tags: isEn ? ['gratitude', 'positive_reflection'] : ['امتنان', 'تأمل_إيجابي'],
       chatLogs: [],
       isLocked: false,
       diaryType: 'diary',
@@ -356,7 +359,7 @@ export default function GratitudeJournal({
       content: bodyText.trim(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      moods: ['صفاء 🧘‍♂️', 'إلهام 💡'],
+      moods: isEn ? ['Serenity 🧘‍♂️', 'Inspiration 💡'] : ['صفاء 🧘‍♂️', 'إلهام 💡'],
       importance: 5,
       color: 'bg-[#F4ECF7]',
       images: [],
@@ -364,7 +367,7 @@ export default function GratitudeJournal({
       audioRecordings: [],
       files: [],
       tasks: [],
-      tags: ['خواطر', 'امتنان'],
+      tags: isEn ? ['thoughts', 'gratitude'] : ['خواطر', 'امتنان'],
       chatLogs: [],
       isLocked: false,
       diaryType: 'thought',
@@ -1047,7 +1050,7 @@ export default function GratitudeJournal({
                           {/* Save to Gratitude Card */}
                           <button
                             type="button"
-                            onClick={() => handleExportToGratitudeCard(item.userAnswer ? `${item.content}\n\nإجابتي: ${item.userAnswer}` : item.content)}
+                            onClick={() => handleExportToGratitudeCard(item.userAnswer ? `${item.content}\n\n${isEn ? 'My Answer:' : 'إجابتي:'} ${item.userAnswer}` : item.content)}
                             className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 text-amber-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
                             title={isEn ? "Save as Gratitude Card on Wall" : "تعليق كبطاقة ملونة في جدار الامتنان"}
                           >
@@ -1058,7 +1061,7 @@ export default function GratitudeJournal({
                           {/* Export to Daily Venting */}
                           <button
                             type="button"
-                            onClick={() => handleExportToDailyVenting(item.title, item.userAnswer ? `سؤال الامتنان: ${item.content}\n\nتأملي وإجابتي اليومية:\n${item.userAnswer}` : item.content)}
+                            onClick={() => handleExportToDailyVenting(item.title, item.userAnswer ? `${isEn ? 'Gratitude Question:' : 'سؤال الامتنان:'} ${item.content}\n\n${isEn ? 'My Daily Reflection:' : 'تأملي وإجابتي اليومية:'}\n${item.userAnswer}` : item.content)}
                             className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 text-emerald-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
                             title={isEn ? "Append to Daily Venting Entries" : "إضافة إلى اليوميات"}
                           >
@@ -1069,7 +1072,7 @@ export default function GratitudeJournal({
                           {/* Export to Thoughts */}
                           <button
                             type="button"
-                            onClick={() => handleExportToThoughts(item.title, item.userAnswer ? `فكرة تفكرية: ${item.content}\n\nالخاطرة الإيجابية:\n${item.userAnswer}` : item.content)}
+                            onClick={() => handleExportToThoughts(item.title, item.userAnswer ? `${isEn ? 'Mindful Thought:' : 'فكرة تفكرية:'} ${item.content}\n\n${isEn ? 'Positive Reflection:' : 'الخاطرة الإيجابية:'}\n${item.userAnswer}` : item.content)}
                             className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 border border-purple-200/60 text-purple-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
                             title={isEn ? "Save to Thoughts & Reflections" : "إضافة إلى الخواطر"}
                           >
@@ -1081,7 +1084,7 @@ export default function GratitudeJournal({
                           <button
                             type="button"
                             onClick={() => {
-                              const fullText = item.userAnswer ? `${item.content}\n\nإجابتي: ${item.userAnswer}` : item.content;
+                              const fullText = item.userAnswer ? `${item.content}\n\n${isEn ? 'My Answer:' : 'إجابتي:'} ${item.userAnswer}` : item.content;
                               navigator.clipboard.writeText(fullText);
                               showToast(isEn ? "Copied to clipboard!" : "تم نسخ النص إلى الحافظة! 📋");
                             }}
@@ -1214,7 +1217,7 @@ export default function GratitudeJournal({
                         {/* Export Shareable Card Image Button */}
                         <button
                           type="button"
-                          onClick={() => onOpenShareModal?.({ text: card.text, category: 'امتنان اليوم' })}
+                          onClick={() => onOpenShareModal?.({ text: card.text, category: isEn ? 'Daily Gratitude' : 'امتنان اليوم' })}
                           className="p-1.5 bg-white/85 hover:bg-purple-50 text-purple-600 rounded-lg transition-colors cursor-pointer border border-[#E2DCC8]/40 shadow-3xs"
                           title={isEn ? "Design Shareable Image Card" : "تصميم وتصدير بطاقة بصرية للنشر"}
                         >
@@ -1279,7 +1282,7 @@ export default function GratitudeJournal({
                           >
                             <span className="font-extrabold text-amber-800 flex items-center space-x-1 space-x-reverse justify-end text-[9px]">
                               <span>🧠</span>
-                              <span>الأثر الكيميائي العصبي (Gemini):</span>
+                              <span>{isEn ? "Neurochemical Impact (Gemini):" : "الأثر الكيميائي العصبي (Gemini):"}</span>
                             </span>
                             <p className="italic">"{analysisText}"</p>
                           </motion.div>

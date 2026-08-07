@@ -421,7 +421,7 @@ export default function WriteDiaryImporter({
       audioRecordings: [],
       files: [],
       tasks: [],
-      tags: ['مستورد', 'يومياتي'],
+      tags: appLanguage === 'ar' ? ['مستورد', 'يومياتي'] : ['Imported', 'Diaries'],
       chatLogs: [],
       isLocked: false,
       diaryType: 'diary'

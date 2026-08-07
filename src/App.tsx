@@ -450,6 +450,102 @@ export const TRANSLATIONS = {
   }
 };
 
+function localizeDiaryEntry(entry: DiaryEntry, isAr: boolean): DiaryEntry {
+  if (isAr) return entry;
+  if (entry.id === 'diary-1') {
+    return {
+      ...entry,
+      title: 'Weekly Academic Planning, Family Lunch & Hopeful Feelings',
+      content: 'Started the day with some anxiety regarding accumulated coursework and upcoming university exams. Later sat with my family for a warm lunch and engaging conversations, which completely eased my anxiety and filled me with gratitude and hope. Talking with loved ones is truly a comforting remedy.',
+      moods: ['Anxious', 'Grateful', 'Happy'],
+      tags: ['Study', 'Family', 'Hope'],
+      tasks: [
+        { id: 't1', text: 'Review first 2 chemistry chapters', completed: true },
+        { id: 't2', text: 'Purchase monthly medication', completed: true }
+      ],
+      medications: [
+        { id: 'm1', name: 'Vitamin D3 Weekly Supplement', time: '10:00 AM', taken: true }
+      ]
+    };
+  }
+  if (entry.id === 'diary-2') {
+    return {
+      ...entry,
+      title: 'Midnight Insomnia & Overthinking the Future',
+      content: 'Could not sleep well last night due to catastrophic scenarios about my academic and career future. Woke up feeling fatigued and exhausted. In the evening, I challenged myself to a 45-minute brisk walk, which brought gradual relief and calm.',
+      moods: ['Exhausted', 'Anxious', 'Sad'],
+      tags: ['Insomnia', 'Anxiety', 'Challenge'],
+      audioRecordings: entry.audioRecordings?.map(r => ({
+        ...r,
+        name: 'Insomnia Venting & Thought Dump.mp3',
+        transcription: 'Recording this voice note because I feel anxious and cannot quiet my racing heart...'
+      })) || [],
+      tasks: [
+        { id: 't3', text: '2-minute deep breathing exercise before bed', completed: false }
+      ],
+      medications: [
+        { id: 'm1', name: 'Vitamin D3 Weekly Supplement', time: '10:00 AM', taken: false }
+      ]
+    };
+  }
+  if (entry.id === 'diary-3') {
+    return {
+      ...entry,
+      title: 'Project Achievement & Mindful Evening Reading',
+      content: 'Today was exceptional and joyful! Finished my university project presentation and received great praise from my peers and supervisor. Felt an overwhelming surge of excitement, joy, and self-satisfaction. Read a chapter on CBT before bed with a warm chamomile tea.',
+      moods: ['Joyful', 'Excited', 'Satisfied'],
+      tags: ['Success', 'Reading', 'Happiness'],
+      tasks: [
+        { id: 't4', text: 'Read Chapter 4 of CBT book', completed: true }
+      ]
+    };
+  }
+
+  const arabicToEnMap: Record<string, string> = {
+    'امتنان 🌸': 'Gratitude 🌸',
+    'سكينة ✨': 'Serenity ✨',
+    'امتنان': 'Gratitude',
+    'تأمل_إيجابي': 'Positive Reflection',
+    'صفاء 🧘‍♂️': 'Serenity 🧘‍♂️',
+    'إلهام 💡': 'Inspiration 💡',
+    'خواطر': 'Thoughts',
+    'يوميات': 'Journal',
+    'قلق': 'Anxious',
+    'ممتن': 'Grateful',
+    'سعيد': 'Happy',
+    'مرهق': 'Exhausted',
+    'حزين': 'Sad',
+    'دراسة': 'Study',
+    'عائلة': 'Family',
+    'أمل': 'Hope',
+    'أرق': 'Insomnia',
+    'تحدي': 'Challenge'
+  };
+
+  const hasArabic = /[\u0600-\u06FF]/.test(entry.title || '') || /[\u0600-\u06FF]/.test(entry.content || '');
+  if (!hasArabic) return entry;
+
+  return {
+    ...entry,
+    moods: entry.moods?.map(m => arabicToEnMap[m] || m),
+    tags: entry.tags?.map(t => arabicToEnMap[t] || t)
+  };
+}
+
+function localizeGratitudeCard(card: GratitudeCard, isAr: boolean): GratitudeCard {
+  if (isAr) return card;
+  if (card.id === 'grat-1') {
+    return { ...card, text: 'Watching the warm morning sun rise and starting a brand new day with peace and hope' };
+  }
+  if (card.id === 'grat-2') {
+    return { ...card, text: 'Drinking a hot, perfect cup of coffee with my family and having a warm chat' };
+  }
+  if (card.id === 'grat-3') {
+    return { ...card, text: 'Finding solutions to a tough coding challenge and feeling the joy of personal progress' };
+  }
+  return card;
+}
+
 export default function App() {
   // --- Persistent State Hooks ---
   const [diaries, setDiaries] = useState<DiaryEntry[]>(() => {
@@ -472,6 +568,7 @@ export default function App() {
   });
 
   const langInfo = getLanguageInfo(settings.appLanguage);
+  const isAr = settings.appLanguage === 'ar';
   const isEn = settings.appLanguage === 'en';
   const isRtl = langInfo.dir === 'rtl';
   const t = MULTI_TRANSLATIONS[settings.appLanguage] || MULTI_TRANSLATIONS.ar;
@@ -489,6 +586,9 @@ export default function App() {
       { id: 'grat-3', text: 'إيجاد حلول لمشكلة برمجية صعبة والشعور ببهجة الإنجاز والتقدم الذاتي', color: 'bg-blue-50 border-blue-200 text-blue-900', createdAt: new Date(Date.now() - 3600000 * 1).toISOString() }
     ];
   });
+
+  const displayedDiaries = useMemo(() => diaries.map(d => localizeDiaryEntry(d, isAr)), [diaries, isAr]);
+  const displayedGratitudeCards = useMemo(() => gratitudeCards.map(c => localizeGratitudeCard(c, isAr)), [gratitudeCards, isAr]);
 
   const [activeDiariesSubTab, setActiveDiariesSubTab] = useState<'journal' | 'gratitude' | 'cbt' | 'tasks'>('journal');
   const [analyticsSubTab, setAnalyticsSubTab] = useState<'report' | 'charts' | 'pros_cons'>('report');
@@ -6509,7 +6609,7 @@ export default function App() {
                           <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xl shadow-xs group-hover:scale-105 transition-transform">
                             🎨
                           </div>
-                          <span className="text-xs font-bold text-[#3A3A3A]">لون الخلفية</span>
+                          <span className="text-xs font-bold text-[#3A3A3A]">{t.bgColorIcon || (isEn ? "Background Color" : "لون الخلفية")}</span>
                         </button>
 
                         {/* 4. إرفاق ملف (Attach File) */}
@@ -6519,7 +6619,7 @@ export default function App() {
                           <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xl shadow-xs group-hover:scale-105 transition-transform">
                             📎
                           </div>
-                          <span className="text-xs font-bold text-[#3A3A3A]">إرفاق ملف</span>
+                          <span className="text-xs font-bold text-[#3A3A3A]">{t.attachFileIcon || (isEn ? "Attach File" : "إرفاق ملف")}</span>
                           <input
                             type="file"
                             accept="*/*"
@@ -6559,7 +6659,7 @@ export default function App() {
                           <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xl shadow-xs group-hover:scale-105 transition-transform">
                             🎙️
                           </div>
-                          <span className="text-xs font-bold text-[#3A3A3A]">أضف صوت</span>
+                          <span className="text-xs font-bold text-[#3A3A3A]">{t.addAudioIcon || (isEn ? "Add Audio" : "أضف صوت")}</span>
                         </button>
 
                         {/* 6. تأثير الخط (Font Style) - Video 0:48 */}
@@ -6574,13 +6674,13 @@ export default function App() {
                           <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center text-lg font-serif font-bold shadow-xs group-hover:scale-105 transition-transform">
                             Aa
                           </div>
-                          <span className="text-xs font-bold text-[#3A3A3A]">تأثير الخط</span>
+                          <span className="text-xs font-bold text-[#3A3A3A]">{t.fontStyleIcon || (isEn ? "Font Style" : "تأثير الخط")}</span>
                         </button>
                       </div>
 
                       {/* Color Palette Selector Inside Features Sheet */}
                       <div className="pt-2 border-t border-gray-100 space-y-2">
-                        <span className="text-xs font-extrabold text-[#5A5A40]">اختر لون خلفية المذكرة:</span>
+                        <span className="text-xs font-extrabold text-[#5A5A40]">{t.chooseBgColor || (isEn ? "Choose note background color:" : "اختر لون خلفية المذكرة:")}</span>
                         <div className="flex items-center justify-around p-2 bg-[#F9F7F2] rounded-2xl border border-[#E2DCC8]">
                           <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#F9F7F2' } : null); setShowMoreFeaturesSheet(false); }} className="w-7 h-7 rounded-full bg-[#F9F7F2] border-2 border-gray-400 cursor-pointer shadow-xs" title="افتراضي" />
                           <button type="button" onClick={() => { setEditingDiary(prev => prev ? { ...prev, color: '#FFFDF5' } : null); setShowMoreFeaturesSheet(false); }} className="w-7 h-7 rounded-full bg-[#FFFDF5] border-2 border-amber-300 cursor-pointer shadow-xs" title="أصفر دافئ" />
@@ -6597,7 +6697,7 @@ export default function App() {
                 {/* Font Styling Drawer (Aa) matching video 0:48 */}
                 {showFontDrawer && (
                   <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 animate-fadeIn">
-                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl border border-[#E2DCC8]" dir="rtl">
+                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl border border-[#E2DCC8]" dir={isRtl ? 'rtl' : 'ltr'}>
                       {/* Header */}
                       <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                         <button
@@ -6607,7 +6707,7 @@ export default function App() {
                         >
                           ✓
                         </button>
-                        <h3 className="text-base font-extrabold text-[#3A3A3A]">الخط</h3>
+                        <h3 className="text-base font-extrabold text-[#3A3A3A]">{t.fontDrawerTitle || (isEn ? "Font" : "الخط")}</h3>
                         <button
                           type="button"
                           onClick={() => setShowFontDrawer(false)}
@@ -6643,7 +6743,7 @@ export default function App() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs font-bold text-[#5A5A40]">
                           <span className="text-xs">Aa</span>
-                          <span>حجم الخط ({fontDrawerSize}px)</span>
+                          <span>{t.fontSizeLabel || (isEn ? "Font Size" : "حجم الخط")} ({fontDrawerSize}px)</span>
                           <span className="text-base font-extrabold">Aa</span>
                         </div>
                         <input
@@ -6658,7 +6758,7 @@ export default function App() {
 
                       {/* Choose Font Style Grid (اختر نمط الخط) */}
                       <div className="space-y-2">
-                        <span className="text-xs font-extrabold text-[#5A5A40] block">اختر نمط الخط:</span>
+                        <span className="text-xs font-extrabold text-[#5A5A40] block">{t.chooseFontStyle || (isEn ? "Choose Font Style:" : "اختر نمط الخط:")}</span>
                         <div className="grid grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1">
                           {[
                             { id: 'font-sans', name: 'Notes', style: 'font-sans' },
@@ -6693,12 +6793,12 @@ export default function App() {
                 {/* AI Assistant Note Writer Bottom Sheet matching video 0:56 */}
                 {showAiWriterSheet && (
                   <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 animate-fadeIn">
-                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl border border-[#E2DCC8] max-h-[90vh] flex flex-col" dir="rtl">
+                    <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl border border-[#E2DCC8] max-h-[90vh] flex flex-col" dir={isRtl ? 'rtl' : 'ltr'}>
                       {/* Header */}
                       <div className="flex items-center justify-between border-b border-gray-100 pb-3 shrink-0">
                         <h3 className="text-sm font-extrabold text-[#3A3A3A] flex items-center space-x-2 space-x-reverse">
                           <span className="text-amber-500">✨</span>
-                          <span>اطلب من الذكاء الاصطناعي أن يكتب ملاحظة...</span>
+                          <span>{t.askAiWriterHeader || (isEn ? "Ask AI to write a note..." : "اطلب من الذكاء الاصطناعي أن يكتب ملاحظة...")}</span>
                         </h3>
                         <button
                           type="button"
@@ -6723,7 +6823,7 @@ export default function App() {
                               handleAiGenerateNote();
                             }
                           }}
-                          placeholder="اطلب أي موضوع من الذكاء الاصطناعي..."
+                          placeholder={t.aiWriterTopicPlaceholder || (isEn ? "Ask any topic from AI..." : "اطلب أي موضوع من الذكاء الاصطناعي...")}
                           className="w-full bg-[#F9F7F2] border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:outline-none rounded-2xl py-3 pr-10 pl-24 text-xs text-[#3A3A3A]"
                         />
                         <div className="absolute right-3 top-3.5 text-gray-400 text-xs">
@@ -6735,7 +6835,7 @@ export default function App() {
                           disabled={aiWriterLoading}
                           className="absolute left-1.5 top-1.5 bottom-1.5 px-3 bg-[#8B9D83] hover:bg-[#72856A] text-white text-xs font-bold rounded-xl flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
                         >
-                          {aiWriterLoading ? 'جاري التوليد...' : 'إرسال ✨'}
+                          {aiWriterLoading ? (t.generatingAiText || (isEn ? "Generating..." : "جاري التوليد...")) : (t.sendPromptBtn || (isEn ? "Send ✨" : "إرسال ✨"))}
                         </button>
                       </div>
 
@@ -6747,8 +6847,8 @@ export default function App() {
                               ✨
                             </div>
                             <div className="space-y-1">
-                              <p className="font-extrabold text-xs text-[#4E685B]">جاري التوليد بواسطة الذكاء الاصطناعي...</p>
-                              <p className="text-[10px] text-gray-500">يقوم النموذج الذكي بصياغة وتنظيم الأفكار بشكل إحترافي الآن</p>
+                              <p className="font-extrabold text-xs text-[#4E685B]">{t.aiGeneratingTitle || (isEn ? "Generating by AI..." : "جاري التوليد بواسطة الذكاء الاصطناعي...")}</p>
+                              <p className="text-[10px] text-gray-500">{t.aiModelDraftingDesc || (isEn ? "Smart model is drafting and organizing thoughts now" : "يقوم النموذج الذكي بصياغة وتنظيم الأفكار بشكل إحترافي الآن")}</p>
                             </div>
                           </div>
                         ) : aiWriterResult ? (
@@ -6759,7 +6859,7 @@ export default function App() {
                                   <span>💡</span>
                                   <span>{aiWriterResult.title}</span>
                                 </span>
-                                <span className="text-[9px] bg-[#8B9D83]/20 text-[#4E685B] px-2 py-0.5 rounded-md font-bold">جاهز للإدراج</span>
+                                <span className="text-[9px] bg-[#8B9D83]/20 text-[#4E685B] px-2 py-0.5 rounded-md font-bold">{t.readyToInsertBadge || (isEn ? "Ready to Insert" : "جاهز للإدراج")}</span>
                               </div>
                               <div className="max-h-48 overflow-y-auto text-xs text-[#3A3A3A] leading-relaxed whitespace-pre-wrap font-medium p-1">
                                 {aiWriterResult.content}
@@ -6773,7 +6873,7 @@ export default function App() {
                                 className="w-full py-2.5 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs transition-all flex items-center justify-center gap-2"
                               >
                                 <span>✍️</span>
-                                <span>إدراج في اليومية الحالية</span>
+                                <span>{t.insertInCurrentEntry || (isEn ? "Insert in current diary" : "إدراج في اليومية الحالية")}</span>
                               </button>
 
                               <button
@@ -6782,7 +6882,7 @@ export default function App() {
                                 className="w-full py-2 bg-[#F9F7F2] hover:bg-[#F0EDE4] text-[#4E685B] border border-[#DCE4D8] rounded-xl font-bold text-xs cursor-pointer transition-all flex items-center justify-center gap-2"
                               >
                                 <span>📝</span>
-                                <span>إنشاء يومية جديدة بهذا النص</span>
+                                <span>{t.createNewDiaryWithText || (isEn ? "Create new diary with this text" : "إنشاء يومية جديدة بهذا النص")}</span>
                               </button>
 
                               <div className="flex items-center gap-2">
@@ -6791,28 +6891,28 @@ export default function App() {
                                   onClick={handleCopyAiNote}
                                   className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-[11px] cursor-pointer transition-all text-center"
                                 >
-                                  {copiedAiText ? '✓ تم نسخ النص' : '📋 نسخ النص'}
+                                  {copiedAiText ? (t.copiedTextSuccess || (isEn ? "✓ Copied text" : "✓ تم نسخ النص")) : (t.copyTextBtn || (isEn ? "📋 Copy text" : "📋 نسخ النص"))}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setAiWriterResult(null)}
                                   className="py-1.5 px-3 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl font-medium text-[11px] cursor-pointer transition-all"
                                 >
-                                  اقتراح موضوع آخر
+                                  {t.suggestAnotherTopic || (isEn ? "Suggest another topic" : "اقتراح موضوع آخر")}
                                 </button>
                               </div>
                             </div>
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <span className="text-[11px] font-extrabold text-gray-400 block">اقترحات سريعة لكتابة الملاحظة:</span>
+                            <span className="text-[11px] font-extrabold text-gray-400 block">{t.quickPromptSuggestionsTitle || (isEn ? "Quick writing prompts:" : "اقترحات سريعة لكتابة الملاحظة:")}</span>
                             <div className="space-y-2">
                               {[
-                                { id: 'health', icon: '💡', title: 'توليد نصائح صحية', prompt: 'توليد نصائح صحية ونفسية يومية' },
-                                { id: 'article', icon: '📝', title: 'كتابة مقال', prompt: 'كتابة مقال ملهم عن فوائد التدوين والسلام الداخلي' },
-                                { id: 'future', icon: '🚀', title: 'اتجاهات المستقبل', prompt: 'اتجاهات المستقبل والتأقلم المرن مع التكنولوجيا' },
-                                { id: 'marketing', icon: '🎧', title: 'التسويق وخدمة العملاء', prompt: 'التسويق الحديث وخدمة العملاء القائمة على التعاطف' },
-                                { id: 'projects', icon: '🎯', title: 'إدارة المشاريع', prompt: 'دليل عملي لإدارة المشاريع وتفكيك الأهداف' },
+                                { id: 'health', icon: '💡', title: t.promptHealthTitle || (isEn ? "Generate Health Tips" : "توليد نصائح صحية"), prompt: isEn ? "Generate daily health and psychological tips" : "توليد نصائح صحية ونفسية يومية" },
+                                { id: 'article', icon: '📝', title: t.promptArticleTitle || (isEn ? "Write an Article" : "كتابة مقال"), prompt: isEn ? "Write an inspiring article on the benefits of journaling and inner peace" : "كتابة مقال ملهم عن فوائد التدوين والسلام الداخلي" },
+                                { id: 'future', icon: '🚀', title: t.promptFutureTitle || (isEn ? "Future Trends" : "اتجاهات المستقبل"), prompt: isEn ? "Future trends and flexible adaptation with technology" : "اتجاهات المستقبل والتأقلم المرن مع التكنولوجيا" },
+                                { id: 'marketing', icon: '🎧', title: t.promptMarketingTitle || (isEn ? "Marketing & Customer Care" : "التسويق وخدمة العملاء"), prompt: isEn ? "Modern marketing and empathy-based customer service" : "التسويق الحديث وخدمة العملاء القائمة على التعاطف" },
+                                { id: 'projects', icon: '🎯', title: t.promptProjectsTitle || (isEn ? "Project Management" : "إدارة المشاريع"), prompt: isEn ? "A practical guide to project management and breaking down goals" : "دليل عملي لإدارة المشاريع وتفكيك الأهداف" },
                               ].map((item) => (
                                 <button
                                   key={item.id}
@@ -6825,7 +6925,7 @@ export default function App() {
                                     <span className="text-base p-1.5 bg-amber-50 rounded-xl">{item.icon}</span>
                                     <span className="text-xs font-bold text-[#3A3A3A] group-hover:text-[#8B9D83] transition-colors">{item.title}</span>
                                   </div>
-                                  <span className="text-xs text-[#8B9D83] font-bold group-hover:translate-x-1 transition-transform">توليد ←</span>
+                                  <span className="text-xs text-[#8B9D83] font-bold group-hover:translate-x-1 transition-transform">{t.generateAction || (isEn ? "Generate →" : "توليد ←")}</span>
                                 </button>
                               ))}
                             </div>
@@ -6842,10 +6942,10 @@ export default function App() {
                     <div className="flex items-center space-x-2 space-x-reverse">
                       <span className="p-1.5 bg-[#8B9D83]/15 text-[#8B9D83] rounded-xl text-sm">🧠</span>
                       <span className="text-xs font-black text-[#5A5A40]">
-                        جلسة الفضفضة والتحليل النفسي التفاعلية (AI)
+                        {t.aiChatSessionTitle || (isEn ? "Interactive AI Venting & Psychological Analysis Session" : "جلسة الفضفضة والتحليل النفسي التفاعلية (AI)")}
                       </span>
                     </div>
-                    <span className="text-[10px] bg-[#8B9D83] text-white px-3 py-1 rounded-full font-bold">تفاعل مباشر</span>
+                    <span className="text-[10px] bg-[#8B9D83] text-white px-3 py-1 rounded-full font-bold">{t.liveInteractionBadge || (isEn ? "Live Interaction" : "تفاعل مباشر")}</span>
                   </div>
 
                   {/* Chat Messages Log Box */}
@@ -6853,9 +6953,9 @@ export default function App() {
                     {(editingDiary.chatLogs || []).length === 0 ? (
                       <div className="text-center py-6 px-4 space-y-2">
                         <span className="text-2xl block">💬</span>
-                        <p className="text-xs font-bold text-[#5A5A40]">مرحباً بك في مساحتك العلاجية الآمنة!</p>
+                        <p className="text-xs font-bold text-[#5A5A40]">{t.welcomeSafeSpace || (isEn ? "Welcome to your safe therapeutic space!" : "مرحباً بك في مساحتك العلاجية الآمنة!")}</p>
                         <p className="text-[10px] text-gray-400 leading-relaxed max-w-sm mx-auto">
-                          فضفض عما بداخلك، أو اطرح سؤالاً حول هذه المذكرة. سأستمع إليك بإنصات تام وأحلل مشاعرك وأساعدك في التغلب على الصعاب.
+                          {t.safeSpaceDesc || (isEn ? "Express what's on your mind or ask a question about this entry. I will listen attentively, analyze your emotions, and help you overcome challenges." : "فضفض عما بداخلك، أو اطرح سؤالاً حول هذه المذكرة. سأستمع إليك بإنصات تام وأحلل مشاعرك وأساعدك في التغلب على الصعاب.")}
                         </p>
                       </div>
                     ) : (
@@ -6876,7 +6976,7 @@ export default function App() {
                             {msg.text}
                           </div>
                           <span className="text-[9px] text-gray-400 mt-1 px-1 font-medium">
-                            {msg.sender === 'user' ? 'أنا' : 'مستشارك النفسي AI'} • {new Date(msg.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                            {msg.sender === 'user' ? (t.meLabel || (isEn ? "Me" : "أنا")) : (t.aiPsychAdvisor || (isEn ? "AI Counselor" : "مستشارك النفسي AI"))} • {new Date(msg.createdAt).toLocaleTimeString(appLanguage === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                       ))
@@ -6888,7 +6988,7 @@ export default function App() {
                         <span className="w-2 h-2 bg-[#8B9D83] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                         <span className="w-2 h-2 bg-[#8B9D83] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
                         <span className="w-2 h-2 bg-[#8B9D83] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                        <span className="text-[10px] font-bold">جاري كتابة الرد العلاجي والتحليل...</span>
+                        <span className="text-[10px] font-bold">{t.writingTherapeuticResponse || (isEn ? "Writing counselor response..." : "جاري كتابة الرد العلاجي والتحليل...")}</span>
                       </div>
                     )}
                   </div>
@@ -6905,7 +7005,7 @@ export default function App() {
                           handleSendDiaryChatMessage();
                         }
                       }}
-                      placeholder="فضفض عما ببالك أو اسألني هنا..."
+                      placeholder={t.expressMindPlaceholder || (isEn ? "Express your feelings or ask here..." : "فضفض عما ببالك أو اسألني هنا...")}
                       className="flex-grow bg-white border border-[#E2DCC8] focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-2xl px-4 py-2.5 text-xs text-[#3A3A3A] font-medium"
                     />
                     <button
@@ -6914,35 +7014,35 @@ export default function App() {
                       onClick={() => handleSendDiaryChatMessage()}
                       className="px-4 py-2.5 bg-[#8B9D83] hover:bg-[#72856A] disabled:opacity-50 text-white rounded-2xl text-xs font-black transition-all cursor-pointer shadow-3xs flex items-center space-x-1.5 space-x-reverse"
                     >
-                      <span>إرسال</span>
+                      <span>{t.sendBtnLabel || (isEn ? "Send" : "إرسال")}</span>
                       <span>🚀</span>
                     </button>
                   </div>
 
                   {/* Built-in quick psychologist suggestions */}
                   <div className="space-y-1.5 pt-1">
-                    <p className="text-[10px] text-gray-400 font-bold">إجراءات سريعة لتحليل التدوينة الحالية بنقرة واحدة:</p>
+                    <p className="text-[10px] text-gray-400 font-bold">{t.quickOneClickActions || (isEn ? "Quick actions to analyze current note in one click:" : "إجراءات سريعة لتحليل التدوينة الحالية بنقرة واحدة:")}</p>
                     <div className="flex flex-wrap gap-1.5">
                       <button
                         type="button"
-                        onClick={() => handleSendDiaryChatMessage('📝 لخص تدوينتي الحالية بايجاز والخص مشاعري الحقيقية')}
+                        onClick={() => handleSendDiaryChatMessage(isEn ? '📝 Summarize my current entry concisely and highlight my true emotions' : '📝 لخص تدوينتي الحالية بايجاز والخص مشاعري الحقيقية')}
                         className="px-2.5 py-1.5 bg-white hover:bg-[#F0EDE4] text-[#5A5A40] border border-[#E2DCC8]/60 rounded-xl text-[10px] font-bold cursor-pointer transition-all shadow-3xs"
                       >
-                        📝 لخص تدوينتي بايجاز
+                        📝 {t.summarizeEntryBtn || (isEn ? "Summarize entry" : "لخص تدوينتي بايجاز")}
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleSendDiaryChatMessage('💡 استخرج الأخطاء المعرفية والتشوهات الفكرية من تدوينتي وانصحني بموازنتها عقلانياً')}
+                        onClick={() => handleSendDiaryChatMessage(isEn ? '💡 Extract cognitive distortions and thinking errors from my entry and advise how to balance them rationally' : '💡 استخرج الأخطاء المعرفية والتشوهات الفكرية من تدوينتي وانصحني بموازنتها عقلانياً')}
                         className="px-2.5 py-1.5 bg-white hover:bg-[#F0EDE4] text-[#5A5A40] border border-[#E2DCC8]/60 rounded-xl text-[10px] font-bold cursor-pointer transition-all shadow-3xs"
                       >
-                        💡 استخرج الأخطاء المعرفية
+                        💡 {t.extractCognitiveErrorsBtn || (isEn ? "Cognitive distortions" : "استخرج الأخطاء المعرفية")}
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleSendDiaryChatMessage('🎯 اقترح خطة عملية مبسطة ليوم الغد تساهم في بناء مرونتي النفسية وتحسين إنتاجيتي')}
+                        onClick={() => handleSendDiaryChatMessage(isEn ? '🎯 Suggest a simplified practical plan for tomorrow to build resilience and boost productivity' : '🎯 اقترح خطة عملية مبسطة ليوم الغد تساهم في بناء مرونتي النفسية وتحسين إنتاجيتي')}
                         className="px-2.5 py-1.5 bg-white hover:bg-[#F0EDE4] text-[#5A5A40] border border-[#E2DCC8]/60 rounded-xl text-[10px] font-bold cursor-pointer transition-all shadow-3xs"
                       >
-                        🎯 خطة عملية ليوم الغد
+                        🎯 {t.practicalPlanTomorrowBtn || (isEn ? "Tomorrow's action plan" : "خطة عملية ليوم الغد")}
                       </button>
                     </div>
                   </div>
@@ -6956,7 +7056,7 @@ export default function App() {
                     className="flex items-center justify-center space-x-1 space-x-reverse px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-red-200 sm:border-transparent"
                   >
                     <Trash className="w-4 h-4" />
-                    <span>حذف المذكرة نهائياً</span>
+                    <span>{t.deleteDiaryPermanently || (isEn ? "Delete Note Permanently" : "حذف المذكرة نهائياً")}</span>
                   </button>
 
                   <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
@@ -6974,7 +7074,7 @@ export default function App() {
                         className="flex-1 sm:flex-initial px-3.5 py-2 text-xs font-black text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-1.5 space-x-reverse"
                       >
                         <Archive className="w-4 h-4 text-amber-700" />
-                        <span>{editingDiary.isArchived ? 'استرجاع' : 'أرشفة 📥'}</span>
+                        <span>{editingDiary.isArchived ? (t.restoreAction || (isEn ? "Restore" : "استرجاع")) : (t.archiveAction || (isEn ? "Archive 📥" : "أرشفة 📥"))}</span>
                       </button>
                     )}
 
@@ -6987,7 +7087,7 @@ export default function App() {
                       }}
                       className="flex-1 sm:flex-initial px-4 py-2 text-xs font-bold text-[#5A5A40] hover:bg-[#F0EDE4] border border-[#E2DCC8] rounded-xl transition-colors cursor-pointer text-center"
                     >
-                      إلغاء
+                      {t.cancelBtn || (isEn ? "Cancel" : "إلغاء")}
                     </button>
 
                     <button
@@ -6999,12 +7099,12 @@ export default function App() {
                       {isExportingPdf ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>جاري...</span>
+                          <span>{t.exportingPdfProgress || (isEn ? "Exporting..." : "جاري...")}</span>
                         </>
                       ) : (
                         <>
                           <Printer className="w-4 h-4" />
-                          <span>تصدير PDF</span>
+                          <span>{t.exportPdfBtn || (isEn ? "Export PDF" : "تصدير PDF")}</span>
                         </>
                       )}
                     </button>
@@ -7014,7 +7114,7 @@ export default function App() {
                       onClick={handleSaveDiary}
                       className="w-full sm:w-auto flex items-center justify-center space-x-1.5 space-x-reverse px-5 py-2 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
                     >
-                      <span>حفظ المذكرة بنجاح ✓</span>
+                      <span>{t.saveDiarySuccessBtn || (isEn ? "Save Note Successfully ✓" : "حفظ المذكرة بنجاح ✓")}</span>
                     </button>
                   </div>
                 </div>
@@ -7037,7 +7137,7 @@ export default function App() {
                        }`}
                      >
                        <span>📓</span>
-                       <span>{isEn ? "Daily Journal" : "يومياتي والفضفضة"}</span>
+                       <span>{t.dailyJournalSubtab || (isEn ? "Daily Journal" : "يومياتي والفضفضة")}</span>
                      </button>
                      <button
                        onClick={() => setActiveDiariesSubTab('gratitude')}
@@ -7048,7 +7148,7 @@ export default function App() {
                        }`}
                      >
                        <span>🌸</span>
-                       <span>{isEn ? "Gratitude Journal" : "مفكرة الامتنان"}</span>
+                       <span>{t.gratitudeSubtab || (isEn ? "Gratitude Journal" : "مفكرة الامتنان")}</span>
                      </button>
                      <button
                        onClick={() => setActiveDiariesSubTab('cbt')}
@@ -7059,7 +7159,7 @@ export default function App() {
                        }`}
                      >
                        <span>🧠</span>
-                       <span>CBT تمارين التفكير</span>
+                       <span>{t.cbtSubtabLabel || (isEn ? "CBT Exercises" : "CBT تمارين التفكير")}</span>
                      </button>
                      <button
                        onClick={() => setActiveDiariesSubTab('tasks')}
@@ -7070,7 +7170,7 @@ export default function App() {
                        }`}
                      >
                        <span>📋</span>
-                       <span>المهام اليومية والنشاط</span>
+                       <span>{t.dailyTasksSubtabLabel || (isEn ? "Daily Tasks & Activity" : "المهام اليومية والنشاط")}</span>
                      </button>
                    </div>
 
@@ -7103,7 +7203,7 @@ export default function App() {
                             : 'text-gray-400 hover:text-gray-600'
                         }`}
                       >
-                        الكل
+                        {t.allFilterTab || (isEn ? "All" : "الكل")}
                         {diaryTypeFilter === 'all' && (
                           <span className="absolute bottom-[-6px] left-0 right-0 h-0.5 bg-[#8B9D83] rounded-full" />
                         )}
@@ -7117,7 +7217,7 @@ export default function App() {
                         }`}
                       >
                         <span>📓</span>
-                        <span>اليوميات</span>
+                        <span>{t.diariesFilterTab || (isEn ? "Diaries" : "اليوميات")}</span>
                         {diaryTypeFilter === 'diary' && (
                           <span className="absolute bottom-[-6px] left-0 right-0 h-0.5 bg-[#8B9D83] rounded-full" />
                         )}
@@ -7131,7 +7231,7 @@ export default function App() {
                         }`}
                       >
                         <span>✍️</span>
-                        <span>الخواطر</span>
+                        <span>{t.thoughtsFilterTab || (isEn ? "Thoughts" : "الخواطر")}</span>
                         {diaryTypeFilter === 'thought' && (
                           <span className="absolute bottom-[-6px] left-0 right-0 h-0.5 bg-[#8B9D83] rounded-full" />
                         )}
@@ -7146,7 +7246,7 @@ export default function App() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="ابحث في اليوميات، الخواطر، العناوين، المحتوى، أو الوسوم..."
+                        placeholder={t.searchDiariesPlaceholder || (isEn ? "Search in entries, thoughts, titles, content, or tags..." : "ابحث في اليوميات، الخواطر، العناوين، المحتوى، أو الوسوم...")}
                         className="w-full bg-[#FBFBFA] hover:bg-[#F3F2F0] focus:bg-white border border-[#E2DCC8]/85 focus:ring-2 focus:ring-[#8B9D83] focus:border-[#8B9D83] focus:outline-none rounded-2xl pr-11 pl-10 py-3.5 text-xs text-[#3A3A3A] transition-all placeholder-gray-400 font-bold shadow-3xs"
                       />
                       {searchQuery && (
@@ -7154,7 +7254,7 @@ export default function App() {
                           type="button"
                           onClick={() => setSearchQuery('')}
                           className="absolute left-3 top-3 p-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 transition-all cursor-pointer"
-                          title="مسح البحث"
+                          title={t.clearSearchTitle || (isEn ? "Clear search" : "مسح البحث")}
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -7167,14 +7267,14 @@ export default function App() {
                         <div className="flex items-center space-x-2 space-x-reverse truncate">
                           <Search className="w-3.5 h-3.5 shrink-0 text-[#8B9D83]" />
                           <span className="truncate">
-                            نتائج البحث عن: <strong className="text-[#3A3A3A]">"{searchQuery}"</strong> ({filteredDiariesList.length} نتيجة)
+                            {t.searchResultsFor || (isEn ? "Search results for:" : "نتائج البحث عن:")} <strong className="text-[#3A3A3A]">"{searchQuery}"</strong> ({filteredDiariesList.length} {t.resultsCountSuffix || (isEn ? "results" : "نتيجة")})
                           </span>
                         </div>
                         <button
                           onClick={() => setSearchQuery('')}
                           className="text-[10px] font-black text-[#8B9D83] hover:text-[#5A5A40] underline shrink-0 cursor-pointer mr-2"
                         >
-                          إلغاء البحث
+                          {t.cancelSearchBtn || (isEn ? "Cancel search" : "إلغاء البحث")}
                         </button>
                       </div>
                     )}
@@ -7185,13 +7285,13 @@ export default function App() {
                       className="w-full flex items-center justify-center space-x-2 space-x-reverse py-3.5 bg-[#8B9D83] hover:bg-[#72856A] text-white rounded-2xl text-xs font-black transition-all cursor-pointer shadow-3xs hover:scale-[1.01] active:scale-95"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>كتابة مذكرات جديدة</span>
+                      <span>{t.writeNewNoteBtn || (isEn ? "Write New Entry" : "كتابة مذكرات جديدة")}</span>
                     </button>
 
                     {/* Filter Pills of tags if they exist */}
                     {allUniqueTags.length > 0 && (
                       <div className="flex items-center space-x-2 space-x-reverse overflow-x-auto pb-1 mt-1">
-                        <span className="text-[10px] font-black text-gray-400 whitespace-nowrap shrink-0">تصفية الوسوم:</span>
+                        <span className="text-[10px] font-black text-gray-400 whitespace-nowrap shrink-0">{t.filterTagsLabel || (isEn ? "Filter tags:" : "تصفية الوسوم:")}</span>
                         <button
                           onClick={() => setSelectedTagFilter('')}
                           className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer shrink-0 ${
@@ -7231,22 +7331,22 @@ export default function App() {
                         {searchQuery ? (
                           <>
                             <p className="font-extrabold text-[#3A3A3A] text-sm">
-                              لم يتم العثور على أي يومية أو خاطرة تطابق: "{searchQuery}"
+                              {t.noMatchFoundFor || (isEn ? "No diary or thought found matching:" : "لم يتم العثور على أي يومية أو خاطرة تطابق:")} "{searchQuery}"
                             </p>
                             <p className="text-xs text-gray-400">
-                              تأكد من كتابة الكلمة بشكل صحيح، أو جرب تصفية بالوسوم أو خيارات أخرى.
+                              {t.checkSpellingOrFilter || (isEn ? "Check spelling or try filtering by tags." : "تأكد من كتابة الكلمة بشكل صحيح، أو جرب تصفية بالوسوم أو خيارات أخرى.")}
                             </p>
                             <button
                               onClick={() => setSearchQuery('')}
                               className="px-4 py-2 bg-[#8B9D83] text-white rounded-xl text-xs font-extrabold shadow-3xs hover:bg-[#72856A] transition-all cursor-pointer"
                             >
-                              مسح كلمة البحث
+                              {t.clearSearchWordBtn || (isEn ? "Clear search word" : "مسح كلمة البحث")}
                             </button>
                           </>
                         ) : (
                           <>
-                            <p className="font-bold text-[#3A3A3A]">لا توجد مذكرات مطابقة حالياً.</p>
-                            <p className="text-xs mt-1 text-gray-400">انقر على زر "كتابة مذكرات جديدة" للبدء بالفضفضة وبناء ملفك النفسي!</p>
+                            <p className="font-bold text-[#3A3A3A]">{t.noMatchingDiariesNow || (isEn ? "No matching entries found." : "لا توجد مذكرات مطابقة حالياً.")}</p>
+                            <p className="text-xs mt-1 text-gray-400">{t.clickWriteNewNotePrompt || (isEn ? "Click 'Write New Entry' to start expressing yourself!" : "انقر على زر \"كتابة مذكرات جديدة\" للبدء بالفضفضة وبناء ملفك النفسي!")}</p>
                           </>
                         )}
                       </div>
@@ -7277,15 +7377,15 @@ export default function App() {
                                   type="button"
                                   onClick={() => handleOpenProsConsForDay(dayKey, formattedDayLabel, dayEntries)}
                                   className="px-3 py-1.5 bg-gradient-to-r from-[#2B3E50] via-[#3B5066] to-[#5A5A40] hover:from-[#3B5066] hover:to-[#8B9D83] text-white rounded-xl text-xs font-black shadow-3xs flex items-center gap-1.5 cursor-pointer transition-all hover:scale-103 active:scale-97 border border-white/20 shrink-0"
-                                  title="استعراض وتدوين الإيجابيات والسلبيات لهذا اليوم"
+                                  title={t.reviewProsConsTitle || (isEn ? "Review and log pros & cons for this day" : "استعراض وتدوين الإيجابيات والسلبيات لهذا اليوم")}
                                 >
                                   <Scale className="w-3.5 h-3.5 text-[#FEFAE0]" />
-                                  <span>⚖️ الإيجابيات والسلبيات</span>
+                                  <span>⚖️ {t.prosConsBtnLabel || (isEn ? "Pros & Cons" : "الإيجابيات والسلبيات")}</span>
                                 </button>
                               </div>
 
                               <span className="text-[10px] md:text-xs font-bold text-[#5A5A40] bg-[#F9F7F2] border border-[#E2DCC8]/60 px-3 py-1 rounded-xl self-start sm:self-auto">
-                                {dayEntries.length} {dayEntries.length === 1 ? 'مذكرة فرعية' : 'مذكرات فرعية'}
+                                {dayEntries.length} {dayEntries.length === 1 ? (t.subNoteSingular || (isEn ? "sub-entry" : "مذكرة فرعية")) : (t.subNotePlural || (isEn ? "sub-entries" : "مذكرات فرعية"))}
                               </span>
                             </div>
 
@@ -7346,7 +7446,7 @@ export default function App() {
                                           className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border border-amber-200/80 rounded-xl text-[10px] font-black shadow-3xs hover:shadow-2xs transition-all cursor-pointer flex items-center space-x-1 space-x-reverse group/arch hover:scale-105 active:scale-95 shrink-0"
                                         >
                                           <Archive className="w-3 h-3 text-amber-700 group-hover/arch:rotate-12 transition-transform" />
-                                          <span>أرشفة 📥</span>
+                                          <span>{t.archiveBtnLabel || (isEn ? "Archive 📥" : "أرشفة 📥")}</span>
                                         </button>
 
                                         {/* Move to Trash Button */}
@@ -7365,7 +7465,7 @@ export default function App() {
                                         {/* Edited Flag */}
                                         {(diary.isEdited || (diary.edits && diary.edits.length > 0)) && (
                                           <span className="bg-[#D4A373] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-lg shadow-2xs shrink-0">
-                                            تم التعديل
+                                            {t.editedBadge || (isEn ? "Edited" : "تم التعديل")}
                                           </span>
                                         )}
                                       </div>
@@ -7385,23 +7485,23 @@ export default function App() {
                                             ? 'bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4]'
                                             : 'bg-[#EEF1EB] text-[#556E4F] border border-[#DCE4D8]'
                                         }`}>
-                                          {diary.diaryType === 'thought' ? '✍️ خاطرة' : '📓 يومية'}
+                                          {diary.diaryType === 'thought' ? (t.thoughtBadge || (isEn ? "✍️ Thought" : "✍️ خاطرة")) : (t.diaryBadge || (isEn ? "📓 Journal" : "📓 يومية"))}
                                         </span>
                                         <h4 className="font-extrabold text-[#3A3A3A] text-xs md:text-sm line-clamp-1">
-                                          {diary.title || 'مذكرة فرعية'}
+                                          {diary.title || (t.subNoteDefaultTitle || (isEn ? "Sub-entry" : "مذكرة فرعية"))}
                                         </h4>
                                       </div>
                                       
                                       {/* Content Snippet */}
                                       <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">
-                                        {diary.content || <em className="text-gray-400 font-light text-[11px]">مرفقات صوتية أو تخطيطات فقط</em>}
+                                        {diary.content || <em className="text-gray-400 font-light text-[11px]">{t.audioDrawingsOnly || (isEn ? "Audio attachments or sketches only" : "مرفقات صوتية أو تخطيطات فقط")}</em>}
                                       </p>
 
                                       {/* Appended Edits Count / Snippet Preview */}
                                       {diary.edits && diary.edits.length > 0 && (
                                         <div className="text-[10px] text-[#8B9D83] font-bold flex items-center space-x-1 space-x-reverse">
                                           <span>💬</span>
-                                          <span>يحتوي على {diary.edits.length} تعديلات مضافة</span>
+                                          <span>{t.containsEditsPrefix || (isEn ? "Contains" : "يحتوي على")} {diary.edits.length} {t.appendedEditsSuffix || (isEn ? "appended edits" : "تعديلات مضافة")}</span>
                                         </div>
                                       )}
                                     </div>
@@ -7415,7 +7515,7 @@ export default function App() {
                                             #{diary.tags[0]}
                                           </span>
                                         ) : (
-                                          <span className="text-[9px] text-gray-300 font-bold">#عام</span>
+                                          <span className="text-[9px] text-gray-300 font-bold">#{t.generalTag || (isEn ? "general" : "عام")}</span>
                                         )}
                                       </div>
 
@@ -7435,7 +7535,7 @@ export default function App() {
                                               <span 
                                                 key={idx} 
                                                 className="bg-purple-50 text-purple-700 text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg font-black border border-purple-100 shadow-3xs flex items-center space-x-1 space-x-reverse max-w-full overflow-hidden"
-                                                title="تحليل المزاج التلقائي بالذكاء الاصطناعي"
+                                                title={t.aiMoodAnalysisTitle || (isEn ? "Automatic AI mood analysis" : "تحليل المزاج التلقائي بالذكاء الاصطناعي")}
                                               >
                                                 <span>🧠</span>
                                                 <span className="truncate">{analysis.mood} ({analysis.percentage}%)</span>
@@ -7486,6 +7586,7 @@ export default function App() {
                     selectedDate={selectedDate}
                     handleUpdateHabit={handleUpdateHabit}
                     isDarkMode={settings.isDarkMode}
+                    appLanguage={settings.appLanguage}
                   />
                 ) : (
                   <TasksChecklistSection
@@ -7509,6 +7610,7 @@ export default function App() {
                     }}
                     isDarkMode={settings.isDarkMode}
                     diaries={diaries}
+                    appLanguage={settings.appLanguage}
                   />
                 )}
 
@@ -7569,7 +7671,7 @@ export default function App() {
             {analyticsSubTab === 'report' ? (
               <IntegratedTherapyReport diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
             ) : analyticsSubTab === 'pros_cons' ? (
-              <ProsConsHistoryLog diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
+              <ProsConsHistoryLog diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} appLanguage={settings.appLanguage} />
             ) : (
               <div className="space-y-6">
                 {/* 🌱 Psychological Growth Tree (Visual Gamification Component) */}
@@ -10738,6 +10840,7 @@ export default function App() {
         allBooks={books}
         allDiaries={diaries}
         userApiKey={settings.userApiKey}
+        appLanguage={settings.appLanguage}
       />
 
       {/* 📱 Lock Screen Widget Instructions Modal */}

@@ -31,42 +31,60 @@ import {
   Zap,
   Info
 } from 'lucide-react';
-import { DiaryEntry, CBTWorksheet } from '../types';
+import { DiaryEntry, CBTWorksheet, AppLanguage } from '../types';
+import { getTranslation, getLanguageInfo } from '../lib/languages';
 
 interface CBTExercisesSectionProps {
   diaries: DiaryEntry[];
   selectedDate: string;
   handleUpdateHabit: (type: 'sleep' | 'sports' | 'medication' | 'water' | 'fastMood' | 'symptoms' | 'cbt', value: any) => void;
   isDarkMode?: boolean;
+  appLanguage?: AppLanguage;
 }
 
-// List of standard Cognitive Distortions with descriptions & Arabic labels
+// List of standard Cognitive Distortions with descriptions & multi-language labels
 const COGNITIVE_DISTORTIONS = [
-  { id: 'catastrophizing', name: '🌋 التهويل المفرط (Catastrophizing)', desc: 'توقع السيناريو الكارثي الأسوأ وتضخيم الأخطار بشكل مبالغ فيه.' },
-  { id: 'mind_reading', name: '🔮 القراءة الذهنية (Mind Reading)', desc: 'افتراض معرفة ما يفكر فيه الآخرون عنك سلباً دون وجود أدلة.' },
-  { id: 'all_or_nothing', name: '🌗 التفكير الاستقطابي (All or Nothing)', desc: 'رؤية الأمور باللون الأبيض أو الأسود فقط؛ إما نجاح تام أو إخفاق كامل.' },
-  { id: 'overgeneralization', name: '📢 التعميم الخاطئ (Overgeneralization)', desc: 'استخلاص قاعدة دائمة سلباً من موقف فردي واحد ("دائماً أتعرض لهذا").' },
-  { id: 'mental_filter', name: '💧 الترشيح السلبي (Mental Filter)', desc: 'التركيز التام على السلبيات وتجاهل كل الأمور الإيجابية المصاحبة.' },
-  { id: 'should_statements', name: '⚖️ الإلزاميات "يجب/ينبغي" (Should Statements)', desc: 'فرض قوالب وشروط صارمة غير مرنة على الذات والآخرين تقود للذنب أو الغضب.' },
-  { id: 'personalization', name: '🎯 الشخصنة (Personalization)', desc: 'تحميل الذات مسؤولية أحداث خارجة عن الإرادة أو فسير مواقف الآخرين كاستهداف شخصي.' },
-  { id: 'emotional_reasoning', name: '🎭 التفكير العاطفي (Emotional Reasoning)', desc: 'اعتبار شعورك الداخلي حقيقة موضوعية ("أنا أشعر بالخوف إذاً الموقف خطر جداً").' }
+  { id: 'catastrophizing', nameAr: '🌋 التهويل المفرط (Catastrophizing)', nameEn: '🌋 Catastrophizing', descAr: 'توقع السيناريو الكارثي الأسوأ وتضخيم الأخطار بشكل مبالغ فيه.', descEn: 'Expecting the worst possible catastrophic scenario and exaggerating risks.' },
+  { id: 'mind_reading', nameAr: '🔮 القراءة الذهنية (Mind Reading)', nameEn: '🔮 Mind Reading', descAr: 'افتراض معرفة ما يفكر فيه الآخرون عنك سلباً دون وجود أدلة.', descEn: 'Assuming you know others are thinking negatively about you without evidence.' },
+  { id: 'all_or_nothing', nameAr: '🌗 التفكير الاستقطابي (All or Nothing)', nameEn: '🌗 All-or-Nothing Thinking', descAr: 'رؤية الأمور باللون الأبيض أو الأسود فقط؛ إما نجاح تام أو إخفاق كامل.', descEn: 'Seeing things in black-and-white terms: total perfection or complete failure.' },
+  { id: 'overgeneralization', nameAr: '📢 التعميم الخاطئ (Overgeneralization)', nameEn: '📢 Overgeneralization', descAr: 'استخلاص قاعدة دائمة سلباً من موقف فردي واحد ("دائماً أتعرض لهذا").', descEn: 'Drawing a harsh general rule from a single negative event ("It always happens").' },
+  { id: 'mental_filter', nameAr: '💧 الترشيح السلبي (Mental Filter)', nameEn: '💧 Negative Mental Filter', descAr: 'التركيز التام على السلبيات وتجاهل كل الأمور الإيجابية المصاحبة.', descEn: 'Dwelling exclusively on negative details while filtering out all positives.' },
+  { id: 'should_statements', nameAr: '⚖️ الإلزاميات "يجب/ينبغي" (Should Statements)', nameEn: '⚖️ "Should" Statements', descAr: 'فرض قوالب وشروط صارمة غير مرنة على الذات والآخرين تقود للذنب أو الغضب.', descEn: 'Rigidly demanding expectations on self and others causing guilt or resentment.' },
+  { id: 'personalization', nameAr: '🎯 الشخصنة (Personalization)', nameEn: '🎯 Personalization', descAr: 'تحميل الذات مسؤولية أحداث خارجة عن الإرادة أو تفسير مواقف الآخرين كاستهداف شخصي.', descEn: 'Blaming yourself for external events or taking others behavior personally.' },
+  { id: 'emotional_reasoning', nameAr: '🎭 التفكير العاطفي (Emotional Reasoning)', nameEn: '🎭 Emotional Reasoning', descAr: 'اعتبار شعورك الداخلي حقيقة موضوعية ("أنا أشعر بالخوف إذاً الموقف خطر جداً").', descEn: 'Taking your internal feelings as objective truth ("I feel afraid so it must be dangerous").' }
 ];
 
 // Pre-built coping cards
 const PREBUILT_COPING_CARDS = [
-  { id: 'c1', category: 'anxiety', title: 'الأفكار ليست حقائق', text: 'مجرد ظهور الفكرة في ذهني لا يعني أنها حقيقة واقعة. الأفكار مجرد إشارات عصبية عابرة تزول إذا لم أتغذَّ عليها.' },
-  { id: 'c2', category: 'panic', title: 'التعامل مع نوبة الهلع', text: 'هذه الأعراض الجسدية (تسارع القلب، ضيق التنفس) هي استجابة أمان مؤقتة لجسدي، لن تضرني وستتراجع خلال دقائق.' },
-  { id: 'c3', category: 'depression', title: 'العمل أولاً ثم الشغف', text: 'لا تنتظر توفر المزاج لبدء الخطوة. الفعل والسلوك هو ما يصنع الدافع والارتياح النفسي.' },
-  { id: 'c4', category: 'ocd', title: 'تقبل عدم اليقين', text: 'ليس عليَّ التأكد 100% من كل شيء. أستطيع التعايش مع الشك والتركيز على ما أستطيع التحكم فيه الآن.' },
-  { id: 'c5', category: 'general', title: 'الرفق بالذات', text: 'أعامل نفسي في أوقات التعثر بالرفق والتعاطف الذي أمنحه لصديق عزيز يمر بنفس الموقف.' }
+  { id: 'c1', category: 'anxiety', titleAr: 'الأفكار ليست حقائق', titleEn: 'Thoughts Are Not Facts', textAr: 'مجرد ظهور الفكرة في ذهني لا يعني أنها حقيقة واقعة. الأفكار مجرد إشارات عصبية عابرة تزول إذا لم أتغذَّ عليها.', textEn: 'A thought arising in my mind does not make it a fact. Thoughts are fleeting neural signals that pass unless fed.' },
+  { id: 'c2', category: 'panic', titleAr: 'التعامل مع نوبة الهلع', titleEn: 'Handling Panic Surges', textAr: 'هذه الأعراض الجسدية (تسارع القلب، ضيق التنفس) هي استجابة أمان مؤقتة لجسدي، لن تضرني وستتراجع خلال دقائق.', textEn: 'These physical sensations (rapid heart, tight breath) are a harmless fight-or-flight response that peaks and fades.' },
+  { id: 'c3', category: 'depression', titleAr: 'العمل أولاً ثم الشغف', titleEn: 'Action Precedes Motivation', textAr: 'لا تنتظر توفر المزاج لبدء الخطوة. الفعل والسلوك هو ما يصنع الدافع والارتياح النفسي.', textEn: 'Do not wait for motivation to strike before acting. Action itself generates momentum and psychological relief.' },
+  { id: 'c4', category: 'ocd', titleAr: 'تقبل عدم اليقين', titleEn: 'Embracing Uncertainty', textAr: 'ليس عليَّ التأكد 100% من كل شيء. أستطيع التعايش مع الشك والتركيز على ما أستطيع التحكم فيه الآن.', textEn: 'I do not need 100% certainty. I can coexist with doubt and focus on what I can control right now.' },
+  { id: 'c5', category: 'general', titleAr: 'الرفق بالذات', titleEn: 'Self-Compassion', textAr: 'أعامل نفسي في أوقات التعثر بالرفق والتعاطف الذي أمنحه لصديق عزيز يمر بنفس الموقف.', textEn: 'In moments of struggle, I treat myself with the same warmth and kindness I would offer a dear friend.' }
 ];
 
 export const CBTExercisesSection: React.FC<CBTExercisesSectionProps> = ({
   diaries,
   selectedDate,
   handleUpdateHabit,
-  isDarkMode = false
+  isDarkMode = false,
+  appLanguage = 'ar'
 }) => {
+  const isAr = appLanguage === "ar";
+  const t = getTranslation(appLanguage);
+  const langInfo = getLanguageInfo(appLanguage);
+
+  const localizedDistortions = COGNITIVE_DISTORTIONS.map(d => ({
+    ...d,
+    name: isAr ? d.nameAr : d.nameEn,
+    desc: isAr ? d.descAr : d.descEn
+  }));
+
+  const localizedCopingCards = PREBUILT_COPING_CARDS.map(c => ({
+    ...c,
+    title: isAr ? c.titleAr : c.titleEn,
+    text: isAr ? c.textAr : c.textEn
+  }));
   // Main Sub-Tab view
   const [activeTab, setActiveTab] = useState<
     'thought_records' | 'downward_arrow' | 'worry_box' | 'exposure_ladder' | 'coping_cards' | 'grounding' | 'analytics'
@@ -272,13 +290,13 @@ export const CBTExercisesSection: React.FC<CBTExercisesSectionProps> = ({
       {/* 1. Main Sub-Tab Navigation Switcher */}
       <div className="flex overflow-x-auto pb-1 gap-2 bg-[#F0EDE4] p-1.5 rounded-2xl border border-[#E2DCC8]/60 shadow-2xs no-scrollbar">
         {[
-          { id: 'thought_records', label: '🧠 أوراق الهيكلة المعرفية', icon: FileText, color: 'text-emerald-700' },
-          { id: 'downward_arrow', label: '⬇️ سهم التفكير (المعتقدات العميقة)', icon: ArrowDown, color: 'text-indigo-700' },
-          { id: 'worry_box', label: '📦 صندوق القلق وتأجيل الوساوس', icon: Archive, color: 'text-amber-700' },
-          { id: 'exposure_ladder', label: '🪜 سلم التعريض التدريجي', icon: Layers, color: 'text-sky-700' },
-          { id: 'coping_cards', label: '📇 بطاقات المواجهة والتأقلم', icon: ShieldCheck, color: 'text-pink-700' },
-          { id: 'grounding', label: '🧘 التأريض الحسي 5-4-3-2-1', icon: Compass, color: 'text-teal-700' },
-          { id: 'analytics', label: '📊 تحليلات وتشوهات الأفكار', icon: BarChart2, color: 'text-purple-700' }
+          { id: 'thought_records', label: isAr ? '🧠 أوراق الهيكلة المعرفية' : '🧠 CBT Thought Records', icon: FileText, color: 'text-emerald-700' },
+          { id: 'downward_arrow', label: isAr ? '⬇️ سهم التفكير (المعتقدات العميقة)' : '⬇️ Downward Arrow Technique', icon: ArrowDown, color: 'text-indigo-700' },
+          { id: 'worry_box', label: isAr ? '📦 صندوق القلق وتأجيل الوساوس' : '📦 Worry Box & Postponement', icon: Archive, color: 'text-amber-700' },
+          { id: 'exposure_ladder', label: isAr ? '🪜 سلم التعريض التدريجي' : '🪜 Exposure Ladder', icon: Layers, color: 'text-sky-700' },
+          { id: 'coping_cards', label: isAr ? '📇 بطاقات المواجهة والتأقلم' : '📇 Coping Cards', icon: ShieldCheck, color: 'text-pink-700' },
+          { id: 'grounding', label: isAr ? '🧘 التأريض الحسي 5-4-3-2-1' : '🧘 5-4-3-2-1 Grounding', icon: Compass, color: 'text-teal-700' },
+          { id: 'analytics', label: isAr ? '📊 تحليلات وتشوهات الأفكار' : '📊 Distortions Analytics', icon: BarChart2, color: 'text-purple-700' }
         ].map(tab => {
           const IconComp = tab.icon;
           const isActive = activeTab === tab.id;
@@ -345,7 +363,7 @@ export const CBTExercisesSection: React.FC<CBTExercisesSectionProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {allCbtWorksheets.map((item) => {
                 const reliefPct = Math.round(((item.emotionBefore - item.emotionAfter) / item.emotionBefore) * 100);
-                const distortionInfo = COGNITIVE_DISTORTIONS.find(d => d.id === item.cognitiveDistortion);
+                const distortionInfo = localizedDistortions.find(d => d.id === item.cognitiveDistortion);
 
                 return (
                   <div 
@@ -773,7 +791,7 @@ export const CBTExercisesSection: React.FC<CBTExercisesSectionProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Render Pre-built cards + Custom Cards */}
-            {[...PREBUILT_COPING_CARDS, ...customCards].map((card) => (
+            {[...localizedCopingCards, ...customCards].map((card: any) => (
               <div 
                 key={card.id}
                 className="p-5 rounded-3xl border bg-gradient-to-br from-white via-pink-50/20 to-pink-100/30 border-pink-200 space-y-3 shadow-2xs hover:shadow-xs transition-all relative"
@@ -1033,7 +1051,7 @@ export const CBTExercisesSection: React.FC<CBTExercisesSectionProps> = ({
             </h4>
 
             <div className="space-y-3">
-              {COGNITIVE_DISTORTIONS.map(dist => {
+              {localizedDistortions.map(dist => {
                 const count = allCbtWorksheets.filter(w => w.cognitiveDistortion === dist.id).length;
                 const pct = allCbtWorksheets.length > 0 ? Math.round((count / allCbtWorksheets.length) * 100) : 0;
 
@@ -1099,7 +1117,7 @@ export const CBTExercisesSection: React.FC<CBTExercisesSectionProps> = ({
               <div className="space-y-3">
                 <label className="text-xs font-bold text-gray-700 block">الخطوة 3: اختر التشوه المعرفي المحتمل (Cognitive Distortion)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
-                  {COGNITIVE_DISTORTIONS.map(dist => (
+                  {localizedDistortions.map(dist => (
                     <button
                       type="button"
                       key={dist.id}
