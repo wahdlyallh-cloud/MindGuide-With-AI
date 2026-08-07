@@ -48,7 +48,7 @@ export default function LanguagesModal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-55 font-sans animate-fadeIn" 
+      className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[55] font-sans animate-fadeIn" 
       dir={currentInfo.dir}
     >
       <div className="bg-[#FAF8F5] border-2 border-[#D4A373]/40 rounded-[32px] w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden shadow-2xl transition-all duration-300">

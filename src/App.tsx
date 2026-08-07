@@ -7572,6 +7572,29 @@ export default function App() {
               <ProsConsHistoryLog diaries={diaries} habits={habits} gratitudeCards={gratitudeCards} books={books} userApiKey={settings.userApiKey} />
             ) : (
               <div className="space-y-6">
+                {/* 🌱 Psychological Growth Tree (Visual Gamification Component) */}
+                <PsychologicalGrowthTree
+                  appLanguage={settings.appLanguage}
+                  diariesCount={diaries.length}
+                  cbtCount={diaries.filter(d => (d.cbtWorksheets && d.cbtWorksheets.length > 0)).length}
+                  gratitudeCount={gratitudeCards.length}
+                  habitsCount={habits.filter(h => h.isCompleted).length}
+                  activeStreak={streakInfo.currentStreak}
+                  onQuickAction={(action) => {
+                    if (action === 'journal') startNewDiary();
+                    else if (action === 'gratitude') {
+                      setActiveTab('diaries');
+                      setActiveDiariesSubTab('gratitude');
+                    } else if (action === 'cbt') {
+                      setActiveTab('diaries');
+                      setActiveDiariesSubTab('cbt');
+                    } else if (action === 'habits') {
+                      setActiveTab('diaries');
+                      setActiveDiariesSubTab('tasks');
+                    }
+                  }}
+                />
+
                 {/* 🧠 Behavioral Correlation Analysis Card */}
                 <BehavioralCorrelationCard entries={diaries} appLanguage={settings.appLanguage} />
 
@@ -8630,7 +8653,7 @@ export default function App() {
 
       {/* Persistent Bottom Tab Navigation Bar with Lucide icons (Auto-collapses on mobile after 3s of inactivity) */}
       <nav 
-        className={`fixed bottom-0 inset-x-0 bg-[#F9F7F2] border-t border-[#E2DCC8] py-2 z-35 shadow-xs font-sans transition-all duration-300 transform ${
+        className={`fixed bottom-0 inset-x-0 bg-[#F9F7F2] border-t border-[#E2DCC8] py-2 z-[35] shadow-xs font-sans transition-all duration-300 transform ${
           isBottomNavCollapsedOnMobile
             ? 'max-sm:translate-y-full max-sm:opacity-0 max-sm:pointer-events-none'
             : 'max-sm:translate-y-0 max-sm:opacity-100'

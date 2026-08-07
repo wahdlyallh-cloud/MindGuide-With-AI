@@ -57,7 +57,7 @@ export default function BackupSyncModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-55 font-sans" dir={langInfo.dir}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[55] font-sans" dir={langInfo.dir}>
       <div className="bg-[#FAF8F5] border border-[#E2DCC8] rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl transition-all duration-300 transform scale-100 max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
@@ -238,7 +238,7 @@ export default function BackupSyncModal({
 
       {/* Nested secondary mini-modal for importing from other apps */}
       {showOtherAppsModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-60 font-sans" dir={langInfo.dir}>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-[60] font-sans" dir={langInfo.dir}>
           <div className="bg-white border border-gray-200 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center">
               <h5 className="font-black text-gray-800 text-sm flex items-center gap-1.5">

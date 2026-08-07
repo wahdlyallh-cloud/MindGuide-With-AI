@@ -2635,5 +2635,24 @@ export const MULTI_TRANSLATIONS: Record<AppLanguage, TranslationSet> = {
 };
 
 export function getTranslation(code: AppLanguage): TranslationSet {
-  return MULTI_TRANSLATIONS[code] || MULTI_TRANSLATIONS['en'] || MULTI_TRANSLATIONS['ar'];
+  const dict = MULTI_TRANSLATIONS[code] || MULTI_TRANSLATIONS['en'] || MULTI_TRANSLATIONS['ar'];
+  const enDict = MULTI_TRANSLATIONS['en'];
+  const arDict = MULTI_TRANSLATIONS['ar'];
+
+  return new Proxy(dict, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string') {
+        if (prop in target && target[prop] !== undefined) {
+          return target[prop];
+        }
+        if (enDict && prop in enDict && enDict[prop] !== undefined) {
+          return enDict[prop];
+        }
+        if (arDict && prop in arDict && arDict[prop] !== undefined) {
+          return arDict[prop];
+        }
+      }
+      return Reflect.get(target, prop, receiver);
+    }
+  });
 }

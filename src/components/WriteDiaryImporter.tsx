@@ -440,7 +440,7 @@ export default function WriteDiaryImporter({
   const selectedCount = parsedEntries.filter(e => e.selected).length;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-60 font-sans" dir={langInfo.dir}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[60] font-sans" dir={langInfo.dir}>
       <div className="bg-[#FCFAF7] border border-[#E2DCC8] rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl transition-all duration-300 transform scale-100 max-h-[90vh] flex flex-col">
         
         {/* Header with Pink Accent referencing WriteDiary old pink theme */}

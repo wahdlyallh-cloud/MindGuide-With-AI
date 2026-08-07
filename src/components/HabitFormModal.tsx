@@ -104,7 +104,7 @@ export const HabitFormModal: React.FC<HabitFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-55 font-sans" dir="rtl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[55] font-sans" dir="rtl">
       <div className="bg-white border border-gray-200 rounded-[28px] w-full max-w-lg overflow-hidden shadow-2xl transition-all max-h-[92vh] flex flex-col">
         
         {/* Header Bar */}
