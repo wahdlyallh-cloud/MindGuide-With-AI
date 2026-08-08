@@ -30,7 +30,7 @@ import PINLock from './components/PINLock';
 import { registerBiometrics } from './lib/biometrics';
 import { TasksChecklistSection } from './components/TasksChecklistSection';
 import { CBTExercisesSection } from './components/CBTExercisesSection';
-import { MULTI_TRANSLATIONS, SUPPORTED_LANGUAGES, getLanguageInfo } from './lib/languages';
+import { MULTI_TRANSLATIONS, SUPPORTED_LANGUAGES, getLanguageInfo, getTranslation } from './lib/languages';
 import IntegratedTherapyReport from './components/IntegratedTherapyReport';
 import WeeklyHabitsMoodChart from './components/WeeklyHabitsMoodChart';
 import SleepMoodCorrelationChart from './components/SleepMoodCorrelationChart';
@@ -935,7 +935,7 @@ export default function App() {
   const isAr = settings.appLanguage === 'ar';
   const isEn = settings.appLanguage === 'en';
   const isRtl = langInfo.dir === 'rtl';
-  const t = MULTI_TRANSLATIONS[settings.appLanguage] || MULTI_TRANSLATIONS.ar;
+  const t = getTranslation(settings.appLanguage);
 
   const [diaries, setDiaries] = useState<DiaryEntry[]>(() => {
     const saved = localStorage.getItem('yawmiyati_diaries');
@@ -4394,10 +4394,10 @@ export default function App() {
             type="button"
             onClick={revealHeaderTemporarily}
             className="flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-[#4E685B] text-white rounded-full shadow-lg border border-white/40 active:scale-95 transition-all cursor-pointer group"
-            title="انقر لإظهار الشريط العلوي مجدداً لمدة 3 ثوانٍ (يمكن تحريك هذه الأيقونة أفقياً)"
+            title={t('nav.reveal_header_pill')}
           >
             <Brain className="w-4 h-4 text-[#FEFAE0] animate-pulse shrink-0" />
-            <span className="text-[11px] font-black tracking-tight">{t.appName}</span>
+            <span className="text-[11px] font-black tracking-tight">{t('nav.hayat_ai')}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
             <ChevronDown className="w-3.5 h-3.5 text-white/80 group-hover:translate-y-0.5 transition-transform shrink-0" />
           </button>
@@ -4426,11 +4426,11 @@ export default function App() {
               </div>
               <div>
                 <div className="flex items-baseline space-x-1.5 space-x-reverse">
-                  <h1 className="text-base font-extrabold tracking-tight text-[#3A3A3A]">{isEn ? "Hayat" : "حياة"}</h1>
+                  <h1 className="text-base font-extrabold tracking-tight text-[#3A3A3A]">{t('nav.hayat_ai').replace(/\s*AI\s*/i, '')}</h1>
                   <span className="text-xs font-black bg-[#8B9D83] text-white px-1.5 py-0.5 rounded-md leading-none">AI</span>
                 </div>
                 <p className="text-[9px] text-gray-500 font-bold mt-0.5 flex flex-wrap items-center gap-1.5 max-w-full">
-                  <span>{isEn ? "Comprehensive Psychological Assistant" : "مساعد الصحة النفسية المتكامل"}</span>
+                  <span>{t('nav.subtitle')}</span>
                   <span className="text-gray-300 hidden sm:inline">•</span>
                   <span className={`inline-flex items-center space-x-1 space-x-reverse text-[9px] font-extrabold px-2 py-0.5 rounded-full border transition-all ${
                     autoSaveStatus === 'saving'
@@ -4438,7 +4438,7 @@ export default function App() {
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${autoSaveStatus === 'saving' ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`}></span>
-                    <span>{autoSaveStatus === 'saving' ? (isEn ? 'Saving...' : 'جارِ الحفظ...') : (isEn ? 'Auto Saved' : `تم الحفظ تلقائياً ${lastAutoSaveTime ? `(${lastAutoSaveTime})` : '💾'}`)}</span>
+                    <span>{autoSaveStatus === 'saving' ? t('nav.saving') : `${t('nav.auto_saved')} ${lastAutoSaveTime ? `(${lastAutoSaveTime})` : '💾'}`}</span>
                   </span>
                 </p>
               </div>
@@ -4453,7 +4453,7 @@ export default function App() {
               type="button"
               onClick={() => setShowLanguagesModal(true)}
               className="flex items-center space-x-1.5 space-x-reverse px-2.5 py-2 bg-amber-50/90 text-amber-950 border border-amber-300 rounded-xl text-xs font-black shadow-3xs hover:bg-amber-100 active:scale-95 transition-all cursor-pointer shrink-0"
-              title="تغيير لغة التطبيق والذكاء الاصطناعي / Switch App & AI Language"
+              title={t('nav.switch_language')}
             >
               <Globe className="w-3.5 h-3.5 text-amber-700" />
               <span className="text-sm leading-none">{langInfo.flag}</span>
@@ -4485,10 +4485,10 @@ export default function App() {
                 }
               }}
               className="flex items-center space-x-1 space-x-reverse px-2.5 py-2 bg-blue-50 text-blue-900 border border-blue-200 rounded-xl text-xs font-black shadow-3xs hover:bg-blue-100 active:scale-95 transition-all cursor-pointer shrink-0"
-              title={isEn ? "Fullscreen mode" : "تفعيل وضع الشاشة الكاملة وإخفاء شريط المتصفح العلوي"}
+              title={t('nav.fullscreen_title')}
             >
               <Maximize className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-              <span className="text-[11px]">{isEn ? "Fullscreen" : "ملء الشاشة"}</span>
+              <span className="text-[11px]">{t('nav.fullscreen')}</span>
             </button>
 
             {/* 1. Dhikr / Azkar Button (الأذكار) */}
@@ -4504,9 +4504,9 @@ export default function App() {
                 }, 100);
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-black shadow-3xs hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer shrink-0"
-              title={isEn ? "Mindfulness & Reflection" : "الأذكار والتسبيح"}
+              title={t('nav.dhikr_title')}
             >
-              <span>{isEn ? "Mindfulness" : "الأذكار"}</span>
+              <span>{t('nav.dhikr')}</span>
               <span className="flex items-center justify-center w-5 h-5 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-300 shrink-0">
                 <Sparkles className="w-3 h-3 text-emerald-700" />
               </span>
@@ -4525,7 +4525,7 @@ export default function App() {
               <span className="flex items-center justify-center bg-[#C5221F] text-white text-[10px] font-black w-4.5 h-4.5 rounded-full border border-white shrink-0">
                 {incompleteTasksCount}
               </span>
-              <span>{isEn ? "Daily Tasks" : "المهام اليومية"}</span>
+              <span>{t('nav.daily_tasks')}</span>
             </button>
 
             {/* 3. My Diary Thoughts Button (خواطري) */}
@@ -4539,7 +4539,7 @@ export default function App() {
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-3.5 py-2 bg-[#FCF5DE] text-[#A67E2E] border border-[#E9E1C4] rounded-xl text-xs font-black shadow-3xs hover:bg-[#F9ECC4] active:scale-95 transition-all cursor-pointer shrink-0"
             >
-              <span>{isEn ? "My Thoughts" : "خواطري"}</span>
+              <span>{t('nav.my_thoughts')}</span>
               <span className="flex items-center justify-center w-5 h-5 bg-[#F8ECB8] text-[#8C6418] rounded-full border border-[#E1D39D] shrink-0">
                 <PenTool className="w-3 h-3 text-[#8C6418]" />
               </span>
@@ -4555,7 +4555,7 @@ export default function App() {
               }}
               className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-[#446A5E] hover:bg-[#3B5A50] text-white rounded-xl text-xs font-black shadow-3xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0"
             >
-              <span>{isEn ? "Therapy Session" : "جلسة العلاج"}</span>
+              <span>{t('nav.therapy_session')}</span>
               <span className="flex items-center justify-center w-5 h-5 bg-[#FCF5DE] border border-[#E9E1C4] rounded-full shrink-0 shadow-3xs animate-pulse">
                 <svg className="w-3 h-3 text-[#A67E2E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
@@ -4574,7 +4574,7 @@ export default function App() {
                   ? 'bg-teal-700 text-white border-teal-800 hover:bg-teal-800'
                   : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
               }`}
-              title={isEn ? "Personal Account & Sync" : "حسابي الشخصي وتزامن البيانات السحابي"}
+              title={t('nav.account_title')}
             >
               {currentUser ? (
                 <>
@@ -4584,7 +4584,7 @@ export default function App() {
               ) : (
                 <>
                   <User className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{isEn ? "Sign In" : "تسجيل الدخول"}</span>
+                  <span>{t('nav.sign_in')}</span>
                 </>
               )}
             </button>
@@ -4596,7 +4596,7 @@ export default function App() {
                 collapseHeaderOnMobile();
               }}
               className="p-2.5 bg-[#EEECDF] border border-[#D1CCBA] text-[#5A5A40] rounded-xl hover:bg-[#DDD8C3] active:scale-95 transition-all cursor-pointer shadow-3xs shrink-0 flex items-center justify-center"
-              title="قفل التطبيق لحماية الخصوصية"
+              title={t('nav.lock_app')}
             >
               <Lock className="w-4 h-4 text-[#4A4A30]" />
             </button>
@@ -4619,7 +4619,7 @@ export default function App() {
               type="button"
               onClick={handleGoBack}
               className="flex items-center space-x-1.5 space-x-reverse p-2.5 bg-[#4E685B] text-white hover:bg-[#3F5449] border-2 border-[#E5E1D4] rounded-full shadow-2xl transition-all active:scale-95 cursor-pointer group"
-              title="رجوع للخلف (يمكنك سحب وتحريك هذه الأيقونة العائمة لأي مكان)"
+              title={t('nav.back_mobile_title')}
             >
               <ArrowRight className="w-5 h-5 text-[#FEFAE0] group-hover:-translate-x-0.5 transition-transform shrink-0" />
               {navHistory.length > 0 && (
@@ -4637,10 +4637,10 @@ export default function App() {
                 type="button"
                 onClick={handleGoBack}
                 className="inline-flex items-center space-x-2 space-x-reverse px-3.5 py-1.5 bg-white hover:bg-[#8B9D83] text-[#3A3A3A] hover:text-white border border-[#E2DCC8] hover:border-[#8B9D83] rounded-2xl text-xs font-black shadow-2xs hover:shadow-md transition-all active:scale-95 cursor-pointer group shrink-0"
-                title={isEn ? "Go Back" : "الرجوع إلى الشاشة أو الصفحة السابقة"}
+                title={t('nav.back_title')}
               >
                 <ArrowRight className="w-4 h-4 text-[#8B9D83] group-hover:text-white group-hover:-translate-x-1 transition-transform" />
-                <span>{isEn ? "Go Back" : "رجوع للخلف"}</span>
+                <span>{t('nav.back_btn')}</span>
                 {navHistory.length > 0 && (
                   <span className="text-[10px] bg-[#EEF1EB] group-hover:bg-white/20 text-[#556E4F] group-hover:text-white px-1.5 py-0.5 rounded-full font-black">
                     {navHistory.length}
@@ -4650,14 +4650,14 @@ export default function App() {
 
               {/* Current Breadcrumb Location */}
               <div className="text-[11px] font-bold text-gray-500 hidden sm:flex items-center space-x-1.5 space-x-reverse bg-white/80 px-3 py-1 rounded-xl border border-[#E2DCC8]/50 shadow-3xs">
-                <span className="text-gray-400">{isEn ? "Current Page:" : "الصفحة الحالية:"}</span>
+                <span className="text-gray-400">{t('nav.current_page')}</span>
                 <span className="text-[#556E4F] font-black">
-                  {editingDiary ? (isEn ? 'Edit Diary' : 'تعديل/عرض المذكرة') :
-                   activeTab === 'dashboard' ? t.homeTab :
-                   activeTab === 'diaries' ? `${t.diariesTab} (${activeDiariesSubTab === 'journal' ? (isEn ? 'Journal' : 'سجل المذكرات') : activeDiariesSubTab === 'tasks' ? (isEn ? 'Tasks' : 'المهام') : activeDiariesSubTab === 'gratitude' ? (isEn ? 'Gratitude' : 'الامتنان') : 'CBT'})` :
-                   activeTab === 'advisor' ? t.advisorTab :
-                   activeTab === 'analytics' ? t.analyticsTab :
-                   activeTab === 'settings' ? t.settingsTab : ''}
+                  {editingDiary ? t('nav.edit_diary') :
+                   activeTab === 'dashboard' ? t('nav.home') :
+                   activeTab === 'diaries' ? `${t('nav.diaries')} (${activeDiariesSubTab === 'journal' ? t('nav.journal_records') : activeDiariesSubTab === 'tasks' ? t('nav.tasks') : activeDiariesSubTab === 'gratitude' ? t('nav.gratitude') : 'CBT'})` :
+                   activeTab === 'advisor' ? t('nav.advisor') :
+                   activeTab === 'analytics' ? t('nav.progress') :
+                   activeTab === 'settings' ? t('nav.settings') : ''}
                 </span>
               </div>
             </div>
@@ -9108,10 +9108,10 @@ export default function App() {
           >
             <Compass className="w-4 h-4 text-[#FEFAE0] animate-pulse shrink-0" />
             <span className="text-[11px] font-black tracking-tight">
-              {activeTab === 'dashboard' ? t.homeTab :
-               activeTab === 'diaries' ? t.diariesTab :
-               activeTab === 'advisor' ? t.advisorTab :
-               activeTab === 'analytics' ? t.analyticsTab : t.settingsTab}
+              {activeTab === 'dashboard' ? t('nav.home') :
+               activeTab === 'diaries' ? t('nav.diaries') :
+               activeTab === 'advisor' ? t('nav.advisor') :
+               activeTab === 'analytics' ? t('nav.progress') : t('nav.settings')}
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping"></span>
             <ChevronUp className="w-3.5 h-3.5 text-white/80 group-hover:-translate-y-0.5 transition-transform shrink-0" />
@@ -9148,7 +9148,7 @@ export default function App() {
             }`}
           >
             <Calendar className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
-            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.homeTab}</span>
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t('nav.home')}</span>
           </button>
 
           {/* Tab 2: Journal Diaries */}
@@ -9162,7 +9162,7 @@ export default function App() {
             }`}
           >
             <BookOpen className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
-            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.diariesTab}</span>
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t('nav.diaries')}</span>
           </button>
 
           {/* Tab 3: Flagship Smart Advisor */}
@@ -9179,7 +9179,7 @@ export default function App() {
               <Brain className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
               <span className="absolute top-[-4px] left-[-4px] w-2 h-2 bg-[#D4A373] rounded-full animate-ping"></span>
             </div>
-            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.advisorTab}</span>
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t('nav.advisor')}</span>
           </button>
 
           {/* Tab 4: Interactive Charts & Analytics */}
@@ -9193,7 +9193,7 @@ export default function App() {
             }`}
           >
             <Activity className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
-            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.analyticsTab}</span>
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t('nav.progress')}</span>
           </button>
 
           {/* Tab 5: Settings and Backup */}
@@ -9207,7 +9207,7 @@ export default function App() {
             }`}
           >
             <SettingsIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 mb-1" />
-            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t.settingsTab}</span>
+            <span className="text-[9px] sm:text-[10px] leading-tight font-black truncate max-w-full block">{t('nav.settings')}</span>
           </button>
 
         </div>
